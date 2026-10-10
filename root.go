@@ -55,7 +55,9 @@ type RootResult struct {
 	// Qtf is Qᵀ·Fun.
 	Qtf []float64
 	// Nfev counts calls to Func, including those of finite differences;
-	// Njev counts calls to Jac (0 without one).
+	// Njev counts calls to Jac (0 without one). SciPy's root and fsolve
+	// report two more calls: those their wrappers make outside MINPACK (a
+	// shape check and the initial evaluation), which do not happen here.
 	Nfev, Njev int
 	// Status is MINPACK's info: 1 converged, 2 Maxfev reached, 3 Xtol too
 	// small, 4 and 5 no progress.
@@ -115,11 +117,8 @@ func Root(p SystemProblem, x0 []float64, opts *RootOptions) (*RootResult, error)
 
 // Fsolve is scipy.optimize.fsolve(func, x0, fprime=p.Jac, full_output=True,
 // xtol, maxfev, epsfcn=opts.Eps, factor, diag): the same computation as
-// Root, returning the same result (SciPy's infodict holds X's companions
-// Fun as fvec, Nfev, Njev, Fjac, R and Qtf; ier is Status and mesg Message).
-// SciPy's fsolve reports two more function calls than root, for a shape
-// check and an initial evaluation that its wrapper makes outside MINPACK;
-// Nfev here counts only the calls actually made.
+// Root, returning the same result (SciPy's infodict holds Fun as fvec, Nfev,
+// Njev, Fjac, R and Qtf; ier is Status and mesg Message).
 func Fsolve(p SystemProblem, x0 []float64, opts *RootOptions) (*RootResult, error) {
 	return Root(p, x0, opts)
 }

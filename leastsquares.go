@@ -52,11 +52,12 @@ type LSOptions struct {
 	// Ftol, Xtol and Gtol are the termination tolerances (1e-8 each).
 	// SciPy lets None disable one; here a negative value disables it.
 	Ftol, Xtol, Gtol float64
-	// MaxNfev bounds function evaluations (TRF: 100·n; LM: 100·n with a
-	// Jacobian, 100·n·(n+1) without, as MINPACK counts them).
+	// MaxNfev bounds function evaluations (100·n; for LM it bounds
+	// MINPACK's count, which leaves out finite-difference evaluations).
 	MaxNfev int
-	// XScale is the characteristic scale of each variable. nil means 1;
-	// XScaleJac selects SciPy's x_scale='jac'.
+	// XScale is the characteristic scale of each variable. nil means 1
+	// (TRF) or 'jac' (LM, SciPy's default for that method); XScaleJac
+	// selects SciPy's x_scale='jac'.
 	XScale    []float64
 	XScaleJac bool
 	// Loss is the robust loss (TRF only; LossLinear by default) and FScale
