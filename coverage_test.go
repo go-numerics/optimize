@@ -314,7 +314,7 @@ func TestNumdiffEdges(t *testing.T) {
 		{method: FD3Point, lb: []float64{1, 0}, ub: []float64{3, 3}},  // one-sided forward
 		{method: FD3Point, lb: []float64{-3, 0}, ub: []float64{1, 3}}, // one-sided backward
 		{method: FD3Point, lb: []float64{1 - 1e-9, 0}, ub: []float64{1 + 2e-9, 3}},
-		{method: FD2Point, lb: []float64{0, 0}, ub: []float64{1, 3}},  // flipped
+		{method: FD2Point, lb: []float64{0, 0}, ub: []float64{1, 3}}, // flipped
 		{method: FD2Point, lb: []float64{1 - 1e-12, 0}, ub: []float64{1 + 2e-12, 3}},
 		{method: FD2Point, lb: []float64{1 - 2e-12, 0}, ub: []float64{1 + 1e-12, 3}},
 		{method: FD2Point, rel: 1e-8},
