@@ -19,16 +19,6 @@ import (
 // 1978. Without bounds it reduces to a classical trust-region
 // Levenberg–Marquardt iteration.
 
-// lsMessages are least_squares' TERMINATION_MESSAGES.
-var lsMessages = map[int]string{
-	-1: "Improper input parameters status returned from `leastsq`",
-	0:  "The maximum number of function evaluations is exceeded.",
-	1:  "`gtol` termination condition is satisfied.",
-	2:  "`ftol` termination condition is satisfied.",
-	3:  "`xtol` termination condition is satisfied.",
-	4:  "Both `ftol` and `xtol` termination conditions are satisfied.",
-}
-
 // noStatus stands for SciPy's termination_status = None.
 const noStatus = -100
 

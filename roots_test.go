@@ -90,7 +90,7 @@ func TestRootsAgainstSciPy(t *testing.T) {
 	for _, c := range cs {
 		fn := rootFns[c.Fn]
 		t.Run(c.Fn+"/"+c.Method, func(t *testing.T) {
-			var r *RootResult
+			var r *RootScalarResult
 			var err error
 			switch c.Method {
 			case "newton-secant-default":
@@ -146,7 +146,7 @@ func TestRootsAgainstSciPy(t *testing.T) {
 
 func TestRootErrors(t *testing.T) {
 	sq := func(x float64) float64 { return float64(x*x) + 1 }
-	for _, s := range []func(func(float64) float64, float64, float64, *BracketOptions) (*RootResult, error){Brentq, Brenth, Ridder, Bisect} {
+	for _, s := range []func(func(float64) float64, float64, float64, *BracketOptions) (*RootScalarResult, error){Brentq, Brenth, Ridder, Bisect} {
 		if _, err := s(sq, -1, 1, nil); !errors.Is(err, ErrBracket) {
 			t.Errorf("no sign change: %v", err)
 		}

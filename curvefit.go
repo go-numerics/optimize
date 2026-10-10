@@ -232,8 +232,8 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 		if m != 1 && n > m {
 			return nil, fmt.Errorf("%w: the number of parameters %d must not exceed the number of data points %d", ErrInput, n, m)
 		}
-		lo := &LeastsqOptions{Ftol: opt.Ftol, Xtol: opt.Xtol, Gtol: opt.Gtol, MaxFev: opt.MaxFev}
-		lr, err := Leastsq(resid, jac, m, p0, lo)
+		lo := &LeastsqOptions{Ftol: opt.Ftol, Xtol: opt.Xtol, Gtol: opt.Gtol, Maxfev: opt.MaxFev}
+		lr, err := Leastsq(LSProblem{Func: resid, Jac: jac, M: m}, p0, lo)
 		if err != nil {
 			return nil, err
 		}

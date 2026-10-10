@@ -19,8 +19,8 @@ const (
 	FlagSignErr   = "sign error"
 )
 
-// RootResult describes a scalar root search, like SciPy's RootResults.
-type RootResult struct {
+// RootScalarResult describes a scalar root search, like SciPy's RootResults.
+type RootScalarResult struct {
 	// Root is the estimated root.
 	Root float64
 	// Iterations and FunctionCalls count the work done (derivative
@@ -43,7 +43,7 @@ type BracketOptions struct {
 	MaxIter    int
 }
 
-type bracketSolver func(f func(float64) float64, a, b, xtol, rtol float64, iter int, st *RootResult) float64
+type bracketSolver func(f func(float64) float64, a, b, xtol, rtol float64, iter int, st *RootScalarResult) float64
 
 // nanError reports a NaN function value, which stops every root finder.
 type nanError struct {
@@ -55,7 +55,7 @@ func (e nanError) Error() string {
 	return fmt.Sprintf("optimize: the function value at x=%s is NaN; solver cannot continue", pyRepr(e.x))
 }
 
-func solveBracket(name string, solver bracketSolver, f func(float64) float64, a, b float64, o *BracketOptions) (*RootResult, error) {
+func solveBracket(name string, solver bracketSolver, f func(float64) float64, a, b float64, o *BracketOptions) (*RootScalarResult, error) {
 	var opt BracketOptions
 	if o != nil {
 		opt = *o
@@ -92,10 +92,10 @@ func solveBracket(name string, solver bracketSolver, f func(float64) float64, a,
 		}
 		return fx
 	}
-	st := &RootResult{Method: name}
+	st := &RootScalarResult{Method: name}
 	root := solver(g, a, b, xtol, rtol, iter, st)
 	if bad != nil {
-		return &RootResult{Root: bad.x, FunctionCalls: bad.calls, Flag: bad.Error(), Method: name}, *bad
+		return &RootScalarResult{Root: bad.x, FunctionCalls: bad.calls, Flag: bad.Error(), Method: name}, *bad
 	}
 	if st.Flag == FlagSignErr {
 		return nil, ErrBracket
@@ -113,25 +113,25 @@ func solveBracket(name string, solver bracketSolver, f func(float64) float64, a,
 // A bracket without a sign change returns ErrBracket; a NaN function value
 // returns an error together with the result describing where it happened;
 // running out of iterations is reported by Converged false.
-func Brentq(f func(float64) float64, a, b float64, o *BracketOptions) (*RootResult, error) {
+func Brentq(f func(float64) float64, a, b float64, o *BracketOptions) (*RootScalarResult, error) {
 	return solveBracket("brentq", brentq, f, a, b, o)
 }
 
 // Brenth is Brentq with hyperbolic instead of inverse quadratic
 // extrapolation (Bus & Dekker 1975); it is scipy.optimize.brenth.
-func Brenth(f func(float64) float64, a, b float64, o *BracketOptions) (*RootResult, error) {
+func Brenth(f func(float64) float64, a, b float64, o *BracketOptions) (*RootScalarResult, error) {
 	return solveBracket("brenth", brenth, f, a, b, o)
 }
 
 // Ridder finds a root of f in [a, b] with Ridders' (1979) method; it is
 // scipy.optimize.ridder.
-func Ridder(f func(float64) float64, a, b float64, o *BracketOptions) (*RootResult, error) {
+func Ridder(f func(float64) float64, a, b float64, o *BracketOptions) (*RootScalarResult, error) {
 	return solveBracket("ridder", ridder, f, a, b, o)
 }
 
 // Bisect finds a root of f in [a, b] by bisection; it is
 // scipy.optimize.bisect.
-func Bisect(f func(float64) float64, a, b float64, o *BracketOptions) (*RootResult, error) {
+func Bisect(f func(float64) float64, a, b float64, o *BracketOptions) (*RootScalarResult, error) {
 	return solveBracket("bisect", bisect, f, a, b, o)
 }
 
@@ -151,7 +151,7 @@ func cmin(a, b float64) float64 {
 func sameSign(x, y float64) bool { return math.Signbit(x) == math.Signbit(y) }
 
 // bracketStart evaluates both ends and settles the trivial cases.
-func bracketStart(f func(float64) float64, a, b float64, st *RootResult) (fa, fb, root float64, done bool) {
+func bracketStart(f func(float64) float64, a, b float64, st *RootScalarResult) (fa, fb, root float64, done bool) {
 	fa = f(a)
 	fb = f(b)
 	st.FunctionCalls = 2
@@ -169,13 +169,13 @@ func bracketStart(f func(float64) float64, a, b float64, st *RootResult) (fa, fb
 	return fa, fb, 0, false
 }
 
-func converged(st *RootResult, x float64) float64 {
+func converged(st *RootScalarResult, x float64) float64 {
 	st.Converged, st.Flag = true, FlagConverged
 	return x
 }
 
 func brentSolver(hyperbolic bool) bracketSolver {
-	return func(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *RootResult) float64 {
+	return func(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *RootScalarResult) float64 {
 		xpre, xcur := xa, xb
 		var xblk, fblk, spre, scur float64
 		fpre, fcur, root, done := bracketStart(f, xpre, xcur, st)
@@ -242,7 +242,7 @@ var (
 	brenth = brentSolver(true)
 )
 
-func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *RootResult) float64 {
+func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *RootScalarResult) float64 {
 	tol := xtol + float64(rtol*math.Min(math.Abs(xa), math.Abs(xb)))
 	fa, fb, root, done := bracketStart(f, xa, xb, st)
 	if done {
@@ -285,7 +285,7 @@ func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *R
 	return xn
 }
 
-func bisect(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *RootResult) float64 {
+func bisect(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *RootScalarResult) float64 {
 	fa, _, root, done := bracketStart(f, xa, xb, st)
 	if done {
 		return root
@@ -333,7 +333,7 @@ type NewtonOptions struct {
 //
 // Failure to converge (including a zero derivative) is reported by
 // Converged false and Flag "convergence error", not as an error.
-func Newton(f func(float64) float64, x0 float64, o *NewtonOptions) (*RootResult, error) {
+func Newton(f func(float64) float64, x0 float64, o *NewtonOptions) (*RootScalarResult, error) {
 	var opt NewtonOptions
 	if o != nil {
 		opt = *o
@@ -352,8 +352,8 @@ func Newton(f func(float64) float64, x0 float64, o *NewtonOptions) (*RootResult,
 		return nil, fmt.Errorf("%w: maxiter must be greater than 0", ErrInput)
 	}
 	isclose := func(a, b float64) bool { return math.Abs(a-b) <= tol+float64(opt.Rtol*math.Abs(b)) }
-	res := func(x float64, calls, it int, ok bool, method string) *RootResult {
-		r := &RootResult{Root: x, FunctionCalls: calls, Iterations: it, Converged: ok, Method: method, Flag: FlagConvErr}
+	res := func(x float64, calls, it int, ok bool, method string) *RootScalarResult {
+		r := &RootScalarResult{Root: x, FunctionCalls: calls, Iterations: it, Converged: ok, Method: method, Flag: FlagConvErr}
 		if ok {
 			r.Flag = FlagConverged
 		}
@@ -457,7 +457,7 @@ type RootScalarOptions struct {
 // bracket selects brentq; otherwise x0 with Fprime selects newton (halley
 // with Fprime2), x0 with x1 the secant method, and x0 alone Newton with a
 // finite-difference derivative.
-func RootScalar(f func(float64) float64, method string, o *RootScalarOptions) (*RootResult, error) {
+func RootScalar(f func(float64) float64, method string, o *RootScalarOptions) (*RootScalarResult, error) {
 	var opt RootScalarOptions
 	if o != nil {
 		opt = *o
@@ -482,7 +482,7 @@ func RootScalar(f func(float64) float64, method string, o *RootScalarOptions) (*
 	}
 	bo := &BracketOptions{Xtol: opt.Xtol, Rtol: opt.Rtol, MaxIter: opt.MaxIter}
 	no := &NewtonOptions{Tol: opt.Xtol, Rtol: opt.Rtol, MaxIter: opt.MaxIter}
-	var solver func(func(float64) float64, float64, float64, *BracketOptions) (*RootResult, error)
+	var solver func(func(float64) float64, float64, float64, *BracketOptions) (*RootScalarResult, error)
 	switch method {
 	case "brentq":
 		solver = Brentq

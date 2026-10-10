@@ -240,16 +240,6 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 // because every tolerance is at least the machine epsilon.
 var lmStatus = [...]int{-1, 2, 3, 4, 1, 0}
 
-// lsMessages are the termination messages of SciPy's least_squares.
-var lsMessages = map[int]string{
-	-1: "Improper input parameters status returned from `leastsq`",
-	0:  "The maximum number of function evaluations is exceeded.",
-	1:  "`gtol` termination condition is satisfied.",
-	2:  "`ftol` termination condition is satisfied.",
-	3:  "`xtol` termination condition is satisfied.",
-	4:  "Both `ftol` and `xtol` termination conditions are satisfied.",
-}
-
 // rowToCol returns a function that evaluates jac (row-major m×n) into a
 // column-major buffer, as SciPy's wrapper transposes a Dfun that does not
 // set col_deriv.

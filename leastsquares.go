@@ -185,3 +185,13 @@ func LeastSquares(p LSProblem, x0 []float64, method LSMethod, opts *LSOptions) (
 	}
 	return nil, fmt.Errorf("%w: %q", ErrMethod, method)
 }
+
+// lsMessages are SciPy least_squares' TERMINATION_MESSAGES.
+var lsMessages = map[int]string{
+	-1: "Improper input parameters status returned from `leastsq`",
+	0:  "The maximum number of function evaluations is exceeded.",
+	1:  "`gtol` termination condition is satisfied.",
+	2:  "`ftol` termination condition is satisfied.",
+	3:  "`xtol` termination condition is satisfied.",
+	4:  "Both `ftol` and `xtol` termination conditions are satisfied.",
+}
