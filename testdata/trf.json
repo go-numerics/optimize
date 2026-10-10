@@ -5884,6 +5884,114 @@
    "njev": 9,
    "status": 1,
    "message": "`gtol` termination condition is satisfied."
+  },
+  {
+   "name": "zerocol/x_scale_jac",
+   "problem": "zerocol",
+   "x0": [
+    0.0,
+    0.0
+   ],
+   "jac": "analytic",
+   "lb": null,
+   "ub": null,
+   "options": {
+    "x_scale": "jac"
+   },
+   "x": [
+    0.0,
+    1.9999805782211426
+   ],
+   "cost": 1.0000000003772056,
+   "fun": [
+    -1.0000194217788574,
+    0.9999805782211426
+   ],
+   "grad": [
+    0.0,
+    -3.884355771477388e-05
+   ],
+   "optimality": 3.884355771477388e-05,
+   "active_mask": [
+    0,
+    0
+   ],
+   "nfev": 23,
+   "njev": 11,
+   "status": 2,
+   "message": "`ftol` termination condition is satisfied."
+  },
+  {
+   "name": "balanced/gtol-off",
+   "problem": "balanced",
+   "x0": [
+    1.0
+   ],
+   "jac": "analytic",
+   "lb": null,
+   "ub": null,
+   "options": {
+    "gtol": null
+   },
+   "x": [
+    1.0
+   ],
+   "cost": 0.5,
+   "fun": [
+    0.0,
+    1.0
+   ],
+   "grad": [
+    0.0
+   ],
+   "optimality": 0.0,
+   "active_mask": [
+    0
+   ],
+   "nfev": 2,
+   "njev": 1,
+   "status": 4,
+   "message": "Both `ftol` and `xtol` termination conditions are satisfied."
+  },
+  {
+   "name": "rosenbrock/tight",
+   "problem": "rosenbrock",
+   "x0": [
+    0.0,
+    1.0
+   ],
+   "jac": "analytic",
+   "lb": [
+    0.0,
+    null
+   ],
+   "ub": [
+    1e-11,
+    null
+   ],
+   "options": {},
+   "x": [
+    9.999999999940066e-12,
+    0.0
+   ],
+   "cost": 0.49999999999,
+   "fun": [
+    -9.999999999880133e-22,
+    0.99999999999
+   ],
+   "grad": [
+    -0.99999999999,
+    -9.999999999880133e-21
+   ],
+   "optimality": 9.999999999880133e-21,
+   "active_mask": [
+    1,
+    0
+   ],
+   "nfev": 2,
+   "njev": 2,
+   "status": 1,
+   "message": "`gtol` termination condition is satisfied."
   }
  ]
 }

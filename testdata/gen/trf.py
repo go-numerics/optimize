@@ -366,6 +366,24 @@ def circle_j(x):
     return np.array([[2.0 * x[0], 2.0 * x[1]]])
 
 
+def zerocol(x):
+    # The first Jacobian column vanishes at x0 = (0, 0).
+    return np.array([x[0] * x[0] + x[1] - 3.0, x[1] - 1.0])
+
+
+def zerocol_j(x):
+    return np.array([[2.0 * x[0], 1.0], [0.0, 1.0]])
+
+
+def balanced(x):
+    # The gradient is exactly zero at x0 = 1: the first step is zero.
+    return np.array([x[0] - 1.0, 1.0])
+
+
+def balanced_j(x):
+    return np.array([[1.0], [0.0]])
+
+
 PROBLEMS = {
     "rosenbrock": (rosenbrock, rosenbrock_j, [-1.2, 1.0]),
     "helical": (helical, helical_j, [-1.0, 0.0, 0.0]),
@@ -385,6 +403,8 @@ PROBLEMS = {
     "clean": (clean, expfit_j, [1.0, 1.0, 0.0]),
     "logfit": (logfit, logfit_j, [5.0, 0.0]),
     "circle": (circle, circle_j, [2.0, 3.0]),
+    "zerocol": (zerocol, zerocol_j, [0.0, 0.0]),
+    "balanced": (balanced, balanced_j, [1.0]),
 }
 
 MGH = ["rosenbrock", "helical", "powell", "freudenstein", "bard", "kowalik",
@@ -509,6 +529,13 @@ def main():
     # Fewer residuals than variables.
     cases.append(run("circle", "circle"))
     cases.append(run("circle/bounded", "circle", lb=[0.0, 0.0], ub=[5.0, 5.0]))
+    # A zero Jacobian column under x_scale='jac'.
+    cases.append(run("zerocol/x_scale_jac", "zerocol", x_scale="jac"))
+    # A zero step: predicted and actual reductions both vanish.
+    cases.append(run("balanced/gtol-off", "balanced", gtol=None))
+    # Bounds tighter than make_strictly_feasible's relative step.
+    cases.append(run("rosenbrock/tight", "rosenbrock", x0=[0.0, 1.0],
+                     lb=[0.0, None], ub=[1e-11, None]))
     out = {"scipy": scipy.__version__, "numpy": np.__version__, "data": DATA,
            "cases": cases}
     with open("testdata/trf.json", "w") as fh:
