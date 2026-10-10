@@ -164,13 +164,21 @@ func Minimize(p Problem, x0 []float64, method Method, opts *Options) (*Result, e
 	}
 }
 
-// scalarFunc wraps a Problem with evaluation counters and finite-difference
-// gradients, the counterpart of SciPy's ScalarFunction.
+// scalarFunc wraps a Problem with evaluation counters, a one-point cache and
+// finite-difference gradients, the counterpart of SciPy's ScalarFunction: the
+// objective and gradient are each computed (and counted) at most once per
+// point, so a line search that asks for f and then ∇f at the same x pays once
+// for each, and a finite-difference gradient reuses the cached f(x).
 type scalarFunc struct {
 	p                Problem
 	fd               fdStep
 	nfev, njev, nhev int
-	scratch          []float64
+
+	x        []float64 // point of the cache
+	f        float64
+	g        []float64
+	fOK, gOK bool // f and g are valid (and counted) at x
+	rawOK    bool // FuncGrad has filled f and g at x
 }
 
 func newScalarFunc(p Problem, method Method, o *Options, lb, ub []float64) *scalarFunc {
@@ -180,14 +188,12 @@ func newScalarFunc(p Problem, method Method, o *Options, lb, ub []float64) *scal
 		fd.rel = o.FiniteDiffRelStep
 	case o.Eps != 0:
 		fd.abs = o.Eps
+	case o.FDMethod == FD3Point:
+		// SciPy passes its default epsilon only for the '2-point' scheme.
 	case method == LBFGSB:
 		fd.abs = 1e-8
 	default:
 		fd.abs = math.Sqrt(epsmch)
-	}
-	if o.FDMethod == FD3Point && o.Eps == 0 {
-		// SciPy passes epsilon only for the default '2-point' scheme.
-		fd.abs = 0
 	}
 	return &scalarFunc{p: p, fd: fd}
 }
@@ -195,40 +201,73 @@ func newScalarFunc(p Problem, method Method, o *Options, lb, ub []float64) *scal
 // hasGrad reports whether the problem provides an analytic gradient.
 func (s *scalarFunc) hasGrad() bool { return s.p.Grad != nil || s.p.FuncGrad != nil }
 
-// fun evaluates f(x).
-func (s *scalarFunc) fun(x []float64) float64 {
-	s.nfev++
-	if s.p.Func != nil {
-		return s.p.Func(x)
+// moveTo makes x the cached point, invalidating the cache if it moved.
+func (s *scalarFunc) moveTo(x []float64) {
+	if s.x != nil {
+		same := true
+		for i := range x {
+			if x[i] != s.x[i] {
+				same = false
+				break
+			}
+		}
+		if same {
+			return
+		}
+		copy(s.x, x)
+	} else {
+		s.x = clone(x)
+		s.g = make([]float64, len(x))
 	}
-	if len(s.scratch) != len(x) {
-		s.scratch = make([]float64, len(x))
-	}
-	return s.p.FuncGrad(x, s.scratch)
+	s.fOK, s.gOK, s.rawOK = false, false, false
 }
 
-// grad writes ∇f(x) into g; f0 must be f(x) (used by finite differences).
-func (s *scalarFunc) grad(x, g []float64, f0 float64) {
-	s.njev++
-	switch {
-	case s.p.Grad != nil:
-		s.p.Grad(x, g)
-	case s.p.FuncGrad != nil:
-		s.p.FuncGrad(x, g)
-	default:
-		s.nfev += s.fd.gradFD(s.p.Func, x, f0, g)
+// raw fills f and g from FuncGrad at the cached point.
+func (s *scalarFunc) raw() {
+	if !s.rawOK {
+		s.f = s.p.FuncGrad(s.x, s.g)
+		s.rawOK = true
 	}
+}
+
+// fun returns f(x).
+func (s *scalarFunc) fun(x []float64) float64 {
+	s.moveTo(x)
+	if !s.fOK {
+		s.nfev++
+		if s.p.FuncGrad != nil {
+			s.raw()
+		} else {
+			s.f = s.p.Func(s.x)
+		}
+		s.fOK = true
+	}
+	return s.f
+}
+
+// grad writes ∇f(x) into g.
+func (s *scalarFunc) grad(x, g []float64) {
+	s.moveTo(x)
+	if !s.gOK {
+		s.njev++
+		switch {
+		case s.p.FuncGrad != nil:
+			s.raw()
+		case s.p.Grad != nil:
+			s.p.Grad(s.x, s.g)
+		default:
+			f0 := s.fun(s.x)
+			s.nfev += s.fd.gradFD(s.p.Func, s.x, f0, s.g)
+		}
+		s.gOK = true
+	}
+	copy(g, s.g)
 }
 
 // funGrad evaluates f(x) and writes ∇f(x) into g.
 func (s *scalarFunc) funGrad(x, g []float64) float64 {
-	if s.p.FuncGrad != nil {
-		s.nfev++
-		s.njev++
-		return s.p.FuncGrad(x, g)
-	}
 	f := s.fun(x)
-	s.grad(x, g, f)
+	s.grad(x, g)
 	return f
 }
 
