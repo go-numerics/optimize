@@ -51,12 +51,13 @@ type Options struct {
 	// Ftol; CG and BFGS: Gtol; Newton-CG: Xtol; L-BFGS-B: Ftol and Gtol)
 	// when those fields are zero.
 	Tol float64
-	// MaxIter bounds the iterations (Nelder-Mead and Powell: 200·n by
-	// default unless MaxFev is set; CG/BFGS: 200·n; Newton-CG: 200·n;
-	// L-BFGS-B: 15000).
+	// MaxIter bounds the iterations (Nelder-Mead 200·n, Powell 1000·n,
+	// CG, BFGS and Newton-CG 200·n, L-BFGS-B 15000). For Nelder-Mead and
+	// Powell, setting only one of MaxIter and MaxFev leaves the other
+	// unlimited, as in SciPy.
 	MaxIter int
-	// MaxFev bounds function evaluations (Nelder-Mead/Powell: 200·n by
-	// default unless MaxIter is set; L-BFGS-B: 15000).
+	// MaxFev bounds function evaluations (Nelder-Mead 200·n, Powell 1000·n,
+	// L-BFGS-B 15000).
 	MaxFev int
 	// Gtol is the gradient tolerance: CG and BFGS stop when the Norm-norm
 	// of the gradient is below it (1e-5); L-BFGS-B stops when the max-norm
@@ -97,9 +98,10 @@ type Options struct {
 	HessInv0 []float64
 	// XRtol is BFGS's relative step tolerance (0: disabled).
 	XRtol float64
-	// Callback is called after each iteration with the current point and
-	// objective value; returning true stops the minimisation, which then
-	// reports Success=false with a "stopped by callback" message.
+	// Callback is called after each iteration with a copy of the current
+	// point and the objective value; returning true stops the minimisation,
+	// which then reports Success false and Status 99 (SciPy's callback
+	// raising StopIteration).
 	Callback func(x []float64, f float64) (stop bool)
 }
 
@@ -144,24 +146,105 @@ func Minimize(p Problem, x0 []float64, method Method, opts *Options) (*Result, e
 	default:
 		return nil, fmt.Errorf("%w: %q", ErrMethod, method)
 	}
-	sf := newScalarFunc(p, method, &o, lb, ub)
+	if method == NewtonCG && p.Grad == nil && p.FuncGrad == nil {
+		return nil, fmt.Errorf("%w: Newton-CG requires a gradient", ErrInput)
+	}
+	stopped := false
+	if cb := o.Callback; cb != nil {
+		o.Callback = func(x []float64, f float64) bool {
+			stopped = cb(x, f)
+			return stopped
+		}
+	}
+	var r *Result
+	if method == LBFGSB && lb != nil {
+		r, err = minimizeLBFGSBFixed(p, x0, &o, lb, ub)
+	} else {
+		r, err = dispatch(p, x0, method, &o, lb, ub)
+	}
+	if err == nil && stopped {
+		r.Success, r.Status, r.Message = false, 99, "`Callback` requested a stop."
+	}
+	return r, err
+}
+
+func dispatch(p Problem, x0 []float64, method Method, o *Options, lb, ub []float64) (*Result, error) {
+	sf := newScalarFunc(p, method, o, lb, ub)
 	switch method {
 	case NelderMead:
-		return minimizeNelderMead(sf, x0, &o, lb, ub)
+		return minimizeNelderMead(sf, x0, o, lb, ub)
 	case Powell:
-		return minimizePowell(sf, x0, &o, lb, ub)
+		return minimizePowell(sf, x0, o, lb, ub)
 	case CG:
-		return minimizeCG(sf, x0, &o)
+		return minimizeCG(sf, x0, o)
 	case BFGS:
-		return minimizeBFGS(sf, x0, &o)
+		return minimizeBFGS(sf, x0, o)
 	case NewtonCG:
-		if p.Grad == nil && p.FuncGrad == nil {
-			return nil, fmt.Errorf("%w: Newton-CG requires a gradient", ErrInput)
-		}
-		return minimizeNewtonCG(sf, x0, &o)
+		return minimizeNewtonCG(sf, x0, o)
 	default: // LBFGSB
-		return minimizeLBFGSB(sf, x0, &o, lb, ub)
+		return minimizeLBFGSB(sf, x0, o, lb, ub)
 	}
+}
+
+// minimizeLBFGSBFixed handles variables fixed by equal bounds the way SciPy's
+// minimize does for L-BFGS-B: if all are fixed the objective is evaluated
+// once at the bounds; if some are fixed and the gradient is computed by
+// finite differences (which could not step off a fixed variable), they are
+// removed from the problem and restored in the result, with NaN gradient
+// entries.
+func minimizeLBFGSBFixed(p Problem, x0 []float64, o *Options, lb, ub []float64) (*Result, error) {
+	n := len(x0)
+	var free []int
+	for i := range n {
+		if lb[i] != ub[i] {
+			free = append(free, i)
+		}
+	}
+	if len(free) == 0 {
+		x := clone(lb)
+		sf := newScalarFunc(p, LBFGSB, o, nil, nil)
+		f := sf.fun(x)
+		return &Result{X: x, Fun: f, Nfev: 1, Success: true,
+			Message: "All independent variables were fixed by bounds."}, nil
+	}
+	if len(free) == n || p.Grad != nil || p.FuncGrad != nil {
+		return dispatch(p, x0, LBFGSB, o, lb, ub)
+	}
+	full := clone(lb) // fixed entries hold their value
+	expand := func(xr []float64) []float64 {
+		for k, i := range free {
+			full[i] = xr[k]
+		}
+		return full
+	}
+	m := len(free)
+	xr, lr, ur := make([]float64, m), make([]float64, m), make([]float64, m)
+	for k, i := range free {
+		xr[k], lr[k], ur[k] = x0[i], lb[i], ub[i]
+	}
+	f := p.Func
+	rp := Problem{Func: func(x []float64) float64 { return f(expand(x)) }}
+	ro := *o
+	if cb := o.Callback; cb != nil {
+		ro.Callback = func(x []float64, fx float64) bool { return cb(clone(expand(x)), fx) }
+	}
+	r, err := dispatch(rp, xr, LBFGSB, &ro, lr, ur)
+	if err != nil {
+		return nil, err
+	}
+	x := clone(lb)
+	jac := make([]float64, n)
+	for i := range jac {
+		jac[i] = math.NaN()
+	}
+	for k, i := range free {
+		x[i] = r.X[k]
+		if r.Jac != nil {
+			jac[i] = r.Jac[k]
+		}
+	}
+	r.X, r.Jac = x, jac
+	return r, nil
 }
 
 // scalarFunc wraps a Problem with evaluation counters, a one-point cache and
