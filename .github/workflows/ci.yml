@@ -1,0 +1,123 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Coverage policy: the package is pure Go with no per-architecture code, so a
+# single `go test -race -coverpkg` run must reach 100% statement coverage on
+# every hosted OS. The per-architecture jobs then run the whole suite natively
+# (amd64, arm64) and under qemu-user (riscv64, loong64, ppc64le, s390x):
+# floating-point contraction (fused multiply-add) differs between them, and
+# the SciPy-fixture tests are written to hold on every one of them.
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go version
+      - run: go vet ./...
+      - run: go build ./...
+      - name: gofmt
+        if: runner.os == 'Linux'
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: Test + 100% coverage gate
+        shell: bash
+        run: |
+          COVERPKG=$(go list ./... | paste -sd, -)
+          go test -race -coverpkg="$COVERPKG" -coverprofile=cover.out ./...
+          go tool cover -func=cover.out | tail -n 40
+          cov=$(go tool cover -func=cover.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "coverage: ${cov}%"
+          awk -v t="$cov" 'BEGIN { exit !(t+0 >= 100.0) }' || {
+            echo "::error::coverage ${cov}% < 100%"; exit 1; }
+
+  arch-native:
+    name: arch ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,    label: amd64 }
+          - { os: ubuntu-24.04-arm, label: arm64 }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go env GOARCH
+      - name: Vet + build + test
+        run: |
+          go vet ./...
+          go build ./...
+          go test -count=1 ./...
+
+  arch-qemu:
+    name: arch ${{ matrix.goarch }} (qemu)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goarch: riscv64, qemu: qemu-riscv64-static }
+          - { goarch: loong64, qemu: qemu-loongarch64-static }
+          - { goarch: ppc64le, qemu: qemu-ppc64le-static }
+          - { goarch: s390x,   qemu: qemu-s390x-static }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+      - name: Vet + test under qemu (${{ matrix.goarch }})
+        run: |
+          GOOS=linux GOARCH=${{ matrix.goarch }} go vet ./...
+          GOARCH=${{ matrix.goarch }} go test -count=1 -exec=${{ matrix.qemu }} ./...
+
+  # Every first-class and most secondary ports must at least compile the
+  # package and its tests (CGO is off: the package is pure Go).
+  cross-compile:
+    name: go test -c (all targets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Compile tests for every target
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          set -e
+          for t in linux/amd64 linux/386 linux/arm linux/arm64 linux/riscv64 linux/loong64 \
+                   linux/ppc64 linux/ppc64le linux/s390x linux/mips linux/mipsle linux/mips64 linux/mips64le \
+                   darwin/amd64 darwin/arm64 windows/amd64 windows/386 windows/arm64 \
+                   freebsd/amd64 freebsd/arm64 openbsd/amd64 netbsd/amd64 illumos/amd64 \
+                   js/wasm wasip1/wasm; do
+            echo "== $t"
+            GOOS=${t%/*} GOARCH=${t#*/} go test -c -o /dev/null ./...
+          done
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...

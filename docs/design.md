@@ -1,0 +1,247 @@
+# Design: algorithms, sources and fidelity
+
+This package is an independent Go implementation of the parts of
+`scipy.optimize` that scientific notebooks use most. A census of 339 notebooks
+set the order: `minimize`, `minimize_scalar`, scalar roots, `root`/`fsolve`,
+`least_squares`/`curve_fit`, `linprog`, `brute`, `check_grad` and
+`approx_fprime`. SciPy, MINPACK and L-BFGS-B are cited below only as
+references and as test oracles.
+
+## Fidelity policy
+
+Each routine is a port of a published algorithm. Wherever SciPy's
+implementation of that algorithm is itself a reference, the port follows it
+statement by statement, so that on the same problem it takes the same
+iterates. The test suite replays SciPy 1.18.1 on fixtures that
+`testdata/gen/*.py` generates. It checks solutions, objective values, status
+codes and messages. It also compares iteration and evaluation counts; where
+counts are not asserted equal, they are logged side by side.
+
+Three things make floating-point agreement possible, or explain where it
+stops:
+
+1. **No fused multiply-add.** Python never fuses `a*b + c`. Go fuses it on
+   arm64, ppc64le, s390x, riscv64 and loong64, which changes the last bit and,
+   over many iterations, the path. Every product that feeds an addition in the
+   ported code is wrapped in `float64()`. The Go specification makes that
+   conversion a rounding point that forbids fusion. The wrapping was applied
+   mechanically by a small `go/ast` rewriter. As a result, every algorithm
+   gives bit-identical iterates on amd64 and arm64.
+2. **The oracle must not fuse either.** SciPy's macOS arm64 wheel is built
+   with Apple clang's default `-ffp-contract=on`, and its compiled kernels
+   (MINPACK, L-BFGS-B, the C root finders) contain fused instructions. The
+   MINPACK fixtures were therefore generated with the x86_64 wheel under
+   Rosetta, which has no FMA. The L-BFGS-B port was checked against SciPy's
+   own `lbfgsb.c`, compiled without contraction and linked to a sequential
+   BLAS: per-iteration f values agree bit for bit on 11 problems, including
+   513 iterations of Rosenbrock n=100. Against the wheel itself, Accelerate's
+   blocked BLAS kernels round differently. With an analytic gradient this
+   only shows on long runs: Rosenbrock n=100 takes 513 iterations here and
+   514 in SciPy.
+3. **libm.** Go's `math.Exp`, `math.Cos` and `math.Pow` can differ from the
+   platform C library in the last ulp. On test functions built from + − × ÷
+   and `sqrt` only, the paths are identical, and the tests assert that. On
+   functions calling `exp`, `sin`, `cos` or `pow`, a last-ulp difference can
+   move an iterate across a decision. There the tests assert accuracy only.
+
+## Minimize
+
+| Method | Algorithm | Reference followed |
+|---|---|---|
+| `NelderMead` | Nelder & Mead (1965) simplex; adaptive coefficients of Gao & Han (2012); bounds by reflection of the initial simplex and clipping | SciPy `_minimize_neldermead` (stable ordering, `maxfev` unwinding exactly where SciPy raises) |
+| `Powell` | Powell (1964) conjugate directions with the Press et al. replacement test; Brent line searches, bounded line searches restricted to the box, `arctan` mapping for half-infinite ranges | SciPy `_minimize_powell`, `_linesearch_powell`, `_line_for_search` |
+| `CG` | Polak–Ribière with Powell's β ≥ 0 (PR+), strong-Wolfe search plus the sufficient-descent condition on the next direction (Nocedal & Wright §5.2) | SciPy `_minimize_cg` |
+| `BFGS` | Inverse-Hessian BFGS (Nocedal & Wright Alg. 6.1), strong-Wolfe line search | SciPy `_minimize_bfgs`; **deviation:** the update is applied in O(n²) as a rank-two correction instead of two dense n×n products (O(n³)). It is the same formula in exact arithmetic but rounds differently. It is the main reason BFGS is 10–20× faster at n=100. |
+| `NewtonCG` | Truncated Newton (Nocedal & Wright Alg. 7.1): CG on the Newton system with forcing term min(0.5, √‖g‖₁), stopped on negative curvature | SciPy `_minimize_newtoncg`, including its three Hessian sources and the order of the two gradient calls in its finite-difference Hessian-vector product, which decides how often the cache hits |
+| `LBFGSB` | L-BFGS-B 3.0 (Byrd, Lu, Nocedal & Zhu 1995; Zhu et al. 1997; Morales & Nocedal 2011): generalized Cauchy point with a breakpoint heap, compact limited-memory matrices, subspace minimisation with the 3.0 projection and backtrack, Moré–Thuente line search | SciPy 1.18.1's C translation `lbfgsb.c`, one subroutine per method (`cauchy`, `hpsolb`, `bmv`, `formt`, `formk`, `cmprlb`, `subsm`, `lnsrlb`, `matupd`, LINPACK `dpofa`/`dtrsl`) |
+
+Iterate parity is asserted on the problems built from arithmetic only
+(Rosenbrock n=2, Beale, Himmelblau): 36 of the 38 runs there take SciPy's
+exact path. The two exceptions:
+
+- BFGS with finite differences on Rosenbrock, because of the O(n²) update
+  above.
+- Newton-CG on Beale, which differs by one gradient call (52 against 53) with
+  the same iterations and function evaluations.
+
+Shared machinery:
+
+- **Line searches** (`dcsrch.go`, `linesearch.go`). The Moré–Thuente search
+  (MINPACK-2 `dcsrch`/`dcstep`, as in SciPy's `_dcsrch.py`) is used by
+  BFGS, CG, Newton-CG and L-BFGS-B. Its fallback is the Nocedal–Wright
+  bracketing/zoom search (SciPy's `scalar_search_wolfe2`, `_zoom`,
+  `_cubicmin`, `_quadmin`).
+- **Evaluation counting** (`scalarFunc`). It reproduces SciPy's
+  `ScalarFunction`. There is a one-point cache, so f and ∇f are each computed
+  and counted at most once per x. A finite-difference gradient reuses the
+  cached f(x) and adds its evaluations to `Nfev`, and every gradient counts
+  once in `Njev`.
+- **Finite differences** (`numdiff.go`). This is SciPy's `approx_derivative`:
+  2-point and 3-point schemes, relative or absolute steps with the same
+  defaults (√eps·max(1,|x|), or SciPy's absolute 1.49e-8 for BFGS/CG and
+  1e-8 for L-BFGS-B), and steps adjusted to stay inside bounds, going
+  one-sided when needed.
+- **Wrapper semantics.** These come from `scipy.optimize.minimize`: the `tol`
+  mapping to each method's tolerance, clipping x0 into the bounds, removing
+  variables fixed by equal bounds for L-BFGS-B with finite differences, and
+  status 99 when the callback stops the run.
+
+## MinimizeScalar, Bracket, Fminbound
+
+These are Brent's (1973) parabolic/golden method, the golden-section search,
+the bounded variant of Forsythe, Malcolm & Moler's FMIN (fminbound), and the
+downhill bracket search. All four are ported from SciPy's Python
+implementations (`Brent`, `_minimize_scalar_golden`,
+`_minimize_scalar_bounded`, `bracket`), messages included. A failed bracket
+search returns the best of its three points, as SciPy's
+`_recover_from_bracket_error` does. On arithmetic-only test functions the
+iterates are identical to SciPy's. One subtlety: SciPy computes the golden
+constant 1 − 0.61803399 at run time in float64, while a Go constant
+expression would be exact and round differently.
+
+## Scalar roots
+
+- **`Brentq`, `Brenth`, `Ridder`, `Bisect`** follow SciPy's C
+  implementations (`scipy/optimize/Zeros/*.c`, by Charles Harris, BSD
+  licence): Brent with inverse quadratic or hyperbolic extrapolation (Bus &
+  Dekker 1975), Ridders (1979) with SciPy 1.18's underflow-safe update, and
+  bisection. Defaults are xtol 2e-12, rtol 4·eps and 100 iterations.
+  - C's `MIN` macro returns b when a is NaN, unlike `math.Min`. Ridder relies
+    on this after an infinite midpoint value, so it is reproduced (`cmin`).
+  - A NaN function value stops the search with an error, as SciPy raises.
+    Through `RootScalar` it becomes a result instead, as SciPy's root_scalar
+    does.
+- **`Newton`** covers Newton–Raphson, Halley and the secant method, ported
+  from SciPy's `newton` (scalar path).
+- **`RootScalar`** selects the method by SciPy's rules.
+
+## Root / Fsolve (MINPACK hybrd/hybrj)
+
+Powell's hybrid method, ported from SciPy 1.18.1's C translation of MINPACK
+(Moré, Garbow & Hillstrom 1980):
+
+- **Kernels:** `dogleg`, `qrfac` with column pivoting, `qform`, `r1updt`,
+  `r1mpyq`, and the forward-difference `fdjac1`.
+- **Layout:** storage is column-major, as in MINPACK, so every sum keeps the
+  reference order.
+- **Norm:** MINPACK's three-accumulator `enorm` is kept, because a different
+  norm alone breaks bit parity.
+- **Defaults:** as SciPy's `_root_hybr`: maxfev 200(n+1) without a Jacobian
+  and 100(n+1) with one, factor 100, xtol 1.49012e-8. Messages are SciPy's.
+- **Deviation:** `Nfev` excludes the two extra calls SciPy's Python wrappers
+  make (a shape check and an initial evaluation). SciPy's reported nfev is
+  always ours + 2.
+- **Not ported:** `band` and `col_deriv`.
+
+## Least squares
+
+### `Leastsq` and `LeastSquares(LM)`: MINPACK lmdif/lmder
+
+The Levenberg–Marquardt method with Moré's (1978) trust region, ported from
+the same C MINPACK: `lmpar`, `qrsolv`, `qrfac`, `fdjac2`.
+
+- **`Leastsq`** mirrors `scipy.optimize.leastsq`. `cov_x` is computed as
+  SciPy does: R is inverted in the style of LAPACK `dtrti2`, the rows are
+  permuted, and the result is invR·invRᵀ.
+- **`LeastSquares` with method LM** follows `least_squares`'
+  `call_minpack`:
+  - It always calls lmder, using `approx_derivative` for a missing
+    Jacobian.
+  - The default budget is max_nfev = 100·n.
+  - `x_scale='jac'` maps to MINPACK's mode 1; an explicit scale gives
+    diag = 1/x_scale.
+  - Statuses are mapped to least_squares' codes.
+
+### `LeastSquares(TRF)`
+
+The trust-region reflective method of Branch, Coleman & Li (1999), ported
+from SciPy's `_lsq/trf.py` and `_lsq/common.py` (dense, `tr_solver='exact'`):
+
+- **Bounds:** Coleman–Li scaling, and iterates kept strictly feasible.
+- **Step choice:** the best of three candidates: the trust-region step
+  clipped at the first bound and stepped back by θ, its reflection off that
+  bound, and the constrained Cauchy step.
+- **Subproblem:** solved exactly from a thin SVD, with Moré's safeguarded
+  Newton iteration for the Levenberg–Marquardt parameter.
+- **Loss and scaling:** the robust losses (soft_l1, huber, cauchy, arctan)
+  rescale J and f as SciPy does, and `x_scale='jac'` scaling never decreases.
+- **Counting:** `Nfev` excludes finite-difference evaluations, as in
+  least_squares.
+- **SVD:** it comes from go-ndarray's `linalg.SVD`, the Golub–Kahan/QR
+  algorithm of LAPACK gesvd. A faster one-sided Jacobi SVD was measured and
+  rejected: on exactly rank-deficient Jacobians it returns exact zeros where
+  LAPACK returns tiny values, and SciPy's path depends on those tiny values.
+- **Tall matrices** (m ≥ 1000 and m ≥ 11n/6, the regime where LAPACK's
+  gesdd also factors QR first): the Jacobian is reduced by Householder QR
+  and only the n×n R is decomposed. Uᵀf is obtained as U_Rᵀ(Qᵀf), with no
+  m×n U ever formed. The fixtures, all smaller than 1000 rows, take the
+  direct path.
+
+### `CurveFit` / `CurveFitModel`
+
+`scipy.optimize.curve_fit`:
+
+- **Method:** LM through `Leastsq` without bounds, TRF through
+  `LeastSquares` with bounds.
+- **`sigma`:** a 1-D array divides the residuals; a 2-D covariance whitens
+  them with its Cholesky factor (go-ndarray `linalg.Cholesky`, then forward
+  substitution).
+- **Covariance:**
+  - With LM it is `cov_x`.
+  - With TRF it is the pseudo-inverse of JᵀJ from the SVD of J. Singular
+    values below eps·max(m,n)·s₀ are discarded. For a tall J the SVD is
+    taken of R, since JᵀJ = RᵀR.
+  - It is scaled by the reduced χ² unless `AbsoluteSigma` is set.
+  - It is +Inf (`CovOK` false) when it cannot be estimated.
+- **Errors:** non-convergence returns `ErrNotConverged` together with the
+  partial result, where SciPy raises RuntimeError.
+- **Parallelism:** `Workers` evaluates the model over the samples in
+  parallel, from 2048 samples up. The result is bit-identical to the serial
+  run.
+
+## Linprog
+
+HiGHS, SciPy's default, is out of reach. Two dense solvers are provided
+instead, with documented limits.
+
+- **Revised simplex** (default):
+  - Two phases with bounded variables. Phase one starts from slack and
+    artificial variables; phase two fixes the artificials at zero, so any
+    left in the basis stand for redundant rows.
+  - Dantzig pricing, switching to Bland's rule after 50 degenerate pivots.
+  - Harris's two-pass ratio test with bound flips.
+  - Dense LU with product-form updates, refactorised every 64 updates.
+- **Interior point**: the homogeneous self-dual method of Andersen &
+  Andersen (2000) with Mehrotra predictor–corrector, ported from SciPy's
+  legacy `_linprog_ip.py` with its standard form and settings. The normal
+  equations are solved by Cholesky, then LU, then least squares, in that
+  fallback order.
+- **Presolve:** after SciPy's `_presolve`: it removes empty rows and columns
+  and fixed variables, and detects linearly dependent equality rows.
+- **Duals:** they follow HiGHS's sign convention.
+- **Final check:** SciPy's `_check_result` downgrades a status that is
+  inconsistent with the returned point.
+- **Not done:** singleton-row presolve, crossover, scaling, warm start,
+  sparse matrices.
+
+## Brute, CheckGrad, ApproxFprime
+
+- **`Brute`** evaluates `numpy.mgrid`'s grid with the same point formula,
+  takes the first minimum as `argmin` does (NaN counts as the minimum), and
+  polishes it with Nelder–Mead, as `fmin` does. `Workers` evaluates the grid
+  in parallel.
+- **`CheckGrad`** and **`ApproxFprime`** are `check_grad` and
+  `approx_fprime`, with SciPy's default absolute step of 1.49e-8.
+
+## API conventions
+
+- **Callbacks** take the point first and write their outputs into the slices
+  that follow: `Func(x)`, `Grad(x, g)`, `FuncGrad(x, g)`, `Hess(x, h)`,
+  `Jac(x, J)`. Matrices are row-major `[]float64`.
+- **ndarray:** `*ndarray.Array` appears where arrays are natural (curve-fit
+  data, `sigma`, LP constraint matrices), and results have `…Array()`
+  accessors.
+- **Options** are structs whose zero values select SciPy's defaults.
+- **Errors:** invalid input returns an error wrapping `ErrInput`,
+  `ErrDimension`, `ErrBounds` or `ErrMethod`. Non-convergence is reported in
+  `Success`/`Status`/`Message`, as SciPy reports it, not as an error.

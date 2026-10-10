@@ -1,0 +1,642 @@
+[
+ {
+  "fn": "cubic",
+  "method": "brentq",
+  "root": 2.094551481542327,
+  "iterations": 7,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cubic",
+  "method": "brenth",
+  "root": 2.0945514815423265,
+  "iterations": 7,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cubic",
+  "method": "ridder",
+  "root": 2.094551481543327,
+  "iterations": 6,
+  "calls": 14,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cubic",
+  "method": "bisect",
+  "root": 2.0945514815412025,
+  "iterations": 39,
+  "calls": 41,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cubic",
+  "method": "newton",
+  "root": 2.0945514815423265,
+  "iterations": 4,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cubic",
+  "method": "halley",
+  "root": 2.0945514815423265,
+  "iterations": 3,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cubic",
+  "method": "secant",
+  "root": 2.0945514815423003,
+  "iterations": 4,
+  "calls": 5,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "brentq",
+  "root": 0.7390851332151559,
+  "iterations": 7,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "brenth",
+  "root": 0.739085133215158,
+  "iterations": 7,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "ridder",
+  "root": 0.7390851332151607,
+  "iterations": 5,
+  "calls": 12,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "bisect",
+  "root": 0.7390851332147577,
+  "iterations": 39,
+  "calls": 41,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "newton",
+  "root": 0.7390851332151607,
+  "iterations": 4,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "halley",
+  "root": 0.7390851332151606,
+  "iterations": 3,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "secant",
+  "root": 0.7390851332151607,
+  "iterations": 5,
+  "calls": 6,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "triple",
+  "method": "brentq",
+  "root": 0.9999999999992432,
+  "iterations": 100,
+  "calls": 102,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "triple",
+  "method": "brenth",
+  "root": 0.9999999999993326,
+  "iterations": 100,
+  "calls": 102,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "triple",
+  "method": "ridder",
+  "root": 0.9999999999995807,
+  "iterations": 34,
+  "calls": 70,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "triple",
+  "method": "bisect",
+  "root": 1.0000000000002274,
+  "iterations": 41,
+  "calls": 43,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "triple",
+  "method": "newton",
+  "root": 1.0000000267963636,
+  "iterations": 43,
+  "calls": 86,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "triple",
+  "method": "halley",
+  "root": 1.0000000074505806,
+  "iterations": 27,
+  "calls": 81,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "triple",
+  "method": "secant",
+  "root": 1.0000007561447137,
+  "iterations": 50,
+  "calls": 52,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "ninth",
+  "method": "brentq",
+  "root": 1.000000000058038,
+  "iterations": 100,
+  "calls": 102,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "ninth",
+  "method": "brenth",
+  "root": 1.0000000000231075,
+  "iterations": 100,
+  "calls": 102,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "ninth",
+  "method": "ridder",
+  "root": 0.9999999999996558,
+  "iterations": 34,
+  "calls": 70,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "ninth",
+  "method": "bisect",
+  "root": 0.9999999999993179,
+  "iterations": 42,
+  "calls": 44,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "ninth",
+  "method": "newton",
+  "root": 1.0055386493795027,
+  "iterations": 50,
+  "calls": 100,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "ninth",
+  "method": "halley",
+  "root": 1.0000285449538542,
+  "iterations": 50,
+  "calls": 150,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "ninth",
+  "method": "secant",
+  "root": 1.033800414181869,
+  "iterations": 50,
+  "calls": 52,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "tiny",
+  "method": "brentq",
+  "root": 1.0,
+  "iterations": 2,
+  "calls": 3,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "tiny",
+  "method": "brenth",
+  "root": 1.0,
+  "iterations": 2,
+  "calls": 3,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "tiny",
+  "method": "ridder",
+  "root": 1.0,
+  "iterations": 1,
+  "calls": 4,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "tiny",
+  "method": "bisect",
+  "root": 1.0000000000004547,
+  "iterations": 41,
+  "calls": 43,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "tiny",
+  "method": "newton",
+  "root": 1.0,
+  "iterations": 1,
+  "calls": 3,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "tiny",
+  "method": "halley",
+  "root": 1.0,
+  "iterations": 1,
+  "calls": 4,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "tiny",
+  "method": "secant",
+  "root": 1.0,
+  "iterations": 2,
+  "calls": 3,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "steep",
+  "method": "brentq",
+  "root": 0.9210340371977146,
+  "iterations": 14,
+  "calls": 15,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "steep",
+  "method": "brenth",
+  "root": 0.9210340371976182,
+  "iterations": 14,
+  "calls": 15,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "steep",
+  "method": "ridder",
+  "root": 0.921034037196618,
+  "iterations": 8,
+  "calls": 18,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "steep",
+  "method": "bisect",
+  "root": 0.9210340371992061,
+  "iterations": 40,
+  "calls": 42,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "steep",
+  "method": "newton",
+  "root": 0.9210340371976204,
+  "iterations": 16,
+  "calls": 32,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "steep",
+  "method": "halley",
+  "root": 0.9210340371976182,
+  "iterations": 9,
+  "calls": 27,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "steep",
+  "method": "secant",
+  "root": 0.9210340371976234,
+  "iterations": 24,
+  "calls": 25,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "flat",
+  "method": "brentq",
+  "root": 0.3804797331016252,
+  "iterations": 16,
+  "calls": 17,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "flat",
+  "method": "brenth",
+  "root": 0.3804797331016252,
+  "iterations": 16,
+  "calls": 17,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "flat",
+  "method": "ridder",
+  "root": 0.3804797331024401,
+  "iterations": 9,
+  "calls": 20,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "flat",
+  "method": "bisect",
+  "root": 0.3804797331032841,
+  "iterations": 40,
+  "calls": 42,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "sinhalf",
+  "method": "brentq",
+  "root": 1.8954942670339556,
+  "iterations": 8,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "sinhalf",
+  "method": "brenth",
+  "root": 1.8954942670339796,
+  "iterations": 8,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "sinhalf",
+  "method": "ridder",
+  "root": 1.895494267033981,
+  "iterations": 6,
+  "calls": 14,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "sinhalf",
+  "method": "bisect",
+  "root": 1.8954942670345574,
+  "iterations": 40,
+  "calls": 42,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "sinhalf",
+  "method": "newton",
+  "root": 1.895494267033981,
+  "iterations": 4,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "sinhalf",
+  "method": "halley",
+  "root": 1.895494267033981,
+  "iterations": 3,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "sinhalf",
+  "method": "secant",
+  "root": 1.8954942670339936,
+  "iterations": 5,
+  "calls": 6,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "apsx",
+  "method": "brentq",
+  "root": 0.11183255915910482,
+  "iterations": 8,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "apsx",
+  "method": "brenth",
+  "root": 0.11183255915898103,
+  "iterations": 8,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "apsx",
+  "method": "ridder",
+  "root": 0.11183255915982586,
+  "iterations": 5,
+  "calls": 12,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "apsx",
+  "method": "bisect",
+  "root": 0.11183255915784684,
+  "iterations": 39,
+  "calls": 41,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "apsx",
+  "method": "newton",
+  "root": 0.11183255915896298,
+  "iterations": 5,
+  "calls": 10,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "apsx",
+  "method": "halley",
+  "root": 0.11183255915896297,
+  "iterations": 3,
+  "calls": 9,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "apsx",
+  "method": "secant",
+  "root": 0.11183255915896297,
+  "iterations": 5,
+  "calls": 6,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "kink",
+  "method": "brentq",
+  "root": 0.2999999999998162,
+  "iterations": 7,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "kink",
+  "method": "brenth",
+  "root": 0.3,
+  "iterations": 15,
+  "calls": 16,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "kink",
+  "method": "ridder",
+  "root": 0.3000000000006552,
+  "iterations": 39,
+  "calls": 80,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "kink",
+  "method": "bisect",
+  "root": 0.3000000000010914,
+  "iterations": 40,
+  "calls": 42,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "pole",
+  "method": "brentq",
+  "root": 0.499999999998181,
+  "iterations": 41,
+  "calls": 42,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "pole",
+  "method": "brenth",
+  "root": 0.499999999998181,
+  "iterations": 41,
+  "calls": 42,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "pole",
+  "method": "ridder",
+  "root": 0.499999999998181,
+  "iterations": 39,
+  "calls": 80,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "pole",
+  "method": "bisect",
+  "root": 0.499999999998181,
+  "iterations": 39,
+  "calls": 41,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cubic",
+  "method": "bisect",
+  "maxiter": 10,
+  "root": 2.09375,
+  "iterations": 10,
+  "calls": 12,
+  "converged": false,
+  "flag": "convergence error"
+ },
+ {
+  "fn": "cosx",
+  "method": "newton-secant-default",
+  "root": 0.7390851332151601,
+  "iterations": 5,
+  "calls": 6,
+  "converged": true,
+  "flag": "converged"
+ },
+ {
+  "fn": "cosx",
+  "method": "auto-x0",
+  "root": 0.7390851332151606,
+  "iterations": 4,
+  "calls": 8,
+  "converged": true,
+  "flag": "converged"
+ }
+]
