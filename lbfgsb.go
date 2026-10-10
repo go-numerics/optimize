@@ -155,7 +155,7 @@ func minimizeLBFGSB(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 	x := clone(x0)
 	g := make([]float64, n)
 	s.active(x)
-	tol := factr * epsmch
+	tol := float64(factr * epsmch)
 
 	nit := 0
 	var msg string
@@ -298,11 +298,11 @@ func (s *lbfgsb) update(g []float64) {
 		dr = s.gd - s.gdold
 		ddum = -s.gdold
 	} else {
-		dr = (s.gd - s.gdold) * s.stp
+		dr = float64((s.gd - s.gdold) * s.stp)
 		for i := range s.d {
 			s.d[i] *= s.stp
 		}
-		ddum = -s.gdold * s.stp
+		ddum = float64(-s.gdold * s.stp)
 	}
 	if dr <= epsmch*ddum {
 		// Skip the update: the curvature condition fails.

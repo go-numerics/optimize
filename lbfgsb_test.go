@@ -66,11 +66,11 @@ func lbQuadB(i int) float64 {
 	if i%2 == 1 {
 		s = -1
 	}
-	return s * (1 + 0.1*float64(i))
+	return float64(s * (1 + float64(0.1*float64(i))))
 }
 
 func lbQuadAx(x []float64, i int) float64 {
-	ax := float64(i+1) * x[i]
+	ax := float64(float64(i+1) * x[i])
 	if i > 0 {
 		ax += float64(0.5 * x[i-1])
 	}
@@ -97,12 +97,12 @@ func lbQuadG(x, g []float64) {
 func lbSphere(x []float64) float64 { return float64(x[0]*x[0]) + float64(x[1]*x[1]) }
 
 func lbSphereBadG(x, g []float64) {
-	g[0], g[1] = -2*x[0], -2*x[1]
+	g[0], g[1] = float64(-2*x[0]), float64(-2*x[1])
 }
 
 func lbNaNG(x, g []float64) { g[0], g[1] = math.NaN(), math.NaN() }
 
-func lbTiny(x []float64) float64 { return 1e-160 * x[0] }
+func lbTiny(x []float64) float64 { return float64(1e-160 * x[0]) }
 
 func lbTinyG(x, g []float64) { g[0] = 1e-160 }
 
@@ -254,7 +254,7 @@ var lbLongRuns = map[string]bool{"rosen100": true, "rosen100_fd": true}
 // lbUnbounded are fixtures whose objective is unbounded below: the run
 // stops on the f-reduction test far out along a descent ray, where x is
 // only determined by the path, so only the counts and status are compared.
-var lbUnbounded = map[string]bool{"poly_formt_fail_skip": true}
+var lbUnbounded = map[string]bool{"poly_formt_fail": true}
 
 func TestLBFGSBFixtures(t *testing.T) {
 	for _, c := range lbLoad(t) {

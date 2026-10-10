@@ -154,10 +154,10 @@ func (s *lbfgsb) cauchy(x, g []float64) {
 			continue
 		}
 		d[i] = neggi
-		f1 -= neggi * neggi
+		f1 -= float64(neggi * neggi)
 		for j := 0; j < col; j++ {
-			p[j] += wy[i+n*pointr] * neggi
-			p[col+j] += ws[i+n*pointr] * neggi
+			p[j] += float64(wy[i+n*pointr] * neggi)
+			p[col+j] += float64(ws[i+n*pointr] * neggi)
 			pointr = (pointr + 1) % m
 		}
 		switch {
@@ -198,7 +198,7 @@ func (s *lbfgsb) cauchy(x, g []float64) {
 		c[j] = 0
 	}
 	// Initial f2 = -θf1 - p'Mp.
-	f2 := -theta * f1
+	f2 := float64(-theta * f1)
 	f2org := f2
 	if col > 0 {
 		s.bmv(p, v)
@@ -264,16 +264,16 @@ func (s *lbfgsb) cauchy(x, g []float64) {
 			}
 			return
 		}
-		dibp2 := dibp * dibp
-		f1 = f1 + dt*f2 + dibp2 - theta*dibp*zibp
-		f2 -= theta * dibp2
+		dibp2 := float64(dibp * dibp)
+		f1 = f1 + float64(dt*f2) + dibp2 - float64(theta*dibp*zibp)
+		f2 -= float64(theta * dibp2)
 		if col > 0 {
 			daxpy(dt, p[:col2], c[:col2])
 			// wbp = row of W corresponding to the breakpoint.
 			pointr := s.head
 			for j := 0; j < col; j++ {
 				wbp[j] = wy[ibp+n*pointr]
-				wbp[col+j] = theta * ws[ibp+n*pointr]
+				wbp[col+j] = float64(theta * ws[ibp+n*pointr])
 				pointr = (pointr + 1) % m
 			}
 			s.bmv(wbp, v)
@@ -281,8 +281,8 @@ func (s *lbfgsb) cauchy(x, g []float64) {
 			wmp := dot(p[:col2], v[:col2])
 			wmw := dot(wbp[:col2], v[:col2])
 			daxpy(-dibp, wbp[:col2], p[:col2])
-			f1 += dibp * wmc
-			f2 = f2 + dibp*2*wmp - dibp2*wmw
+			f1 += float64(dibp * wmc)
+			f2 = f2 + float64(dibp*2*wmp) - float64(dibp2*wmw)
 		}
 		f2 = cfmax(epsmch*f2org, f2)
 		if nleft >= 0 {
@@ -309,7 +309,7 @@ func (s *lbfgsb) cauchy(x, g []float64) {
 // daxpy computes y += a·x.
 func daxpy(a float64, x, y []float64) {
 	for i := range x {
-		y[i] += a * x[i]
+		y[i] += float64(a * x[i])
 	}
 }
 
@@ -417,16 +417,16 @@ func (s *lbfgsb) cmprlb(x, g []float64) {
 	}
 	for i := 0; i < s.nfree; i++ {
 		k := index[i]
-		r[i] = -theta*(z[k]-x[k]) - g[k]
+		r[i] = float64(-theta*(z[k]-x[k])) - g[k]
 	}
 	s.bmv(wa[2*m:4*m], wa[0:2*m])
 	pointr := s.head
 	for j := 0; j < col; j++ {
 		a1 := wa[j]
-		a2 := theta * wa[col+j]
+		a2 := float64(theta * wa[col+j])
 		for i := 0; i < s.nfree; i++ {
 			k := index[i]
-			r[i] = r[i] + s.wy[k+n*pointr]*a1 + s.ws[k+n*pointr]*a2
+			r[i] = r[i] + float64(s.wy[k+n*pointr]*a1) + float64(s.ws[k+n*pointr]*a2)
 		}
 		pointr = (pointr + 1) % m
 	}
@@ -467,7 +467,7 @@ func (s *lbfgsb) matupd(rr, dr float64) {
 	if s.stp == 1 {
 		ss[(col-1)+m*(col-1)] = s.dtd
 	} else {
-		ss[(col-1)+m*(col-1)] = s.stp * s.stp * s.dtd
+		ss[(col-1)+m*(col-1)] = float64(s.stp * s.stp * s.dtd)
 	}
 	sy[(col-1)+m*(col-1)] = dr
 }
@@ -479,7 +479,7 @@ func (s *lbfgsb) formt() bool {
 	m, col, theta := s.m, s.col, s.theta
 	wt, sy, ss := s.wt, s.sy, s.ss
 	for j := 0; j < col; j++ {
-		wt[m*j] = theta * ss[m*j]
+		wt[m*j] = float64(theta * ss[m*j])
 	}
 	for i := 1; i < col; i++ {
 		for j := i; j < col; j++ {
@@ -488,7 +488,7 @@ func (s *lbfgsb) formt() bool {
 			for k := 0; k < k1; k++ {
 				ddum += sy[i+m*k] * sy[j+m*k] / sy[k+m*k]
 			}
-			wt[i+m*j] = ddum + theta*ss[i+m*j]
+			wt[i+m*j] = ddum + float64(theta*ss[i+m*j])
 		}
 	}
 	return dpofa(wt, m, col)
@@ -535,12 +535,12 @@ func (s *lbfgsb) formk() bool {
 			temp1, temp2, temp3 := 0.0, 0.0, 0.0
 			for k := 0; k < nsub; k++ {
 				k1 := ind[k]
-				temp1 += wy[k1+n*ipntr] * wy[k1+n*jpntr]
+				temp1 += float64(wy[k1+n*ipntr] * wy[k1+n*jpntr])
 			}
 			for k := nsub; k < n; k++ {
 				k1 := ind[k]
-				temp2 += ws[k1+n*ipntr] * ws[k1+n*jpntr]
-				temp3 += ws[k1+n*ipntr] * wy[k1+n*jpntr]
+				temp2 += float64(ws[k1+n*ipntr] * ws[k1+n*jpntr])
+				temp3 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
 			}
 			wn1[iy+m2*jy] = temp1
 			wn1[is+m2*js] = temp2
@@ -559,7 +559,7 @@ func (s *lbfgsb) formk() bool {
 			temp3 := 0.0
 			for k := 0; k < nsub; k++ {
 				k1 := ind[k]
-				temp3 += ws[k1+n*ipntr] * wy[k1+n*jpntr]
+				temp3 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
 			}
 			ipntr = (ipntr + 1) % m
 			wn1[is+m2*jy] = temp3
@@ -579,13 +579,13 @@ func (s *lbfgsb) formk() bool {
 			temp1, temp2, temp3, temp4 := 0.0, 0.0, 0.0, 0.0
 			for k := 0; k < nenter; k++ {
 				k1 := indx2[k]
-				temp1 += wy[k1+n*ipntr] * wy[k1+n*jpntr]
-				temp2 += ws[k1+n*ipntr] * ws[k1+n*jpntr]
+				temp1 += float64(wy[k1+n*ipntr] * wy[k1+n*jpntr])
+				temp2 += float64(ws[k1+n*ipntr] * ws[k1+n*jpntr])
 			}
 			for k := ileave; k < n; k++ {
 				k1 := indx2[k]
-				temp3 += wy[k1+n*ipntr] * wy[k1+n*jpntr]
-				temp4 += ws[k1+n*ipntr] * ws[k1+n*jpntr]
+				temp3 += float64(wy[k1+n*ipntr] * wy[k1+n*jpntr])
+				temp4 += float64(ws[k1+n*ipntr] * ws[k1+n*jpntr])
 			}
 			wn1[iy+m2*jy] = wn1[iy+m2*jy] + temp1 - temp3
 			wn1[is+m2*js] = wn1[is+m2*js] - temp2 + temp4
@@ -601,11 +601,11 @@ func (s *lbfgsb) formk() bool {
 			temp1, temp3 := 0.0, 0.0
 			for k := 0; k < nenter; k++ {
 				k1 := indx2[k]
-				temp1 += ws[k1+n*ipntr] * wy[k1+n*jpntr]
+				temp1 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
 			}
 			for k := ileave; k < n; k++ {
 				k1 := indx2[k]
-				temp3 += ws[k1+n*ipntr] * wy[k1+n*jpntr]
+				temp3 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
 			}
 			if is <= jy+m {
 				wn1[is+m2*jy] = wn1[is+m2*jy] + temp1 - temp3
@@ -625,7 +625,7 @@ func (s *lbfgsb) formk() bool {
 			js := col + jy
 			js1 := m + jy
 			wn[jy+m2*iy] = wn1[iy+m2*jy] / theta
-			wn[js+m2*is] = wn1[is1+m2*js1] * theta
+			wn[js+m2*is] = float64(wn1[is1+m2*js1] * theta)
 		}
 		for jy := 0; jy < iy; jy++ {
 			wn[jy+m2*is] = -wn1[is1+m2*jy]
@@ -680,11 +680,11 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 		temp1, temp2 := 0.0, 0.0
 		for j := 0; j < nsub; j++ {
 			k := ind[j]
-			temp1 += wy[k+n*pointr] * d[j]
-			temp2 += ws[k+n*pointr] * d[j]
+			temp1 += float64(wy[k+n*pointr] * d[j])
+			temp2 += float64(ws[k+n*pointr] * d[j])
 		}
 		wv[i] = temp1
-		wv[col+i] = theta * temp2
+		wv[col+i] = float64(theta * temp2)
 		pointr = (pointr + 1) % m
 	}
 	// Compute wv := K⁻¹wv.
@@ -699,7 +699,7 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 		js := col + jy
 		for i := 0; i < nsub; i++ {
 			k := ind[i]
-			d[i] = d[i] + wy[k+n*pointr]*wv[jy]/theta + ws[k+n*pointr]*wv[js]
+			d[i] = d[i] + wy[k+n*pointr]*wv[jy]/theta + float64(ws[k+n*pointr]*wv[js])
 		}
 		pointr = (pointr + 1) % m
 	}
@@ -742,7 +742,7 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 	// Check the sign of the directional derivative.
 	ddp := 0.0
 	for i := 0; i < n; i++ {
-		ddp += (x[i] - xx[i]) * gg[i]
+		ddp += float64((x[i] - xx[i]) * gg[i])
 	}
 	if ddp <= 0 {
 		return
@@ -791,7 +791,7 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 	}
 	for i := 0; i < nsub; i++ {
 		k := ind[i]
-		x[k] += alpha * d[i]
+		x[k] += float64(alpha * d[i])
 	}
 }
 
@@ -805,7 +805,7 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (float64, bool) {
 	n, l, u, nbd, d := s.n, s.l, s.u, s.nbd, s.d
 	s.dnorm = s.dnrm2(d)
-	s.dtd = s.dnorm * s.dnorm
+	s.dtd = float64(s.dnorm * s.dnorm)
 	// Determine the maximum step length.
 	s.stpmx = 1e10
 	if s.cnstnd {
@@ -867,7 +867,7 @@ func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (f
 			copy(x, s.z)
 		} else {
 			for i := 0; i < n; i++ {
-				x[i] = s.stp*d[i] + s.t[i]
+				x[i] = float64(s.stp*d[i]) + s.t[i]
 				if nbd[i] == nbdLower || nbd[i] == nbdBoth {
 					x[i] = cfmax(x[i], l[i])
 				}
@@ -896,7 +896,7 @@ func dpofa(a []float64, lda, n int) bool {
 			t := a[k+lda*j] - dot(a[lda*k:lda*k+k], a[lda*j:lda*j+k])
 			t /= a[k+lda*k]
 			a[k+lda*j] = t
-			sum += t * t
+			sum += float64(t * t)
 		}
 		sum = a[j+lda*j] - sum
 		if sum <= 0 {

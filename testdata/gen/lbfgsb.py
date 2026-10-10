@@ -238,8 +238,8 @@ def pcase(name, x0, A, b, c, lo, hi, m, maxls):
     case(name, "poly", x0, True, bounds, dict(A=A, b=b, c=c), maxcor=m, maxls=maxls)
 
 
-pcase("poly_formt_fail_skip", [-2, -0.5], [0.125, 0.375, 0.375, 1.125], [-2.5, -4], 0,
-      [-INF, -INF], [INF, INF], 2, 20)
+# Unbounded below: theta grows until formt's Cholesky factorisation fails.
+pcase("poly_formt_fail", [-1, -2.25], [2, 2, 2, 2], [-1.5, 0], 0, [-INF, -0.5], [0.25, INF], 10, 20)
 pcase("poly_zero_grad_bounded", [-1, -1.25], [1.625, -1.25, -1.25, 1], [1.25, -0.0], 0,
       [-1, -INF], [INF, -0.25], 2, 20)
 pcase("poly_formk_fail_allfixed", [2.5], [0], [-1.25], 1, [-1], [INF], 2, 20)
@@ -284,6 +284,7 @@ case("x0_optimal", "rosen", [1.0, 1.0], True)
 case("x0_optimal_negative_gtol", "rosen", [1.0, 1.0], True, None, gtol=-1.0)
 case("nan_gradient", "sphere_nang", [1.0, 2.0], True)
 case("nan_gradient_bounded", "sphere_nang", [1.0, 2.0], True, [(0.0, 3.0), (-INF, INF)])
+
 
 
 def num(v):
