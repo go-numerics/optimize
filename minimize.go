@@ -281,8 +281,6 @@ func newScalarFunc(p Problem, method Method, o *Options, lb, ub []float64) *scal
 	return &scalarFunc{p: p, fd: fd}
 }
 
-// hasGrad reports whether the problem provides an analytic gradient.
-func (s *scalarFunc) hasGrad() bool { return s.p.Grad != nil || s.p.FuncGrad != nil }
 
 // moveTo makes x the cached point, invalidating the cache if it moved.
 func (s *scalarFunc) moveTo(x []float64) {

@@ -28,7 +28,7 @@ func cfExpGrad(x, p, g []float64) {
 // The models of testdata/gen/curvefit.py.
 var cfModels = map[string]Model{
 	"expdecay": {F: cfExp},
-	"gauss": {F: func(x, p []float64) float64 { return cfGauss(x[0], p[0], p[1], p[2]) }},
+	"gauss":    {F: func(x, p []float64) float64 { return cfGauss(x[0], p[0], p[1], p[2]) }},
 	"gauss2": {F: func(x, p []float64) float64 {
 		return cfGauss(x[0], p[0], p[1], p[2]) + cfGauss(x[0], p[3], p[4], p[5])
 	}},
