@@ -281,7 +281,6 @@ func newScalarFunc(p Problem, method Method, o *Options, lb, ub []float64) *scal
 	return &scalarFunc{p: p, fd: fd}
 }
 
-
 // moveTo makes x the cached point, invalidating the cache if it moved.
 func (s *scalarFunc) moveTo(x []float64) {
 	if s.x != nil {
