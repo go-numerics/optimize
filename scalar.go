@@ -455,6 +455,11 @@ func minimizeScalarGolden(f func(float64) float64, brack []float64, tol float64,
 	return &ScalarResult{X: xmin, Fun: fval, Nit: nit, Nfev: funcalls, Success: ok, Message: msg}, nil
 }
 
+// sign1 is SciPy's np.sign(v) + (v == 0): the sign of v, with +1 for zero.
+// A difference or quotient here is never −0 (x − x is +0, and (p+0.0)/q
+// clears a negative zero), so Copysign is equivalent.
+func sign1(v float64) float64 { return math.Copysign(1, v) }
+
 // minimizeScalarBounded is the bounded Brent method of fminbound (Forsythe,
 // Malcolm & Moler's FMIN), as in SciPy's _minimize_scalar_bounded.
 func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfun int) (*ScalarResult, error) {
@@ -497,11 +502,7 @@ func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfu
 				rat = (p + 0.0) / q
 				x = xf + rat
 				if x-a < tol2 || b-x < tol2 {
-					si := sign(xm - xf)
-					if xm-xf == 0 {
-						si++
-					}
-					rat = float64(tol1 * si)
+					rat = float64(tol1 * sign1(xm-xf))
 				}
 			} else {
 				golden = true
@@ -515,11 +516,7 @@ func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfu
 			}
 			rat = float64(goldenMean * e)
 		}
-		si := sign(rat)
-		if rat == 0 {
-			si++
-		}
-		x = xf + float64(si*math.Max(math.Abs(rat), tol1))
+		x = xf + float64(sign1(rat)*math.Max(math.Abs(rat), tol1))
 		fu = f(x)
 		num++
 		if fu <= fx {

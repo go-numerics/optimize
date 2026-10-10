@@ -47,12 +47,10 @@ func minimizeCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	}
 	gnorm := norm(gfk, ord)
 
-	// The next direction computed for the accepted step, cached by the
-	// descent condition so that it is not recomputed.
+	// The next direction for a trial step, computed by the descent
+	// condition and again for the accepted step (SciPy caches it; the
+	// recomputation gives the same bits and costs O(n)).
 	pNext := make([]float64, n)
-	var cachedAlpha float64
-	var cachedGnorm float64
-	cached := false
 	var deltak float64
 	prp := func(g []float64) float64 {
 		beta := 0.0
@@ -68,8 +66,7 @@ func minimizeCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 
 	ls := newLineSearch(sf, n)
 	ls.extra = func(alpha float64, _ []float64, _ float64, g []float64) bool {
-		cachedAlpha, cachedGnorm, cached = alpha, prp(g), true
-		if cachedGnorm <= gtol {
+		if prp(g) <= gtol {
 			return true
 		}
 		return dot(pNext, g) <= -sigma3*dot(g, g)
@@ -77,17 +74,13 @@ func minimizeCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	k, warn := 0, 0
 	for gnorm > gtol && k < maxiter {
 		deltak = dot(gfk, gfk)
-		cached = false
 		alpha, fNew, ok := ls.wolfe12(xk, pk, gfk, oldF, oldOld, true, c1, c2, 1e-100, 1e100, 1e100)
 		if !ok {
 			warn = 2
 			break
 		}
 		oldOld, oldF = oldF, fNew
-		if !cached || cachedAlpha != alpha {
-			cachedGnorm = prp(ls.g)
-		}
-		gnorm = cachedGnorm
+		gnorm = prp(ls.g)
 		for i := range xk {
 			xk[i] += float64(alpha * pk[i])
 		}

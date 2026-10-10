@@ -121,10 +121,7 @@ func minimizePowell(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 	}
 	bud := &budget{sf: sf, maxfun: maxfun}
 	x := clone(x0)
-	var fval float64
-	if guard(func() { fval = bud.f(x) }) {
-		fval = math.NaN()
-	}
+	fval := bud.f(x) // maxfun >= 1: Minimize rejects negative limits
 	x1 := clone(x)
 	iter := 0
 	for {
@@ -190,16 +187,11 @@ func minimizePowell(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 			break
 		}
 	}
+	// SciPy's status 4 ("The result is outside of the provided bounds.")
+	// cannot occur: x0 is clipped into the bounds and every line search is
+	// restricted to them.
 	r := &Result{X: x, Fun: fval, Nit: iter, Message: msgSuccess}
-	outside := false
-	if lb != nil {
-		for i := range x {
-			outside = outside || x[i] < lb[i] || x[i] > ub[i]
-		}
-	}
 	switch {
-	case outside:
-		r.Status, r.Message = 4, "The result is outside of the provided bounds."
 	case bud.ncalls >= maxfun:
 		r.Status, r.Message = 1, msgMaxFev
 	case iter >= maxiter:

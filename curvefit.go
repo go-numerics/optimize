@@ -259,10 +259,7 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 			return res, fmt.Errorf("%w: %s", ErrNotConverged, lr.Message)
 		}
 		cost = 2 * lr.Cost
-		pcov, err = pinvNormal(lr.Jac, m, n)
-		if err != nil {
-			return nil, err
-		}
+		pcov = pinvNormal(lr.Jac, m, n)
 	}
 	res.CovOK = pcov != nil && !hasNaN(pcov)
 	if res.CovOK && !opt.AbsoluteSigma {
@@ -287,11 +284,12 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 
 // pinvNormal returns (JᵀJ)⁺ = V·diag(1/s²)·Vᵀ from the thin SVD of the m×n
 // Jacobian J, dropping singular values at or below eps·max(m,n)·s₀, exactly
-// as curve_fit does for the TRF method.
-func pinvNormal(J []float64, m, n int) ([]float64, error) {
+// as curve_fit does for the TRF method. It returns nil (covariance not
+// estimable) if the SVD fails.
+func pinvNormal(J []float64, m, n int) []float64 {
 	_, s, vt, err := linalg.SVD(matArray(J, m, n), false)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	sv := arrayData(s)
 	v := arrayData(vt) // k×n
@@ -310,7 +308,7 @@ func pinvNormal(J []float64, m, n int) ([]float64, error) {
 			}
 		}
 	}
-	return pc, nil
+	return pc
 }
 
 // initializeFeasible is SciPy's _initialize_feasible: 1 for a free

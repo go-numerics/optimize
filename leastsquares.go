@@ -131,6 +131,9 @@ func LeastSquares(p LSProblem, x0 []float64, method LSMethod, opts *LSOptions) (
 	if o.FScale == 0 {
 		o.FScale = 1
 	}
+	if o.MaxNfev < 0 {
+		return nil, fmt.Errorf("%w: MaxNfev must not be negative", ErrInput)
+	}
 	if o.FScale < 0 {
 		return nil, fmt.Errorf("%w: FScale must be positive", ErrInput)
 	}

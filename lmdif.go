@@ -272,9 +272,6 @@ func lsLM(p LSProblem, x0 []float64, o *LSOptions) (*LSResult, error) {
 	if c.maxfev == 0 {
 		c.maxfev = 100 * n
 	}
-	if c.maxfev < 0 {
-		return nil, fmt.Errorf("%w: MaxNfev must be positive", ErrInput)
-	}
 	if o.XScale != nil && !o.XScaleJac {
 		c.diag = make([]float64, n)
 		for i, s := range o.XScale {

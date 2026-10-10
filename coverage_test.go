@@ -392,3 +392,108 @@ func TestLeastSquaresInputErrors(t *testing.T) {
 		t.Errorf("default method: %v %+v", err, r)
 	}
 }
+
+func TestMoreEdges(t *testing.T) {
+	// BFGS at a NaN start where f and ∇f stay finite.
+	flat := Problem{Func: func([]float64) float64 { return 0 }, Grad: func(_, g []float64) { g[0] = 0 }}
+	if r, _ := Minimize(flat, []float64{math.NaN()}, BFGS, nil); r.Status != 3 {
+		t.Errorf("BFGS NaN x: %+v", r)
+	}
+	if _, err := Minimize(flat, []float64{1}, BFGS, &Options{MaxIter: -1}); err == nil {
+		t.Error("negative MaxIter")
+	}
+	if a := initialStep(1, 0, -1, true); a != 1 {
+		t.Errorf("initialStep rising: %g", a)
+	}
+	// wolfe2 with no room to move.
+	ls := newLineSearch(newScalarFunc(Problem{Func: quad2, Grad: quad2Grad}, BFGS, &Options{}, nil, nil), 2)
+	ls.xk, ls.pk = []float64{1, 1}, []float64{-1, -1}
+	if _, _, ok := ls.wolfe2(5, 0, -10, false, 1e-4, 0.9, 0); ok {
+		t.Error("wolfe2 amax 0")
+	}
+	// wolfe1 where f jumps to +Inf: the cubic step becomes NaN.
+	inf := newScalarFunc(Problem{Func: func(x []float64) float64 {
+		if x[0] > 0.5 {
+			return math.Inf(1)
+		}
+		return float64(x[0]*x[0]) - 2*x[0]
+	}, Grad: func(x, g []float64) { g[0] = 2*x[0] - 2 }}, BFGS, &Options{}, nil, nil)
+	li := newLineSearch(inf, 1)
+	li.xk, li.pk = []float64{0}, []float64{1}
+	if _, _, ok := li.wolfe1(0, 0, -2, false, 1e-4, 0.9, 1e-100, 1e300); ok {
+		t.Error("wolfe1 NaN step")
+	}
+	// L-BFGS-B with every variable fixed, and an option error on the
+	// reduced problem.
+	if r, err := Minimize(Problem{Func: quad2}, []float64{0, 0}, LBFGSB, &Options{Bounds: []Bound{{1, 1}, {2, 2}}}); err != nil || r.Fun != 17 || !r.Success {
+		t.Errorf("all fixed: %v %+v", err, r)
+	}
+	if _, err := Minimize(Problem{Func: quad2}, []float64{0, 0}, LBFGSB, &Options{Bounds: []Bound{{1, 1}, {-2, 2}}, M: -1}); err == nil {
+		t.Error("reduced problem error")
+	}
+	// A panic other than the budget's passes through.
+	func() {
+		defer func() {
+			if recover() != "boom" {
+				t.Error("panic swallowed")
+			}
+		}()
+		Minimize(Problem{Func: func([]float64) float64 { panic("boom") }}, []float64{1}, NelderMead, nil)
+	}()
+	// Nelder–Mead shrink steps.
+	for _, f := range []func([]float64) float64{
+		func(x []float64) float64 { return math.Abs(x[0]) + math.Abs(x[1]) },
+		func(x []float64) float64 { return math.Max(math.Abs(x[0]), math.Abs(x[1])) },
+		func(x []float64) float64 { return math.Floor(4*x[0])*math.Floor(4*x[0]) + math.Abs(x[1]) },
+		func(x []float64) float64 { return math.Sin(1000*x[0]) * math.Cos(1000*x[1]) },
+	} {
+		Minimize(Problem{Func: f}, []float64{1, 1}, NelderMead, &Options{Bounds: []Bound{{-3, 3}, {-3, 3}}})
+		Minimize(Problem{Func: f}, []float64{0.3, -0.7}, NelderMead, nil)
+	}
+	if lo, hi := lineForSearch([]float64{5, 0}, []float64{1, 1}, []float64{0, 0}, []float64{1, 1}); lo != 0 || hi != 0 {
+		t.Errorf("empty line: %g %g", lo, hi)
+	}
+	// Bracket: the parabolic point lands between xb and xc above f(xb).
+	spike := func(x float64) float64 {
+		switch {
+		case x == 0:
+			return 2
+		case x == 1:
+			return 1
+		case math.Abs(x-2.618034) < 1e-9:
+			return 0.5
+		}
+		return 10
+	}
+	if x, _, _, err := Bracket(spike, 0, 1); err != nil || x[2] < 2.3 || x[2] > 2.5 {
+		t.Errorf("bracket spike: %v %v", x, err)
+	}
+	// Brent on a function that turns NaN inside its bracket.
+	holey := func(x float64) float64 {
+		if x == 0 || x == 1 || x == 2 {
+			return (x - 1) * (x - 1)
+		}
+		return math.NaN()
+	}
+	if r, _ := MinimizeScalar(holey, Brent, &ScalarOptions{Bracket: []float64{0, 1, 2}}); r.Success || r.Message != msgNaN {
+		t.Errorf("brent NaN inside: %+v", r)
+	}
+	// Curve fitting: a redundant parameter (rank-deficient Jacobian) and an
+	// invalid evaluation budget.
+	x, _ := ndarray.Linspace(0, 1, 10)
+	y := x.MulScalar(2)
+	red := func(x float64, p []float64) float64 { return (p[0] + p[1]) * x }
+	if r, err := CurveFit(red, x, y, []float64{1, 1}, &CurveFitOptions{Method: TRF}); err != nil || math.Abs(r.Popt[0]+r.Popt[1]-2) > 1e-6 {
+		t.Errorf("redundant: %v %+v", err, r)
+	}
+	if _, err := CurveFit(red, x, y, []float64{1, 1}, &CurveFitOptions{MaxFev: -1}); err == nil {
+		t.Error("LM negative MaxFev")
+	}
+	if _, err := CurveFit(red, x, y, []float64{1, 1}, &CurveFitOptions{MaxFev: -1, Method: TRF}); err == nil {
+		t.Error("TRF negative MaxFev")
+	}
+	nan := []float64{math.NaN(), 1, 1, 1}
+	if pinvNormal(nan, 2, 2) != nil {
+		t.Error("SVD of a NaN matrix")
+	}
+}

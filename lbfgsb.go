@@ -119,9 +119,6 @@ func minimizeLBFGSB(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 	if maxls < 0 {
 		return nil, fmt.Errorf("%w: L-BFGS-B: maxls must be positive", ErrInput)
 	}
-	if maxiter < 0 || maxfun < 0 {
-		return nil, fmt.Errorf("%w: L-BFGS-B: maxiter and maxfun must be positive", ErrInput)
-	}
 	factr := ftol / epsmch
 	pgtol := gtol
 

@@ -122,6 +122,9 @@ func Minimize(p Problem, x0 []float64, method Method, opts *Options) (*Result, e
 	if opts != nil {
 		o = *opts
 	}
+	if o.MaxIter < 0 || o.MaxFev < 0 {
+		return nil, fmt.Errorf("%w: MaxIter and MaxFev must not be negative", ErrInput)
+	}
 	n := len(x0)
 	lb, ub, err := splitBounds(o.Bounds, n)
 	if err != nil {
