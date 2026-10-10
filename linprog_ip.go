@@ -1,6 +1,11 @@
 package optimize
 
-import "math"
+import (
+	"math"
+
+	"github.com/go-ndarray/ndarray"
+	"github.com/go-ndarray/ndarray/linalg"
+)
 
 // Primal–dual interior-point method on the homogeneous self-dual embedding
 // of Andersen & Andersen ("The MOSEK interior point optimizer for linear
@@ -18,7 +23,7 @@ type lpStandard struct {
 	a     []float64 // row-major m×nn
 	b, c  []float64
 	nb    int // number of upper-bound rows
-	src   *lp
+	src   *lpProblem
 	free  []int // structural index of each split (negative-part) column
 }
 
@@ -26,7 +31,7 @@ type lpStandard struct {
 // negated, finite upper bounds become rows after the A_ub rows, free
 // variables are split, slacks are appended and finite lower bounds shifted
 // out. Row order is A_ub, bound rows, A_eq.
-func standardForm(p *lp) *lpStandard {
+func standardForm(p *lpProblem) *lpStandard {
 	n := p.n
 	lb, ub, c := clone(p.lb), clone(p.ub), clone(p.c)
 	sign := make([]float64, n)
@@ -109,25 +114,17 @@ func (s *lpStandard) recover(xs []float64) []float64 {
 	return x
 }
 
-// lpCholesky factors the symmetric positive semidefinite m×m matrix a in
-// place (lower triangle). A pivot that is not positive, or tiny relative to
-// the original diagonal, marks a (numerically) dependent row: it is
-// replaced by a huge value so that the corresponding solution component
-// vanishes, the rule of Wright's modified Cholesky used by PCx and LIPSOL.
-// (SciPy instead retries with LU and then least squares.)
-func lpCholesky(a []float64, m int) {
+// lpCholesky factors the symmetric m×m matrix a in place (lower
+// triangle) and reports false, like LAPACK's potrf, when a pivot is not
+// positive.
+func lpCholesky(a []float64, m int) bool {
 	for j := 0; j < m; j++ {
 		d := a[j*m+j]
-		orig := d
 		for k := 0; k < j; k++ {
 			d -= a[j*m+k] * a[j*m+k]
 		}
-		if !(d > 1e-14*orig) {
-			a[j*m+j] = 1e64
-			for i := j + 1; i < m; i++ {
-				a[i*m+j] = 0
-			}
-			continue
+		if !(d > 0) {
+			return false
 		}
 		d = math.Sqrt(d)
 		a[j*m+j] = d
@@ -139,6 +136,55 @@ func lpCholesky(a []float64, m int) {
 			a[i*m+j] = s / d
 		}
 	}
+	return true
+}
+
+// lpNormal solves the normal equations M·v = r of one interior-point
+// iteration the way SciPy's _get_solver does for dense problems: Cholesky
+// first; if that fails, LU with partial pivoting; if that meets an exactly
+// zero pivot, least squares (gelsd with rcond = eps, which is what
+// scipy.linalg.lstsq uses by default).
+type lpNormal struct {
+	m     int
+	mm    []float64
+	stage int // 0 Cholesky, 1 LU, 2 least squares
+	chol  []float64
+	lu    lpFactor
+}
+
+func newLPNormal(mm []float64, m int) *lpNormal {
+	ns := &lpNormal{m: m, mm: mm}
+	ns.chol = clone(mm)
+	if lpCholesky(ns.chol, m) {
+		return ns
+	}
+	ns.stage = 1
+	if ns.lu.factor(clone(mm), m, 0) {
+		return ns
+	}
+	ns.stage = 2
+	return ns
+}
+
+func (ns *lpNormal) solve(r []float64) []float64 {
+	switch ns.stage {
+	case 0:
+		return lpCholSolve(ns.chol, ns.m, r)
+	case 1:
+		return ns.lu.ftran(r)
+	}
+	a, _ := ndarray.FromData(ns.mm, ns.m, ns.m)
+	b, _ := ndarray.FromData(r, ns.m)
+	// gelsd only fails on non-finite input, which the factorisations
+	// above would already have turned into NaN; leaving v NaN then ends the
+	// solve with status 4 like SciPy's LinAlgError.
+	res, _ := linalg.LstsqRcond(a, b, epsmch)
+	v := make([]float64, ns.m)
+	for i := range v {
+		v[i] = math.NaN()
+	}
+	copy(v, arrayData(res.X))
+	return v
 }
 
 // lpCholSolve solves L·Lᵀ·v = r with the factor from lpCholesky.
@@ -245,7 +291,7 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 			mm[i*m+k], mm[k*m+i] = v, v
 		}
 	}
-	lpCholesky(mm, m)
+	ns := newLPNormal(mm, m)
 	symSolve := func(r1, r2 []float64) (u, v []float64) {
 		t := make([]float64, nn)
 		for j := range t {
@@ -255,7 +301,7 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 		for i := range r {
 			r[i] += r2[i]
 		}
-		v = lpCholSolve(mm, m, r)
+		v = ns.solve(r)
 		u = s.mulAT(v)
 		for j := range u {
 			u[j] = dinv[j] * (u[j] - r1[j])
@@ -329,7 +375,7 @@ func (h *lpHSD) step(dx, dz []float64, dtau, dkappa, alpha0 float64) float64 {
 
 // interiorPointLP solves p by the homogeneous self-dual interior-point
 // method.
-func interiorPointLP(p *lp, tol float64, maxIter int) lpSolution {
+func interiorPointLP(p *lpProblem, tol float64, maxIter int) lpSolution {
 	s := standardForm(p)
 	h := &lpHSD{s: s, x: lpOnes(s.nn), y: make([]float64, s.m), z: lpOnes(s.nn), tau: 1, kappa: 1}
 	// Residuals at the blind start x = z = 1, y = 0, τ = κ = 1.

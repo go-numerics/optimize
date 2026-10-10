@@ -115,9 +115,9 @@ type LPResult struct {
 // XArray returns X as a 1-D ndarray (nil when X is nil).
 func (r *LPResult) XArray() *ndarray.Array { return vecArray(r.X) }
 
-// lp is a dense linear program min c·x s.t. aub·x <= bub, aeq·x == beq,
+// lpProblem is a dense linear program min c·x s.t. aub·x <= bub, aeq·x == beq,
 // lb <= x <= ub, with row-major matrices.
-type lp struct {
+type lpProblem struct {
 	n, mub, meq int
 	c           []float64
 	aub, bub    []float64
@@ -187,8 +187,10 @@ func Linprog(c []float64, cons LPConstraints, opts *LPOptions) (*LPResult, error
 	if !o.NoPresolve {
 		pre = presolveLP(p, o.Tol)
 		if pre.done {
+			// Every row left is empty, so the row duals are zero.
 			res.Status, res.Message = pre.status, pre.message
-			return finishLP(p, res, pre.x, nil, o.Tol), nil
+			zero := &lpSolution{yub: make([]float64, p.mub), yeq: make([]float64, p.meq)}
+			return finishLP(p, res, pre.x, zero, o.Tol), nil
 		}
 	}
 	var sol lpSolution
@@ -213,7 +215,7 @@ func Linprog(c []float64, cons LPConstraints, opts *LPOptions) (*LPResult, error
 }
 
 // parseLP validates the inputs and returns the dense problem.
-func parseLP(c []float64, cons LPConstraints) (*lp, error) {
+func parseLP(c []float64, cons LPConstraints) (*lpProblem, error) {
 	n := len(c)
 	if n == 0 {
 		return nil, fmt.Errorf("%w: c must not be empty", ErrInput)
@@ -221,7 +223,7 @@ func parseLP(c []float64, cons LPConstraints) (*lp, error) {
 	if !lpAllFinite(c) {
 		return nil, fmt.Errorf("%w: c must not contain Inf or NaN", ErrInput)
 	}
-	p := &lp{n: n, c: clone(c)}
+	p := &lpProblem{n: n, c: clone(c)}
 	var err error
 	if p.aub, p.bub, p.mub, err = parseRows("A_ub", "b_ub", cons.AUb, cons.BUb, n); err != nil {
 		return nil, err
@@ -283,7 +285,7 @@ func lpAllFinite(v []float64) bool {
 
 // finishLP fills X, Fun, Slack, Con and the duals of res from the full
 // solution x of p, then applies SciPy's _check_result feasibility audit.
-func finishLP(p *lp, res *LPResult, x []float64, d *lpSolution, tol float64) *LPResult {
+func finishLP(p *lpProblem, res *LPResult, x []float64, d *lpSolution, tol float64) *LPResult {
 	res.X = x
 	if x != nil {
 		res.Fun = dot(p.c, x)
@@ -338,7 +340,7 @@ func lpRowResidual(a, b []float64, m, n int, x []float64) []float64 {
 
 // checkLP is SciPy's _check_result: a point claimed optimal must satisfy the
 // bounds and constraints to 10·√tol, and a point claimed infeasible must not.
-func checkLP(p *lp, res *LPResult, tol float64) (int, string) {
+func checkLP(p *lpProblem, res *LPResult, tol float64) (int, string) {
 	tol = math.Sqrt(tol) * 10
 	feasible := !math.IsNaN(res.Fun)
 	for j, x := range res.X {

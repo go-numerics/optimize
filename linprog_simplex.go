@@ -39,8 +39,9 @@ type lpFactor struct {
 
 // factor computes the LU factorisation of the m×m row-major b (which it
 // takes over) and clears the eta file. It reports false when b is
-// numerically singular.
-func (f *lpFactor) factor(b []float64, m int) bool {
+// numerically singular: a pivot column whose largest candidate is at most
+// rel times its largest entry (or zero).
+func (f *lpFactor) factor(b []float64, m int, rel float64) bool {
 	f.m, f.lu, f.perm, f.etaR, f.etaV = m, b, lpIota(m), nil, nil
 	lu := b
 	for k := 0; k < m; k++ {
@@ -54,7 +55,7 @@ func (f *lpFactor) factor(b []float64, m int) bool {
 				p, big = i, v
 			}
 		}
-		if big <= 1e-11*colmax || big == 0 {
+		if big <= rel*colmax || big == 0 {
 			return false
 		}
 		if p != k {
@@ -169,7 +170,7 @@ type lpSimplex struct {
 }
 
 // newSimplex sets up phase one of the bounded simplex for p.
-func newSimplex(p *lp, tol float64) *lpSimplex {
+func newSimplex(p *lpProblem, tol float64) *lpSimplex {
 	m := p.mub + p.meq
 	s := &lpSimplex{m: m, n: p.n, mub: p.mub, ncol: p.n + p.mub + m, tol: tol, refactor: true}
 	s.cols = make([][]float64, s.ncol)
@@ -246,7 +247,7 @@ func (s *lpSimplex) refactorise() bool {
 			bm[i*m+k] = s.cols[j][i]
 		}
 	}
-	if !s.f.factor(bm, m) {
+	if !s.f.factor(bm, m, 1e-11) {
 		return false
 	}
 	rhs := clone(s.b)
@@ -400,7 +401,7 @@ func (s *lpSimplex) ratio(q int, dir float64, alpha []float64) (r int, t float64
 }
 
 // simplexLP solves p by the two-phase bounded revised simplex method.
-func simplexLP(p *lp, tol float64, maxIter int) lpSolution {
+func simplexLP(p *lpProblem, tol float64, maxIter int) lpSolution {
 	s := newSimplex(p, tol)
 	sol := lpSolution{}
 	finish := func(status int, msg string) lpSolution {

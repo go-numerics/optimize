@@ -5,7 +5,7 @@ import "math"
 // presolved is a reduced linear program and the bookkeeping that maps its
 // solution back to the original problem.
 type presolved struct {
-	red    *lp
+	red    *lpProblem
 	varIdx []int     // original index of each reduced variable
 	xfix   []float64 // full-length vector holding the removed variables
 	ubRows []int     // original index of each reduced inequality row
@@ -19,7 +19,7 @@ type presolved struct {
 }
 
 // presolveIdentity wraps p without reducing it (presolve disabled).
-func presolveIdentity(p *lp) *presolved {
+func presolveIdentity(p *lpProblem) *presolved {
 	return &presolved{red: p, varIdx: lpIota(p.n), xfix: make([]float64, p.n),
 		ubRows: lpIota(p.mub), eqRows: lpIota(p.meq)}
 }
@@ -57,7 +57,7 @@ func lpZeroRow(a []float64, i, n int) bool {
 // these steps reveal, and drops linearly dependent equality rows (or
 // reports them inconsistent). It does not, unlike SciPy, turn singleton
 // rows into bounds.
-func presolveLP(p *lp, tol float64) *presolved {
+func presolveLP(p *lpProblem, tol float64) *presolved {
 	n := p.n
 	pr := &presolved{}
 	stop := func(status int, msg string) *presolved {
@@ -115,7 +115,7 @@ func presolveLP(p *lp, tol float64) *presolved {
 			pr.varIdx = append(pr.varIdx, j)
 		}
 	}
-	red := &lp{n: len(pr.varIdx), lb: lpPick(lb, pr.varIdx), ub: lpPick(ub, pr.varIdx), c: lpPick(p.c, pr.varIdx)}
+	red := &lpProblem{n: len(pr.varIdx), lb: lpPick(lb, pr.varIdx), ub: lpPick(ub, pr.varIdx), c: lpPick(p.c, pr.varIdx)}
 	reduceRows := func(a, b []float64, rows []int) ([]float64, []float64) {
 		var ra, rb []float64
 		for _, i := range rows {
@@ -166,7 +166,7 @@ func presolveLP(p *lp, tol float64) *presolved {
 const infeasibleFixedMsg = "The problem is (trivially) infeasible because the " +
 	"bounds fix all variables to values inconsistent with the constraints."
 
-func lpZeroColumn(p *lp, j int) bool {
+func lpZeroColumn(p *lpProblem, j int) bool {
 	for i := 0; i < p.mub; i++ {
 		if p.aub[i*p.n+j] != 0 {
 			return false
