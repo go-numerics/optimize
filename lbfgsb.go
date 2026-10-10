@@ -190,7 +190,7 @@ func minimizeLBFGSB(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 				msg = lbMsgConvGrad
 				break
 			}
-			ddum := math.Max(math.Max(math.Abs(fold), math.Abs(f)), 1)
+			ddum := cfmax(cfmax(math.Abs(fold), math.Abs(f)), 1)
 			if fold-f <= tol*ddum {
 				msg = lbMsgConvF
 				break

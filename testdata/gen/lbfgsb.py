@@ -7,93 +7,90 @@ name; keep the two in sync.
 """
 import json
 import math
+import warnings
 
 import numpy as np
 import scipy
+from scipy import optimize
 from scipy.optimize import minimize
 
 INF = math.inf
+warnings.simplefilter("ignore")
 
 
 # --- objectives and gradients -------------------------------------------
 
-def rosen2(x):
-    return 100.0 * (x[1] - x[0] ** 2) ** 2 + (1.0 - x[0]) ** 2
+# The standard functions are copied verbatim from testdata/gen/minimize.py
+# (the Go side reuses funcs_test.go).
+
+def rosen(x):
+    x = np.asarray(x)
+    return float(np.sum(100.0 * (x[1:] - x[:-1] ** 2) ** 2 + (1 - x[:-1]) ** 2))
 
 
-def rosen2_g(x):
-    return np.array([-400.0 * x[0] * (x[1] - x[0] ** 2) - 2.0 * (1.0 - x[0]),
-                     200.0 * (x[1] - x[0] ** 2)])
-
-
-def extrosen(x):
-    f = 0.0
-    for i in range(0, len(x), 2):
-        f += 100.0 * (x[i + 1] - x[i] ** 2) ** 2 + (1.0 - x[i]) ** 2
-    return f
-
-
-def extrosen_g(x):
-    g = np.zeros(len(x))
-    for i in range(0, len(x), 2):
-        t = x[i + 1] - x[i] ** 2
-        g[i] = -400.0 * x[i] * t - 2.0 * (1.0 - x[i])
-        g[i + 1] = 200.0 * t
-    return g
+def rosen_der(x):
+    return optimize.rosen_der(np.asarray(x))
 
 
 def beale(x):
-    a = 1.5 - x[0] + x[0] * x[1]
-    b = 2.25 - x[0] + x[0] * x[1] ** 2
-    c = 2.625 - x[0] + x[0] * x[1] ** 3
-    return a * a + b * b + c * c
+    a, b = x
+    return (1.5 - a + a * b) ** 2 + (2.25 - a + a * b * b) ** 2 + (2.625 - a + a * b ** 3) ** 2
 
 
-def beale_g(x):
-    a = 1.5 - x[0] + x[0] * x[1]
-    b = 2.25 - x[0] + x[0] * x[1] ** 2
-    c = 2.625 - x[0] + x[0] * x[1] ** 3
-    return np.array([2 * a * (x[1] - 1) + 2 * b * (x[1] ** 2 - 1) + 2 * c * (x[1] ** 3 - 1),
-                     2 * a * x[0] + 2 * b * 2 * x[0] * x[1] + 2 * c * 3 * x[0] * x[1] ** 2])
-
-
-def himmelblau(x):
-    return (x[0] ** 2 + x[1] - 11) ** 2 + (x[0] + x[1] ** 2 - 7) ** 2
-
-
-def himmelblau_g(x):
-    a = x[0] ** 2 + x[1] - 11
-    b = x[0] + x[1] ** 2 - 7
-    return np.array([4 * a * x[0] + 2 * b, 2 * a + 4 * b * x[1]])
-
-
-def wood(x):
-    return (100 * (x[1] - x[0] ** 2) ** 2 + (1 - x[0]) ** 2 + 90 * (x[3] - x[2] ** 2) ** 2
-            + (1 - x[2]) ** 2 + 10.1 * ((x[1] - 1) ** 2 + (x[3] - 1) ** 2)
-            + 19.8 * (x[1] - 1) * (x[3] - 1))
-
-
-def wood_g(x):
+def beale_der(x):
+    a, b = x
+    t1 = 1.5 - a + a * b
+    t2 = 2.25 - a + a * b * b
+    t3 = 2.625 - a + a * b ** 3
     return np.array([
-        -400 * x[0] * (x[1] - x[0] ** 2) - 2 * (1 - x[0]),
-        200 * (x[1] - x[0] ** 2) + 20.2 * (x[1] - 1) + 19.8 * (x[3] - 1),
-        -360 * x[2] * (x[3] - x[2] ** 2) - 2 * (1 - x[2]),
-        180 * (x[3] - x[2] ** 2) + 20.2 * (x[3] - 1) + 19.8 * (x[1] - 1),
+        2 * t1 * (b - 1) + 2 * t2 * (b * b - 1) + 2 * t3 * (b ** 3 - 1),
+        2 * t1 * a + 2 * t2 * 2 * a * b + 2 * t3 * 3 * a * b * b,
     ])
 
 
+def himmelblau(x):
+    a, b = x
+    return (a * a + b - 11) ** 2 + (a + b * b - 7) ** 2
+
+
+def himmelblau_der(x):
+    a, b = x
+    u = a * a + b - 11
+    v = a + b * b - 7
+    return np.array([4 * a * u + 2 * v, 2 * u + 4 * b * v])
+
+
 def powell(x):
-    return ((x[0] + 10 * x[1]) ** 2 + 5 * (x[2] - x[3]) ** 2 + (x[1] - 2 * x[2]) ** 4
-            + 10 * (x[0] - x[3]) ** 4)
+    a, b, c, d = x
+    return (a + 10 * b) ** 2 + 5 * (c - d) ** 2 + (b - 2 * c) ** 4 + 10 * (a - d) ** 4
 
 
-def powell_g(x):
-    a = x[0] + 10 * x[1]
-    b = x[2] - x[3]
-    c = x[1] - 2 * x[2]
-    d = x[0] - x[3]
-    return np.array([2 * a + 40 * d ** 3, 20 * a + 4 * c ** 3,
-                     10 * b - 8 * c ** 3, -10 * b - 40 * d ** 3])
+def powell_der(x):
+    a, b, c, d = x
+    return np.array([
+        2 * (a + 10 * b) + 40 * (a - d) ** 3,
+        20 * (a + 10 * b) + 4 * (b - 2 * c) ** 3,
+        10 * (c - d) - 8 * (b - 2 * c) ** 3,
+        -10 * (c - d) - 40 * (a - d) ** 3,
+    ])
+
+
+def wood(x):
+    a, b, c, d = x
+    return (100 * (b - a * a) ** 2 + (1 - a) ** 2 + 90 * (d - c * c) ** 2 + (1 - c) ** 2
+            + 10.1 * ((b - 1) ** 2 + (d - 1) ** 2) + 19.8 * (b - 1) * (d - 1))
+
+
+def wood_der(x):
+    a, b, c, d = x
+    return np.array([
+        -400 * a * (b - a * a) - 2 * (1 - a),
+        200 * (b - a * a) + 20.2 * (b - 1) + 19.8 * (d - 1),
+        -360 * c * (d - c * c) - 2 * (1 - c),
+        180 * (d - c * c) + 20.2 * (d - 1) + 19.8 * (b - 1),
+    ])
+
+
 
 
 def quad_ab(n):
@@ -137,7 +134,7 @@ def quad_g(x):
 
 
 def sphere(x):
-    return float(np.dot(x, x))
+    return x[0] * x[0] + x[1] * x[1]
 
 
 def sphere_badg(x):
@@ -156,12 +153,11 @@ def tiny_g(x):
 
 OBJ = {
     "tiny": (tiny, tiny_g),
-    "rosen2": (rosen2, rosen2_g),
-    "extrosen": (extrosen, extrosen_g),
-    "beale": (beale, beale_g),
-    "himmelblau": (himmelblau, himmelblau_g),
-    "wood": (wood, wood_g),
-    "powell": (powell, powell_g),
+    "rosen": (rosen, rosen_der),
+    "beale": (beale, beale_der),
+    "himmelblau": (himmelblau, himmelblau_der),
+    "wood": (wood, wood_der),
+    "powell": (powell, powell_der),
     "quad": (quad, quad_g),
     "sphere_badg": (sphere, sphere_badg),
 }
@@ -198,29 +194,29 @@ def case(name, obj, x0, analytic=True, bounds=None, **opts):
 
 for analytic in (True, False):
     sfx = "" if analytic else "_fd"
-    case("rosen2" + sfx, "rosen2", [-1.2, 1.0], analytic)
-    case("extrosen10" + sfx, "extrosen", alt(10), analytic)
-    case("extrosen100" + sfx, "extrosen", alt(100), analytic)
+    case("rosen2" + sfx, "rosen", [-1.2, 1.0], analytic)
+    case("rosen10" + sfx, "rosen", alt(10), analytic)
+    case("rosen100" + sfx, "rosen", alt(100), analytic)
     case("beale" + sfx, "beale", [1.0, 1.0], analytic)
     case("himmelblau" + sfx, "himmelblau", [0.0, 0.0], analytic)
     case("wood" + sfx, "wood", [-3.0, -1.0, -3.0, -1.0], analytic)
     case("powell" + sfx, "powell", [3.0, -1.0, 0.0, 1.0], analytic)
     case("quad50" + sfx, "quad", [0.0] * 50, analytic)
-    case("rosen2_box" + sfx, "rosen2", [-1.2, 1.0], analytic, [(-1.5, 0.8)] * 2)
-    case("extrosen10_box" + sfx, "extrosen", alt(10), analytic, [(-1.5, 0.8)] * 10)
+    case("rosen2_box" + sfx, "rosen", [-1.2, 1.0], analytic, [(-1.5, 0.8)] * 2)
+    case("rosen10_box" + sfx, "rosen", alt(10), analytic, [(-1.5, 0.8)] * 10)
     case("quad50_mixed" + sfx, "quad", [0.0] * 50, analytic, mixed_bounds(50))
 
-case("rosen2_lower", "rosen2", [-1.2, 1.0], True, [(-INF, 0.5), (1.2, INF)])
+case("rosen2_lower", "rosen", [-1.2, 1.0], True, [(-INF, 0.5), (1.2, INF)])
 case("beale_box_m3", "beale", [1.0, 1.0], True, [(-4.5, 4.5), (-0.5, 0.4)], maxcor=3)
-case("extrosen10_maxiter", "extrosen", alt(10), True, None, maxiter=5)
-case("rosen2_maxfun", "rosen2", [-1.2, 1.0], True, None, maxfun=10)
-case("rosen2_maxfun_fd", "rosen2", [-1.2, 1.0], False, None, maxfun=10)
-case("rosen2_maxls1", "rosen2", [-1.2, 1.0], True, None, maxls=1)
-case("rosen2_tol", "rosen2", [-1.2, 1.0], True, None, tol=1e-3)
-case("extrosen10_m3", "extrosen", alt(10), True, None, maxcor=3)
+case("rosen10_maxiter", "rosen", alt(10), True, None, maxiter=5)
+case("rosen2_maxfun", "rosen", [-1.2, 1.0], True, None, maxfun=10)
+case("rosen2_maxfun_fd", "rosen", [-1.2, 1.0], False, None, maxfun=10)
+case("rosen2_maxls1", "rosen", [-1.2, 1.0], True, None, maxls=1)
+case("rosen2_tol", "rosen", [-1.2, 1.0], True, None, tol=1e-3)
+case("rosen10_m3", "rosen", alt(10), True, None, maxcor=3)
 case("abnormal", "sphere_badg", [1.0, 2.0], True)
 case("abnormal_gd", "tiny", [1.0], True, None, gtol=1e-300)
-case("x0_optimal", "rosen2", [1.0, 1.0], True)
+case("x0_optimal", "rosen", [1.0, 1.0], True)
 
 
 def run(c):

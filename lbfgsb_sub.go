@@ -46,13 +46,13 @@ func (s *lbfgsb) projgr(x, g []float64) float64 {
 		if s.nbd[i] != nbdFree {
 			if gi < 0 {
 				if s.nbd[i] >= nbdBoth {
-					gi = math.Max(x[i]-s.u[i], gi)
+					gi = cfmax(x[i]-s.u[i], gi)
 				}
 			} else if s.nbd[i] <= nbdBoth {
-				gi = math.Min(x[i]-s.l[i], gi)
+				gi = cfmin(x[i]-s.l[i], gi)
 			}
 		}
-		sbgnrm = math.Max(sbgnrm, math.Abs(gi))
+		sbgnrm = cfmax(sbgnrm, math.Abs(gi))
 	}
 	return sbgnrm
 }
@@ -287,7 +287,7 @@ func (s *lbfgsb) cauchy(x, g []float64) {
 			f1 += dibp * wmc
 			f2 = f2 + dibp*2*wmp - dibp2*wmw
 		}
-		f2 = math.Max(epsmch*f2org, f2)
+		f2 = cfmax(epsmch*f2org, f2)
 		if nleft >= 0 {
 			dtm = -f1 / f2
 			continue
@@ -429,7 +429,7 @@ func (s *lbfgsb) cmprlb(x, g []float64) {
 		a2 := theta * wa[col+j]
 		for i := 0; i < s.nfree; i++ {
 			k := index[i]
-			r[i] += s.wy[k+n*pointr]*a1 + s.ws[k+n*pointr]*a2
+			r[i] = r[i] + s.wy[k+n*pointr]*a1 + s.ws[k+n*pointr]*a2
 		}
 		pointr = (pointr + 1) % m
 	}
@@ -700,7 +700,7 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 		js := col + jy
 		for i := 0; i < nsub; i++ {
 			k := ind[i]
-			d[i] += wy[k+n*pointr]*wv[jy]/theta + ws[k+n*pointr]*wv[js]
+			d[i] = d[i] + wy[k+n*pointr]*wv[jy]/theta + ws[k+n*pointr]*wv[js]
 		}
 		pointr = (pointr + 1) % m
 	}
@@ -720,18 +720,18 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 		case nbdFree:
 			x[k] = xk + dk
 		case nbdLower:
-			x[k] = math.Max(l[k], xk+dk)
+			x[k] = cfmax(l[k], xk+dk)
 			if x[k] == l[k] {
 				iword = true
 			}
 		case nbdBoth:
-			xk = math.Max(l[k], xk+dk)
-			x[k] = math.Min(u[k], xk)
+			xk = cfmax(l[k], xk+dk)
+			x[k] = cfmin(u[k], xk)
 			if x[k] == l[k] || x[k] == u[k] {
 				iword = true
 			}
 		default: // nbdUpper
-			x[k] = math.Min(u[k], xk+dk)
+			x[k] = cfmin(u[k], xk+dk)
 			if x[k] == u[k] {
 				iword = true
 			}
@@ -837,7 +837,7 @@ func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (f
 		}
 	}
 	if s.iter == 0 && !s.boxed {
-		s.stp = math.Min(1/s.dnorm, s.stpmx)
+		s.stp = cfmin(1/s.dnorm, s.stpmx)
 	} else {
 		s.stp = 1
 	}
@@ -870,10 +870,10 @@ func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (f
 			for i := 0; i < n; i++ {
 				x[i] = s.stp*d[i] + s.t[i]
 				if nbd[i] == nbdLower || nbd[i] == nbdBoth {
-					x[i] = math.Max(x[i], l[i])
+					x[i] = cfmax(x[i], l[i])
 				}
 				if nbd[i] == nbdBoth || nbd[i] == nbdUpper {
-					x[i] = math.Min(x[i], u[i])
+					x[i] = cfmin(x[i], u[i])
 				}
 			}
 		}
@@ -925,4 +925,21 @@ func dtrsl(t []float64, ldt, n int, b []float64, trans bool) {
 		daxpy(-b[j+1], t[ldt*(j+1):ldt*(j+1)+j+1], b[:j+1])
 		b[j] /= t[j+ldt*j]
 	}
+}
+
+// cfmax and cfmin are C's fmax and fmin, which the reference code uses: a
+// NaN argument is ignored in favour of the other one (math.Max and math.Min
+// propagate it).
+func cfmax(a, b float64) float64 {
+	if math.IsNaN(a) || b > a {
+		return b
+	}
+	return a
+}
+
+func cfmin(a, b float64) float64 {
+	if math.IsNaN(a) || b < a {
+		return b
+	}
+	return a
 }
