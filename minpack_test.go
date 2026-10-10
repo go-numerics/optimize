@@ -190,6 +190,9 @@ func TestRootFixtures(t *testing.T) {
 			}
 			opts := &RootOptions{Xtol: optFloat(c.Options, "xtol"), Maxfev: int(optFloat(c.Options, "maxfev")),
 				Eps: optFloat(c.Options, "eps"), Factor: optFloat(c.Options, "factor"), Diag: optVec(c.Options, "diag")}
+			if v, ok := c.Options["xtol"]; ok && v.(float64) == 0 {
+				opts.Xtol = -1
+			}
 			r, err := Root(sp, p.x0, opts)
 			if err != nil {
 				t.Fatal(err)

@@ -604,6 +604,7 @@ def main():
     roots.append(root_case(rosenbrock(), False, maxfev=5))
     roots.append(root_case(trigonometric(), True, xtol=1e-12, factor=1.0, diag=[1.0] * 10))
     roots.append(root_case(powell_badly_scaled(), False, eps=1e-10, factor=10.0))
+    roots.append(root_case(broyden_tridiagonal(), False, xtol=0.0))
 
     lm = []
     sq = []
@@ -620,13 +621,20 @@ def main():
     sq.append(leastsq_case(rosenbrock(), True, ftol=0.0, xtol=0.0))
     sq.append(leastsq_case(bard(), True, ftol=0.0, xtol=0.0))
     sq.append(leastsq_case(kowalik_osborne(), False, ftol=0.0, xtol=0.0))
+    sq.append(leastsq_case(linear_rank1(), True, ftol=0.0))
+    sq.append(leastsq_case(powell_singular(), True, xtol=0.0))
 
     here = os.path.dirname(os.path.abspath(__file__))
     out = os.path.join(here, "..", "minpack.json")
     with open(out, "w") as fh:
-        json.dump({"scipy": scipy.__version__, "numpy": np.__version__, "machine": platform.machine(),
-                   "root": roots, "least_squares": lm, "leastsq": sq}, fh, indent=1)
-        fh.write("\n")
+        # One case per line keeps the file reviewable.
+        fh.write('{"scipy": %s, "numpy": %s, "machine": %s,\n' % (
+            json.dumps(scipy.__version__), json.dumps(np.__version__), json.dumps(platform.machine())))
+        for i, (key, cases) in enumerate((("root", roots), ("least_squares", lm), ("leastsq", sq))):
+            fh.write(' "%s": [\n' % key)
+            fh.write(",\n".join("  " + json.dumps(c) for c in cases))
+            fh.write("\n ]%s\n" % ("," if i < 2 else ""))
+        fh.write("}\n")
 
 
 if __name__ == "__main__":
