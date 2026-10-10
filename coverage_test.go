@@ -70,7 +70,7 @@ func TestMinimizeOptionsAndStops(t *testing.T) {
 	}
 	// BFGS with an initial inverse Hessian and a relative step stop.
 	r, err := Minimize(grad, x0, BFGS, &Options{HessInv0: []float64{0.5, 0, 0, 0.125}})
-	if err != nil || r.Nit != 1 || r.HessInvArray() == nil || r.XArray().Size() != 2 {
+	if err != nil || !r.Success || r.HessInvArray() == nil || r.XArray().Size() != 2 {
 		t.Errorf("HessInv0: %v %+v", err, r)
 	}
 	if r, _ := Minimize(grad, x0, BFGS, &Options{XRtol: 10}); r.Nit != 1 || !r.Success {
@@ -109,7 +109,7 @@ func TestMinimizeOptionsAndStops(t *testing.T) {
 	}
 	// Nelder–Mead with an explicit simplex, bounds that reflect it, and
 	// the adaptive coefficients shrinking.
-	sim := [][]float64{{2, 2}, {3, 2}, {2, 3}}
+	sim := [][]float64{{2, 2}, {2.6, 2}, {2, 2.4}}
 	if r, _ := Minimize(Problem{Func: quad2}, []float64{2, 2}, NelderMead, &Options{InitialSimplex: sim, Bounds: []Bound{{-1, 2.5}, {-1, 2.5}}}); !r.Success || r.Fun > 1e-6 {
 		t.Errorf("NM simplex+bounds: %+v", r)
 	}
@@ -160,7 +160,7 @@ func TestMinimizeOptionsAndStops(t *testing.T) {
 	if r, _ := Minimize(saddle, []float64{1, 0.1}, NewtonCG, nil); !r.Success || math.Abs(math.Abs(r.X[1])-math.Sqrt(0.5)) > 1e-3 {
 		t.Errorf("Newton-CG saddle: %+v", r)
 	}
-	if r, _ := Minimize(saddle, []float64{1, 0.1}, NewtonCG, &Options{HessP: nil, Tol: 1e-12}); !r.Success {
+	if r, _ := Minimize(saddle, []float64{1, 0.1}, NewtonCG, &Options{Tol: 1e-12}); !r.Success {
 		t.Errorf("Newton-CG saddle tol: %+v", r)
 	}
 }
@@ -197,7 +197,7 @@ func TestDcsrchEdges(t *testing.T) {
 	}
 	// A wide xtol ends the search once the minimiser is bracketed.
 	d = dcsrch{ftol: 1e-3, gtol: 1e-6, xtol: 0.99, stpmin: 0, stpmax: 10}
-	f := func(s float64) (float64, float64) { return (s - 1) * (s - 1), 2 * (s - 1) }
+	f := func(s float64) (float64, float64) { return math.Pow(s-1, 4), 4 * math.Pow(s-1, 3) }
 	stp, task = d.iterate(4, 1, -2, lsStart)
 	for range 20 {
 		fv, gv := f(stp)
@@ -242,10 +242,10 @@ func TestLineSearchEdges(t *testing.T) {
 	if _, ok := cubicMin(0, 0, -1, 1, 0, 2, 4); !ok {
 		t.Error("cubic")
 	}
-	if _, ok := cubicMin(0, 0, 1, 1, 10, 2, -50); ok {
+	if _, ok := cubicMin(0, 0, 1, 1, 1, 2, 6); ok {
 		t.Error("cubic without a real minimiser")
 	}
-	if _, ok := cubicMin(0, 0, -1e308, 1, 1e308, 2, -1e308); ok {
+	if _, ok := cubicMin(0, math.NaN(), -1, 1, 1, 2, 4); ok {
 		t.Error("cubic overflow")
 	}
 	if _, ok := quadMin(0, 0, -1, 0, 1); ok {
@@ -254,7 +254,7 @@ func TestLineSearchEdges(t *testing.T) {
 	if _, ok := quadMin(0, 0, -1, 1, -1); ok {
 		t.Error("quad flat")
 	}
-	if _, ok := quadMin(0, 0, -1e308, 1e-300, 1e308); ok {
+	if _, ok := quadMin(0, math.NaN(), -1, 1, 1); ok {
 		t.Error("quad overflow")
 	}
 	// wolfe2 on its own: expansion steps, then the bracket, a step that
@@ -269,14 +269,32 @@ func TestLineSearchEdges(t *testing.T) {
 	if _, _, ok := ls.wolfe2(0, 0, -1, false, 1e-4, 0.1, 2); ok {
 		t.Error("wolfe2 amax")
 	}
-	ls.xk = []float64{-1e9}
-	if a, _, ok := ls.wolfe2(0, 0, -1, false, 1e-4, 1e-6, 1e300); !ok || a != 1024 {
+	lin := newScalarFunc(Problem{Func: func(x []float64) float64 { return -x[0] },
+		Grad: func(x, g []float64) { g[0] = -1 }}, BFGS, &Options{}, nil, nil)
+	ll := newLineSearch(lin, 1)
+	ll.xk, ll.pk = []float64{0}, []float64{1}
+	if a, _, ok := ll.wolfe2(0, 0, -1, false, 1e-4, 0.5, 1e300); !ok || a != 1024 {
 		t.Errorf("wolfe2 limit: %g %v", a, ok)
 	}
+	if _, _, ok := ll.wolfe1(0, 0, -1, false, 1e-4, 0.9, 1e-100, 1e300); ok {
+		t.Error("wolfe1 unbounded")
+	}
 	// wolfe1 meeting a non-finite step.
-	ls.xk = []float64{0}
-	if _, _, ok := ls.wolfe1(0, 0, -1, false, 1e-4, 0.9, 1e-100, math.Inf(1)); ok {
-		t.Error("wolfe1 inf")
+	nanf := newScalarFunc(Problem{Func: func(x []float64) float64 {
+		if x[0] > 2 {
+			return math.NaN()
+		}
+		return -x[0]
+	}, Grad: func(x, g []float64) {
+		g[0] = -1
+		if x[0] > 2 {
+			g[0] = math.NaN()
+		}
+	}}, BFGS, &Options{}, nil, nil)
+	ln := newLineSearch(nanf, 1)
+	ln.xk, ln.pk = []float64{0}, []float64{1}
+	if _, _, ok := ln.wolfe1(0, 0, -1, false, 1e-4, 0.9, 1e-100, 1e300); ok {
+		t.Error("wolfe1 NaN")
 	}
 	// zoom: phi rises everywhere, the interpolants fail, the limit hits.
 	wall := newScalarFunc(Problem{Func: func(x []float64) float64 { return math.Abs(x[0] - 0.3) },

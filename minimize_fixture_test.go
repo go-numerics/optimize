@@ -79,13 +79,6 @@ func runCase(t *testing.T, c minimizeCase) *Result {
 	for _, b := range c.Bounds {
 		o.Bounds = append(o.Bounds, Bound{b[0], b[1]})
 	}
-	defer func() {
-		if e := recover(); e == "not implemented" {
-			t.Skip("TEMPORARY: method not merged yet")
-		} else if e != nil {
-			panic(e)
-		}
-	}()
 	r, err := Minimize(p, x0, Method(c.Method), o)
 	if err != nil {
 		t.Fatal(err)
