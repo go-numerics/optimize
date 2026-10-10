@@ -38,11 +38,11 @@ type Loss string
 
 // Loss functions, with z = (f/FScale)².
 const (
-	LossLinear  Loss = "linear"  // ρ(z) = z
-	LossSoftL1  Loss = "soft_l1" // ρ(z) = 2((1+z)^½ − 1)
-	LossHuber   Loss = "huber"   // ρ(z) = z if z <= 1 else 2z^½ − 1
-	LossCauchy  Loss = "cauchy"  // ρ(z) = ln(1+z)
-	LossArctan  Loss = "arctan"  // ρ(z) = arctan(z)
+	LossLinear Loss = "linear"  // ρ(z) = z
+	LossSoftL1 Loss = "soft_l1" // ρ(z) = 2((1+z)^½ − 1)
+	LossHuber  Loss = "huber"   // ρ(z) = z if z <= 1 else 2z^½ − 1
+	LossCauchy Loss = "cauchy"  // ρ(z) = ln(1+z)
+	LossArctan Loss = "arctan"  // ρ(z) = arctan(z)
 )
 
 // LSOptions configures LeastSquares. Zero values select SciPy's defaults.
