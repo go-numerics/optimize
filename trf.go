@@ -265,18 +265,9 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 			}
 		}
 		Jh := Jaug[:m*n]
-		U, s, V, err := trfSVD(Jaug, rows, n)
+		uf, s, V, err := trfSVDf(Jaug, faug, rows, n)
 		if err != nil {
 			return nil, err
-		}
-		k := len(s)
-		uf := make([]float64, k)
-		for c := 0; c < k; c++ {
-			acc := 0.0
-			for r := 0; r < rows; r++ {
-				acc += float64(U[r*k+c] * faug[r])
-			}
-			uf[c] = acc
 		}
 
 		theta := math.Max(0.995, 1-gNorm)
@@ -806,6 +797,106 @@ func selectStep(x, Jh []float64, m int, diagH, gh, p, ph, d []float64, Delta flo
 // at rounding level, and the trust-region solver turns that rounding-level
 // value into a full-length step along the null space; matching SciPy's
 // iterates needs the LAPACK-like behaviour.
+// trfSVDf returns uf = Uᵀf, s and V of the thin SVD of the r×c matrix a.
+// For a tall matrix (r >= trfQRRatio·c, the regime where LAPACK's gesdd
+// also factors QR first) it computes a = Q·R by Householder reflections,
+// applies them to f, and takes the SVD of the c×c R only: Uᵀf = U_Rᵀ(Qᵀf).
+// This is O(r·c²) with no r×c U, the dominant saving for curve fits of many
+// points.
+func trfSVDf(a, f []float64, r, c int) (uf, s, V []float64, err error) {
+	if r < trfQRMin || 6*r < 11*c {
+		U, s, V, err := trfSVD(a, r, c)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		k := len(s)
+		uf = make([]float64, k)
+		for j := 0; j < k; j++ {
+			acc := 0.0
+			for i := 0; i < r; i++ {
+				acc += float64(U[i*k+j] * f[i])
+			}
+			uf[j] = acc
+		}
+		return uf, s, V, nil
+	}
+	R, qf := householderR(a, f, r, c) // a non-finite a gives a non-finite R
+	U, s, V, err := trfSVD(R, c, c)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	uf = make([]float64, c)
+	for j := 0; j < c; j++ {
+		acc := 0.0
+		for i := 0; i < c; i++ {
+			acc += float64(U[i*c+j] * qf[i])
+		}
+		uf[j] = acc
+	}
+	return uf, s, V, nil
+}
+
+// householderR factors the r×c row-major matrix a = Q·R by Householder
+// reflections and returns the c×c upper-triangular R (row-major) and Qᵀf
+// (nil f gives nil).
+func householderR(a, f []float64, r, c int) (R, qf []float64) {
+	// Column-major copy for cache-friendly Householder updates.
+	q := make([]float64, r*c)
+	for i := 0; i < r; i++ {
+		for j := 0; j < c; j++ {
+			q[j*r+i] = a[i*c+j]
+		}
+	}
+	if f != nil {
+		qf = clone(f)
+	}
+	R = make([]float64, c*c)
+	for j := 0; j < c; j++ {
+		col := q[j*r : (j+1)*r]
+		alpha := enorm(col[j:])
+		if col[j] > 0 {
+			alpha = -alpha
+		}
+		if alpha != 0 {
+			// v = x − α e₁ stored in col[j:], τ = 2/‖v‖².
+			col[j] -= alpha
+			vv := 0.0
+			for i := j; i < r; i++ {
+				vv += float64(col[i] * col[i])
+			}
+			for k := j + 1; k < c; k++ {
+				ck := q[k*r : (k+1)*r]
+				d := 0.0
+				for i := j; i < r; i++ {
+					d += float64(col[i] * ck[i])
+				}
+				d = 2 * d / vv
+				for i := j; i < r; i++ {
+					ck[i] -= float64(d * col[i])
+				}
+			}
+			if qf != nil {
+				d := 0.0
+				for i := j; i < r; i++ {
+					d += float64(col[i] * qf[i])
+				}
+				d = 2 * d / vv
+				for i := j; i < r; i++ {
+					qf[i] -= float64(d * col[i])
+				}
+			}
+		}
+		R[j*c+j] = alpha
+		for k := j + 1; k < c; k++ {
+			R[j*c+k] = q[k*r+j]
+		}
+	}
+	return R, qf
+}
+
+// trfQRMin is the row count from which trfSVDf factors QR first.
+var trfQRMin = 1000
+
 func trfSVD(a []float64, r, c int) (U, s, V []float64, err error) {
 	// scipy.linalg.svd checks its input first (check_finite=True).
 	var u, sv, vh *ndarray.Array

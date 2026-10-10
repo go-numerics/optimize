@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/go-ndarray/ndarray"
 	"github.com/go-ndarray/ndarray/linalg"
@@ -47,6 +48,10 @@ type CurveFitOptions struct {
 	// loss= and f_scale= to least_squares.
 	Loss   Loss
 	FScale float64
+	// Workers evaluates the model over the samples with this many
+	// goroutines when there are at least 2048 samples (default 1). The
+	// model must then be safe for concurrent use; the result is identical.
+	Workers int
 }
 
 // CurveFitResult is the outcome of CurveFit: SciPy's (popt, pcov) plus its
@@ -137,8 +142,9 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 	}
 	// Sample j as a k-vector (columns of a (k, m) xdata).
 	samples := make([][]float64, m)
+	back := make([]float64, k*m)
 	for j := range samples {
-		s := make([]float64, k)
+		s := back[j*k : j*k+k : j*k+k]
 		for i := range s {
 			s[i] = xs[i*m+j]
 		}
@@ -209,18 +215,41 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 			}
 		}
 	}
-	resid := func(p, f []float64) {
-		for j, x := range samples {
-			f[j] = model.F(x, p) - y[j]
+	// over runs body(lo, hi) on chunks of the samples, in parallel when
+	// requested and worthwhile.
+	over := func(body func(lo, hi int)) {
+		w := opt.Workers
+		if w <= 1 || m < 2048 {
+			body(0, m)
+			return
 		}
+		var wg sync.WaitGroup
+		chunk := (m + w - 1) / w
+		for lo := 0; lo < m; lo += chunk {
+			wg.Add(1)
+			go func(lo, hi int) {
+				defer wg.Done()
+				body(lo, hi)
+			}(lo, min(lo+chunk, m))
+		}
+		wg.Wait()
+	}
+	resid := func(p, f []float64) {
+		over(func(lo, hi int) {
+			for j := lo; j < hi; j++ {
+				f[j] = model.F(samples[j], p) - y[j]
+			}
+		})
 		weigh(f, 1)
 	}
 	var jac func(p, J []float64)
 	if model.Grad != nil {
 		jac = func(p, J []float64) {
-			for j, x := range samples {
-				model.Grad(x, p, J[j*n:j*n+n])
-			}
+			over(func(lo, hi int) {
+				for j := lo; j < hi; j++ {
+					model.Grad(samples[j], p, J[j*n:j*n+n])
+				}
+			})
 			weigh(J, n)
 		}
 	}
@@ -287,6 +316,11 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 // as curve_fit does for the TRF method. It returns nil (covariance not
 // estimable) if the SVD fails.
 func pinvNormal(J []float64, m, n int) []float64 {
+	if m >= trfQRMin && 6*m >= 11*n && trfFinite(J) {
+		// JᵀJ = RᵀR for J = QR: the SVD of the n×n R has the same s and V.
+		J, _ = householderR(J, nil, m, n)
+		m = n
+	}
 	_, s, vt, err := linalg.SVD(matArray(J, m, n), false)
 	if err != nil {
 		return nil

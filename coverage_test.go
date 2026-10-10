@@ -492,6 +492,46 @@ func TestMoreEdges(t *testing.T) {
 	if _, err := CurveFit(red, x, y, []float64{1, 1}, &CurveFitOptions{MaxFev: -1, Method: TRF}); err == nil {
 		t.Error("TRF negative MaxFev")
 	}
+	// Parallel model evaluation gives the same fit, with and without an
+	// analytic gradient; the tall-Jacobian QR path of TRF and its
+	// covariance agree with the direct SVD.
+	xl, _ := ndarray.Linspace(0, 4, 3000)
+	yl := xl.Map(func(v float64) float64 { return 2.5*math.Exp(-1.3*v) + 0.5 + 0.01*math.Sin(97*v) })
+	for _, mod := range []Model{{F: cfExp}, {F: cfExp, Grad: cfExpGrad}} {
+		var ref *CurveFitResult
+		for _, w := range []int{1, 4} {
+			r, err := CurveFitModel(mod, xl, yl, []float64{1, 1, 1}, &CurveFitOptions{Method: TRF, Workers: w})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ref == nil {
+				ref = r
+				continue
+			}
+			for i := range r.Popt {
+				if r.Popt[i] != ref.Popt[i] || r.Pcov[i] != ref.Pcov[i] {
+					t.Errorf("workers changed the fit: %v %v", r.Popt, ref.Popt)
+				}
+			}
+		}
+		saved := trfQRMin
+		trfQRMin = 1 << 30
+		d, err := CurveFitModel(mod, xl, yl, []float64{1, 1, 1}, &CurveFitOptions{Method: TRF})
+		trfQRMin = saved
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := range d.Popt {
+			if math.Abs(d.Popt[i]-ref.Popt[i]) > 1e-9 || math.Abs(d.Pcov[i*4]-ref.Pcov[i*4]) > 1e-9*math.Abs(ref.Pcov[i*4]) {
+				t.Errorf("QR path %v %v, direct %v %v", ref.Popt, ref.Pcov, d.Popt, d.Pcov)
+			}
+		}
+	}
+	tall := make([]float64, 2*trfQRMin)
+	tall[3] = math.Inf(1)
+	if _, _, _, err := trfSVDf(tall, make([]float64, trfQRMin), trfQRMin, 2); err == nil {
+		t.Error("non-finite tall Jacobian")
+	}
 	nan := []float64{math.NaN(), 1, 1, 1}
 	if pinvNormal(nan, 2, 2) != nil {
 		t.Error("SVD of a NaN matrix")

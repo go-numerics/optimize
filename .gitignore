@@ -1,3 +1,4 @@
 *.out
 *.test
 __pycache__/
+benchmarks/raw/
