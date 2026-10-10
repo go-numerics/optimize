@@ -138,8 +138,12 @@ type lpSolution struct {
 // scipy.optimize.linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, method=...).
 // SciPy's default HiGHS solvers are not available; opts.Method selects a
 // dense revised simplex (default) or a dense interior-point method, after
-// the presolve SciPy applies to its own legacy methods (see Linprog's
-// package documentation in the result's Message for presolve outcomes).
+// a light version of the presolve SciPy applies to its legacy methods:
+// empty rows and columns and fixed variables are removed, trivial
+// infeasibility and unboundedness are reported with SciPy's messages, and
+// linearly dependent equality rows are dropped (or reported inconsistent).
+// Unlike SciPy, singleton rows are left to the solver. The marginals are
+// those of the original problem, with HiGHS's sign convention.
 //
 // Invalid input (shapes, NaN or Inf coefficients, NaN bounds, unknown
 // method) is an error wrapping ErrDimension, ErrInput, ErrBounds or
