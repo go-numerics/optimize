@@ -146,13 +146,26 @@ func lpCheckKKT(t *testing.T, c []float64, cons LPConstraints, r *LPResult) floa
 	return worst
 }
 
+func lpTag(method LPMethod, noPresolve bool) string {
+	tag := map[LPMethod]string{LPSimplex: "rs", LPInteriorPoint: "ip"}[method]
+	if noPresolve {
+		tag += "-nopre"
+	}
+	return tag
+}
+
 func TestLinprogFixtures(t *testing.T) {
 	fs := lpLoadFixtures(t)
 	type tally struct {
 		solved, nitMatch, ipRuns int
 		dur                      time.Duration
 	}
-	for _, method := range []LPMethod{LPSimplex, LPInteriorPoint} {
+	type config struct {
+		method     LPMethod
+		noPresolve bool
+	}
+	for _, cfg := range []config{{LPSimplex, false}, {LPSimplex, true}, {LPInteriorPoint, false}} {
+		method := cfg.method
 		var tl tally
 		// Accuracy expected of each method: the simplex method ends on an
 		// exact vertex; the interior-point method stops at Tol = 1e-8.
@@ -163,7 +176,7 @@ func TestLinprogFixtures(t *testing.T) {
 		for _, f := range fs {
 			cons := f.constraints(t)
 			t0 := time.Now()
-			r, err := Linprog(f.C, cons, &LPOptions{Method: method})
+			r, err := Linprog(f.C, cons, &LPOptions{Method: method, NoPresolve: cfg.noPresolve})
 			tl.dur += time.Since(t0)
 			if err != nil {
 				t.Fatalf("%s/%s: %v", method, f.Name, err)
@@ -176,7 +189,7 @@ func TestLinprogFixtures(t *testing.T) {
 				t.Errorf("%s/%s: Success %v with status %d", method, f.Name, r.Success, r.Status)
 			}
 			if f.Status != 0 {
-				t.Logf("%-8s %-24s status=%d nit=%3d (HiGHS ds %d) %q", method[:7], f.Name, r.Status, r.Nit, f.Nits["highs-ds"], r.Message)
+				t.Logf("%-8s %-24s status=%d nit=%3d (HiGHS ds %d) %q", lpTag(cfg.method, cfg.noPresolve), f.Name, r.Status, r.Nit, f.Nits["highs-ds"], r.Message)
 				continue
 			}
 			tl.solved++
@@ -209,9 +222,9 @@ func TestLinprogFixtures(t *testing.T) {
 				ref = f.Nits["highs-ipm"]
 			}
 			t.Logf("%-8s %-24s fun err %.1e  x off-face %.1e  duals off-face %.1e  KKT %.1e  nit %4d  (HiGHS %3d, legacy rs %4d, legacy ip %3d)",
-				method[:7], f.Name, ferr, xerr, derr, kkt, r.Nit, ref, f.Nits["revised simplex"], f.Nits["interior-point"])
+				lpTag(cfg.method, cfg.noPresolve), f.Name, ferr, xerr, derr, kkt, r.Nit, ref, f.Nits["revised simplex"], f.Nits["interior-point"])
 		}
-		t.Logf("%s: %d/%d optimal problems solved in %v", method, tl.solved, len(fs), tl.dur)
+		t.Logf("%s (presolve %v): %d/%d optimal problems solved, %d problems in %v", method, !cfg.noPresolve, tl.solved, len(fs), len(fs), tl.dur)
 	}
 }
 
@@ -233,6 +246,9 @@ func TestLinprogIPMatchesSciPyIterates(t *testing.T) {
 		dx := 0.0
 		for j := range r.X {
 			dx = math.Max(dx, math.Abs(r.X[j]-lpFromJSON(f.IPX[j]))/(1+math.Abs(r.X[j])))
+		}
+		if r.Status != f.IPStatus {
+			t.Errorf("%s: status %d, SciPy's interior-point %d", f.Name, r.Status, f.IPStatus)
 		}
 		if r.Nit == want {
 			match++

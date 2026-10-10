@@ -409,12 +409,10 @@ func simplexLP(p *lpProblem, tol float64, maxIter int) lpSolution {
 		sol.status, sol.message, sol.nit = status, msg, s.nit
 		return sol
 	}
-	st := s.run(maxIter)
-	switch st {
-	case LPIterLimit:
-		return finish(st, "Iteration limit reached.")
-	case LPNumericalFail:
-		return finish(st, lpSingularMsg)
+	// Phase one cannot be unbounded (its objective is bounded below by
+	// zero); either way the size of the artificials decides feasibility.
+	if st := s.run(maxIter); st != LPOptimal && st != LPUnbounded {
+		return finish(st, lpSimplexMessages[st])
 	}
 	infeas := 0.0
 	for j := s.n + s.mub; j < s.ncol; j++ {
@@ -433,19 +431,21 @@ func simplexLP(p *lpProblem, tol float64, maxIter int) lpSolution {
 	}
 	copy(s.cost, p.c)
 	s.degen, s.bland = 0, false
-	switch st = s.run(maxIter); st {
-	case LPOptimal:
+	st := s.run(maxIter)
+	if st == LPOptimal {
 		sol.yub, sol.yeq = s.y[:s.mub], s.y[s.mub:]
-		return finish(st, "Optimization terminated successfully.")
-	case LPUnbounded:
-		return finish(st, "The problem is unbounded, as the simplex algorithm found "+
-			"a basic feasible solution from which there is a direction with negative "+
-			"reduced cost along which the objective decreases without bound.")
-	case LPIterLimit:
-		return finish(st, "Iteration limit reached.")
 	}
-	return finish(st, lpSingularMsg)
+	return finish(st, lpSimplexMessages[st])
 }
 
-const lpSingularMsg = "Numerical difficulties encountered: the basis matrix " +
-	"became singular; consider trying method LPInteriorPoint."
+// lpSimplexMessages describes each status of simplexLP except
+// infeasibility, whose message carries the phase-one residual.
+var lpSimplexMessages = [...]string{
+	LPOptimal:   "Optimization terminated successfully.",
+	LPIterLimit: "Iteration limit reached.",
+	LPUnbounded: "The problem is unbounded, as the simplex algorithm found " +
+		"a basic feasible solution from which there is a direction with negative " +
+		"reduced cost along which the objective decreases without bound.",
+	LPNumericalFail: "Numerical difficulties encountered: the basis matrix " +
+		"became singular; consider trying method LPInteriorPoint.",
+}

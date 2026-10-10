@@ -265,6 +265,15 @@ def main():
     P.append(solve("unbounded_zero_column", [1, -1], [[1, 0]], [3]))
     P.append(solve("no_constraints", [1, -1, 0], bounds=[(0, 2), (-1, 4), (None, None)]))
     P.append(solve("bounds_infeasible", [1, 1], [[1, 1]], [3], bounds=[(0, 1), (2, 1)]))
+    P.append(solve("box_flip_down", [-3, -3, -3], A_eq=[[0, 1, -2], [-1, -1, 0]], b_eq=[-2, -2],
+                   bounds=[(0, 1), (0, 2), (0, 2)]))
+    P.append(solve("zero_column_upper", [1, 0], [[1, 0]], [3], bounds=[(-1, None), (None, 4)]))
+    P.append(solve("all_fixed_ub_infeasible", [1, 1], [[1, 1]], [1], bounds=[(1, 1), (2, 2)]))
+    P.append(solve("all_fixed_eq_infeasible", [1, 1], A_eq=[[1, 1]], b_eq=[1], bounds=[(1, 1), (2, 2)]))
+    P.append(solve("all_fixed_feasible", [1, -1], [[1, 1]], [3], [[1, -1]], [-1],
+                   bounds=[(1, 1), (2, 2)]))
+    P.append(solve("zero_row_eq_infeasible", [1, 1], A_eq=[[0, 0], [1, 1]], b_eq=[1, 1]))
+    P.append(solve("zero_row_ub_infeasible", [1, 1], [[0, 0], [1, 1]], [-1, 1]))
     sizes = [(5, 0, 4), (8, 2, 6), (12, 4, 10), (20, 5, 15), (25, 10, 20),
              (35, 10, 30), (40, 15, 35), (45, 15, 40), (50, 10, 40), (60, 0, 40)]
     for k, (mub, meq, n) in enumerate(sizes):

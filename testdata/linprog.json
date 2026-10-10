@@ -3358,6 +3358,415 @@
 }
 },
 {
+"name": "box_flip_down",
+"c": [
+-3.0,
+-3.0,
+-3.0
+],
+"a_ub": null,
+"m_ub": 0,
+"b_ub": null,
+"a_eq": [
+0.0,
+1.0,
+-2.0,
+-1.0,
+-1.0,
+0.0
+],
+"m_eq": 2,
+"b_eq": [
+-2.0,
+-2.0
+],
+"bounds": [
+0.0,
+1.0,
+0.0,
+2.0,
+0.0,
+2.0
+],
+"status": 0,
+"message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+"nit": 0,
+"ip_status": 0,
+"ip_x": [
+5.1824188530586586e-11,
+1.9999999999481723,
+1.9999999999588256
+],
+"nits": {
+"highs-ds": 0,
+"highs-ipm": 0,
+"interior-point": 4,
+"revised simplex": 4
+},
+"x": [
+0.0,
+2.0,
+2.0
+],
+"fun": -12.0,
+"ineqlin": [],
+"eqlin": [
+1.5,
+4.5
+],
+"lower": [
+1.5,
+0.0,
+0.0
+],
+"upper": [
+0.0,
+0.0,
+0.0
+],
+"x_lo": [
+0.0,
+1.9999991333333336,
+1.9999995666666668
+],
+"x_hi": [
+8.666666664695436e-07,
+2.0,
+2.0
+],
+"d_lo": [
+-1.299999999204715e-06,
+2.999998700000001,
+0.0,
+0.0,
+0.0,
+-1.299999999204715e-06,
+-1.5000012999999992,
+-3.0000025999999984
+],
+"d_hi": [
+1.5000003249999998,
+4.50000065,
+1.5000012999999992,
+6.499999996023575e-07,
+6.499999996023575e-07,
+-0.0,
+-0.0,
+-0.0
+]
+},
+{
+"name": "zero_column_upper",
+"c": [
+1.0,
+0.0
+],
+"a_ub": [
+1.0,
+0.0
+],
+"m_ub": 1,
+"b_ub": [
+3.0
+],
+"a_eq": null,
+"m_eq": 0,
+"b_eq": null,
+"bounds": [
+-1.0,
+1e+300,
+-1e+300,
+4.0
+],
+"status": 0,
+"message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+"nit": 0,
+"ip_status": 0,
+"ip_x": [
+-0.999999999999849,
+2.0000000000022955
+],
+"nits": {
+"highs-ds": 0,
+"highs-ipm": 0,
+"interior-point": 4,
+"revised simplex": 0
+},
+"x": [
+-1.0,
+4.0
+],
+"fun": -1.0,
+"ineqlin": [
+-0.0
+],
+"eqlin": [],
+"lower": [
+1.0,
+0.0
+],
+"upper": [
+0.0,
+0.0
+],
+"x_lo": [
+-1.0,
+-1e+300
+],
+"x_hi": [
+-0.9999998,
+4.0
+],
+"d_lo": [
+-4.999999997368221e-08,
+1.0,
+0.0,
+0.0,
+0.0
+],
+"d_hi": [
+-0.0,
+1.00000005,
+-0.0,
+-0.0,
+-0.0
+]
+},
+{
+"name": "all_fixed_ub_infeasible",
+"c": [
+1.0,
+1.0
+],
+"a_ub": [
+1.0,
+1.0
+],
+"m_ub": 1,
+"b_ub": [
+1.0
+],
+"a_eq": null,
+"m_eq": 0,
+"b_eq": null,
+"bounds": [
+1.0,
+1.0,
+2.0,
+2.0
+],
+"status": 2,
+"message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+"nit": 0,
+"ip_status": 2,
+"ip_x": [
+1.303112384611005,
+2.303112384611005
+],
+"nits": {
+"highs-ds": 0,
+"highs-ipm": 0,
+"interior-point": 3,
+"revised simplex": 0
+}
+},
+{
+"name": "all_fixed_eq_infeasible",
+"c": [
+1.0,
+1.0
+],
+"a_ub": null,
+"m_ub": 0,
+"b_ub": null,
+"a_eq": [
+1.0,
+1.0
+],
+"m_eq": 1,
+"b_eq": [
+1.0
+],
+"bounds": [
+1.0,
+1.0,
+2.0,
+2.0
+],
+"status": 2,
+"message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+"nit": 0,
+"ip_status": 2,
+"ip_x": [
+1.004171611841731,
+2.004171611841731
+],
+"nits": {
+"highs-ds": 0,
+"highs-ipm": 0,
+"interior-point": 3,
+"revised simplex": 0
+}
+},
+{
+"name": "all_fixed_feasible",
+"c": [
+1.0,
+-1.0
+],
+"a_ub": [
+1.0,
+1.0
+],
+"m_ub": 1,
+"b_ub": [
+3.0
+],
+"a_eq": [
+1.0,
+-1.0
+],
+"m_eq": 1,
+"b_eq": [
+-1.0
+],
+"bounds": [
+1.0,
+1.0,
+2.0,
+2.0
+],
+"status": 0,
+"message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+"nit": 0,
+"ip_status": 0,
+"ip_x": [
+1.0000000001550526,
+2.000000000155053
+],
+"nits": {
+"highs-ds": 0,
+"highs-ipm": 0,
+"interior-point": 3,
+"revised simplex": 0
+},
+"x": [
+1.0,
+2.0
+],
+"fun": -1.0,
+"ineqlin": [
+-0.0
+],
+"eqlin": [
+-0.0
+],
+"lower": [
+1.0,
+0.0
+],
+"upper": [
+0.0,
+-1.0
+],
+"x_lo": [
+1.0,
+2.0
+],
+"x_hi": [
+1.0,
+2.0
+],
+"d_lo": [
+-1e+300,
+-1e+300,
+0.0,
+0.0,
+-1e+300,
+-1e+300
+],
+"d_hi": [
+-0.0,
+1e+300,
+1e+300,
+1e+300,
+-0.0,
+-0.0
+]
+},
+{
+"name": "zero_row_eq_infeasible",
+"c": [
+1.0,
+1.0
+],
+"a_ub": null,
+"m_ub": 0,
+"b_ub": null,
+"a_eq": [
+0.0,
+0.0,
+1.0,
+1.0
+],
+"m_eq": 2,
+"b_eq": [
+1.0,
+1.0
+],
+"bounds": null,
+"status": 2,
+"message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+"nit": 0,
+"ip_status": 4,
+"ip_x": [
+0.5,
+0.5
+],
+"nits": {
+"highs-ds": 0,
+"highs-ipm": 0,
+"interior-point": 74,
+"revised simplex": 0
+}
+},
+{
+"name": "zero_row_ub_infeasible",
+"c": [
+1.0,
+1.0
+],
+"a_ub": [
+0.0,
+0.0,
+1.0,
+1.0
+],
+"m_ub": 2,
+"b_ub": [
+-1.0,
+1.0
+],
+"a_eq": null,
+"m_eq": 0,
+"b_eq": null,
+"bounds": null,
+"status": 2,
+"message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+"nit": 0,
+"ip_status": 2,
+"ip_x": [
+0.01634979393803758,
+0.01634979393803758
+],
+"nits": {
+"highs-ds": 0,
+"highs-ipm": 0,
+"interior-point": 4,
+"revised simplex": 0
+}
+},
+{
 "name": "random_5x0x4",
 "c": [
 2.7338,
