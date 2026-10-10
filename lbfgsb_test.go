@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"strconv"
 	"testing"
 )
 
@@ -19,16 +20,41 @@ type lbCase struct {
 	Bounds   [][2]*float64  `json:"bounds"`
 	Tol      *float64       `json:"tol"`
 	Options  map[string]any `json:"options"`
-	X        []float64      `json:"x"`
-	Fun      float64        `json:"fun"`
-	Jac      []*float64     `json:"jac"` // null for NaN
+	Params   *lbPolyParams  `json:"params"`
+	X        []lbNum        `json:"x"`
+	Fun      lbNum          `json:"fun"`
+	Jac      []lbNum        `json:"jac"`
 	Nit      int            `json:"nit"`
 	Nfev     int            `json:"nfev"`
 	Njev     int            `json:"njev"`
 	Status   int            `json:"status"`
 	Success  bool           `json:"success"`
 	Message  string         `json:"message"`
-	Trace    []float64      `json:"trace"`
+	Trace    []lbNum        `json:"trace"`
+}
+
+// lbNum is a fixture number: a JSON number, or "NaN", "+Inf", "-Inf".
+type lbNum float64
+
+func (v *lbNum) UnmarshalJSON(b []byte) error {
+	var s string
+	if json.Unmarshal(b, &s) == nil {
+		f, err := strconv.ParseFloat(s, 64)
+		*v = lbNum(f)
+		return err
+	}
+	var f float64
+	err := json.Unmarshal(b, &f)
+	*v = lbNum(f)
+	return err
+}
+
+func lbNums(v []lbNum) []float64 {
+	f := make([]float64, len(v))
+	for i := range v {
+		f[i] = float64(v[i])
+	}
+	return f
 }
 
 // Test objectives besides those of funcs_test.go, the same expressions as
@@ -74,6 +100,8 @@ func lbSphereBadG(x, g []float64) {
 	g[0], g[1] = -2*x[0], -2*x[1]
 }
 
+func lbNaNG(x, g []float64) { g[0], g[1] = math.NaN(), math.NaN() }
+
 func lbTiny(x []float64) float64 { return 1e-160 * x[0] }
 
 func lbTinyG(x, g []float64) { g[0] = 1e-160 }
@@ -90,6 +118,7 @@ var lbObjectives = map[string]struct {
 	"quad":        {lbQuad, lbQuadG},
 	"sphere_badg": {lbSphere, lbSphereBadG},
 	"tiny":        {lbTiny, lbTinyG},
+	"sphere_nang": {lbSphere, lbNaNG},
 }
 
 func lbLoad(t *testing.T) []lbCase {
@@ -105,7 +134,44 @@ func lbLoad(t *testing.T) []lbCase {
 	return fx.Cases
 }
 
+// lbPolyParams defines f(x) = ½x'Ax - b'x + c·Σx⁴ (testdata/gen/lbfgsb.py
+// poly), the family of the branch-coverage fixtures.
+type lbPolyParams struct {
+	A, B []float64
+	C    float64
+}
+
+func (p *lbPolyParams) f(x []float64) float64 {
+	n := len(x)
+	f := 0.0
+	for i := range x {
+		ax := 0.0
+		for j := range x {
+			ax += float64(p.A[i*n+j] * x[j])
+		}
+		f += float64(float64(0.5*x[i])*ax) - float64(p.B[i]*x[i])
+		x2 := float64(x[i] * x[i])
+		f += float64(p.C * float64(x2*x2))
+	}
+	return f
+}
+
+func (p *lbPolyParams) g(x, g []float64) {
+	n := len(x)
+	for i := range x {
+		ax := 0.0
+		for j := range x {
+			ax += float64(p.A[i*n+j] * x[j])
+		}
+		x3 := float64(float64(x[i]*x[i]) * x[i])
+		g[i] = ax - p.B[i] + float64(4*p.C*x3)
+	}
+}
+
 func (c *lbCase) problem() Problem {
+	if c.Params != nil {
+		return Problem{Func: c.Params.f, Grad: c.Params.g}
+	}
 	o := lbObjectives[c.Obj]
 	p := Problem{Func: o.f}
 	if c.Analytic {
@@ -154,10 +220,21 @@ func (c *lbCase) options(trace *[]float64) *Options {
 	return o
 }
 
+// lbSame reports a == b, counting two NaNs as equal.
+func lbSame(a, b float64) bool { return a == b || math.IsNaN(a) && math.IsNaN(b) }
+
+// lbMaxDiff is the largest |a_i - b_i|, 0 for two NaNs and +Inf for a NaN
+// against a number.
 func lbMaxDiff(a, b []float64) float64 {
 	d := 0.0
 	for i := range a {
-		d = math.Max(d, math.Abs(a[i]-b[i]))
+		switch {
+		case lbSame(a[i], b[i]):
+		case math.IsNaN(a[i]) || math.IsNaN(b[i]):
+			d = math.Inf(1)
+		default:
+			d = math.Max(d, math.Abs(a[i]-b[i]))
+		}
 	}
 	return d
 }
@@ -174,23 +251,29 @@ func lbMaxDiff(a, b []float64) float64 {
 // and f must have decreased (budget stop).
 var lbLongRuns = map[string]bool{"rosen100": true, "rosen100_fd": true}
 
+// lbUnbounded are fixtures whose objective is unbounded below: the run
+// stops on the f-reduction test far out along a descent ray, where x is
+// only determined by the path, so only the counts and status are compared.
+var lbUnbounded = map[string]bool{"poly_formt_fail_skip": true}
+
 func TestLBFGSBFixtures(t *testing.T) {
 	for _, c := range lbLoad(t) {
 		t.Run(c.Name, func(t *testing.T) {
 			var trace []float64
+			cx, cfun, ctrace := lbNums(c.X), float64(c.Fun), lbNums(c.Trace)
 			r, err := Minimize(c.problem(), c.X0, LBFGSB, c.options(&trace))
 			if err != nil {
 				t.Fatal(err)
 			}
 			first := -1
-			for i := 0; i < min(len(trace), len(c.Trace)); i++ {
-				if trace[i] != c.Trace[i] {
+			for i := 0; i < min(len(trace), len(ctrace)); i++ {
+				if !lbSame(trace[i], ctrace[i]) {
 					first = i
 					break
 				}
 			}
 			t.Logf("nit %d/%d nfev %d/%d njev %d/%d (ours/SciPy); |x-x_scipy|=%.2e fun %.17g/%.17g; first differing iterate %d",
-				r.Nit, c.Nit, r.Nfev, c.Nfev, r.Njev, c.Njev, lbMaxDiff(r.X, c.X), r.Fun, c.Fun, first)
+				r.Nit, c.Nit, r.Nfev, c.Nfev, r.Njev, c.Njev, lbMaxDiff(r.X, cx), r.Fun, cfun, first)
 			if r.Status != c.Status || r.Success != c.Success || r.Message != c.Message {
 				t.Errorf("status %d %v %q, SciPy %d %v %q", r.Status, r.Success, r.Message, c.Status, c.Success, c.Message)
 			}
@@ -198,7 +281,7 @@ func TestLBFGSBFixtures(t *testing.T) {
 				t.Errorf("callback called %d times for %d iterations", len(trace), r.Nit)
 			}
 			f := c.problem().Func(r.X)
-			if f != r.Fun {
+			if !lbSame(f, r.Fun) {
 				t.Errorf("Fun %g is not f(X) = %g", r.Fun, f)
 			}
 			if lbLongRuns[c.Name] {
@@ -208,19 +291,22 @@ func TestLBFGSBFixtures(t *testing.T) {
 				if !c.Success && !(r.Fun < c.problem().Func(c.X0)) {
 					t.Errorf("fun %g did not decrease", r.Fun)
 				}
-				if c.Success && lbMaxDiff(r.X, c.X) > 1e-4 {
-					t.Errorf("x = %v, SciPy %v", r.X, c.X)
+				if c.Success && lbMaxDiff(r.X, cx) > 1e-4 {
+					t.Errorf("x = %v, SciPy %v", r.X, cx)
 				}
 				return
 			}
 			if c.Analytic && (r.Nit != c.Nit || r.Nfev != c.Nfev || r.Njev != c.Njev) {
 				t.Errorf("counts differ from SciPy")
 			}
-			if lbMaxDiff(r.X, c.X) > 1e-4*(1+lbMaxDiff(c.X, make([]float64, len(c.X)))) {
-				t.Errorf("x = %v, SciPy %v", r.X, c.X)
+			if lbUnbounded[c.Name] {
+				return
 			}
-			if math.Abs(r.Fun-c.Fun) > 1e-6*(1+math.Abs(c.Fun)) && c.Status != 2 {
-				t.Errorf("fun = %g, SciPy %g", r.Fun, c.Fun)
+			if lbMaxDiff(r.X, cx) > 1e-4*(1+lbMaxDiff(cx, make([]float64, len(cx)))) {
+				t.Errorf("x = %v, SciPy %v", r.X, cx)
+			}
+			if !lbSame(r.Fun, cfun) && !(math.Abs(r.Fun-cfun) <= 1e-6*(1+math.Abs(cfun))) && c.Status != 2 {
+				t.Errorf("fun = %g, SciPy %g", r.Fun, cfun)
 			}
 		})
 	}
@@ -263,5 +349,46 @@ func TestLBFGSBCFmaxCFmin(t *testing.T) {
 	}
 	if cfmin(nan, 1) != 1 || cfmin(1, nan) != 1 || cfmin(1, 2) != 1 || cfmin(2, 1) != 1 {
 		t.Error("cfmin")
+	}
+}
+
+// The reference code guards against a search direction that leaves the box
+// from a variable already on its bound, in lnsrlb (stpmx = 0) and in the
+// subsm backtrack (alpha = 0). The direction is z - x with z feasible, so
+// this happens only through rounding; these tests reach the guards with
+// crafted states.
+func TestLBFGSBOutwardDirectionGuards(t *testing.T) {
+	inf := math.Inf(1)
+	l, u := []float64{0, -inf}, []float64{inf, 1}
+	s := newLbfgsb(2, 1, l, u, []int{nbdLower, nbdUpper})
+	s.cnstnd, s.iter = true, 1
+	copy(s.d, []float64{-1, 1})
+	x, g := []float64{0, 1}, []float64{1, -1}
+	sf := newScalarFunc(Problem{Func: lbSphere, Grad: func(x, g []float64) { g[0], g[1] = 1, -1 }}, LBFGSB, &Options{}, nil, nil)
+	if s.lnsrlb(sf, x, g, 1, 1); s.stpmx != 0 {
+		t.Errorf("stpmx = %g", s.stpmx)
+	}
+
+	for _, tc := range []struct {
+		nbd       int
+		r, xx, gg float64
+	}{{nbdLower, -1, -1, 1}, {nbdUpper, 1, 1, -1}} {
+		s := newLbfgsb(1, 1, []float64{0}, []float64{0}, []int{tc.nbd})
+		s.col, s.nfree, s.theta = 1, 1, 1
+		s.wn[0], s.wn[3] = 1, 1 // identity factor: d stays the reduced gradient
+		s.z[0], s.r[0] = 0, tc.r
+		s.subsm([]float64{tc.xx}, []float64{tc.gg})
+		if s.z[0] != 0 || s.r[0] != 0 {
+			t.Errorf("nbd %d: z=%g d=%g", tc.nbd, s.z[0], s.r[0])
+		}
+	}
+
+	// formk's (1,1) block D + Y'ZZ'Y/θ is positive definite whenever the
+	// stored curvatures s'y are positive; a non-positive one fails it.
+	s = newLbfgsb(1, 1, []float64{-inf}, []float64{inf}, []int{nbdFree})
+	s.col, s.nfree, s.theta, s.ileave = 1, 1, 1, 1
+	s.sy[0] = -1
+	if s.formk() {
+		t.Error("formk succeeded")
 	}
 }

@@ -64,12 +64,10 @@ func (s *lbfgsb) projgr(x, g []float64) float64 {
 //
 // using the Cholesky factor of θS'S + LD⁻¹L' held in wt (reference
 // subroutine bmv). The factor comes from a successful dpofa, so its diagonal
-// is positive and the triangular solves cannot fail.
+// is positive and the triangular solves cannot fail. Callers ensure col > 0
+// (the reference code returns early otherwise).
 func (s *lbfgsb) bmv(v, p []float64) {
 	m, col, sy := s.m, s.col, s.sy
-	if col == 0 {
-		return
-	}
 	// PART I: solve [ D^(1/2)      O ] [ p1 ] = [ v1 ]
 	//               [ -L*D^(-1/2)  J ] [ p2 ]   [ v2 ].
 	p[col] = v[col]
@@ -193,10 +191,9 @@ func (s *lbfgsb) cauchy(x, g []float64) {
 		}
 	}
 	copy(xcp, x)
-	if nbreak == -1 && nfree == n {
-		// d is zero: the Cauchy point is x.
-		return
-	}
+	// The reference code returns here when nbreak == -1 and nfree == n (d is
+	// zero). That needs every variable skipped above, i.e. a zero projected
+	// gradient, which the sbgnrm <= 0 test has already handled.
 	for j := 0; j < col2; j++ {
 		c[j] = 0
 	}
@@ -640,24 +637,26 @@ func (s *lbfgsb) formk() bool {
 	}
 	// Form the upper triangle of WN = [  LL'            L⁻¹(-L_a'+R_z')]
 	//                                 [(-L_a+R_z)L'⁻¹   S'AA'Sθ        ]:
-	// first Cholesky factor (1,1) block.
-	if !dpofa(wn, m2, col) {
-		return false
-	}
-	// Then form L⁻¹(-L_a'+R_z') in the (1,2) block.
-	col2 := 2 * col
-	for js := col; js < col2; js++ {
-		dtrsl(wn, m2, col, wn[m2*js:m2*js+col], true)
-	}
-	// Form S'AA'Sθ + (L⁻¹(-L_a'+R_z'))'L⁻¹(-L_a'+R_z') in the upper
-	// triangle of (2,2).
-	for is := col; is < col2; is++ {
-		for js := is; js < col2; js++ {
-			wn[is+m2*js] += dot(wn[m2*is:m2*is+col], wn[m2*js:m2*js+col])
+	// first Cholesky factor (1,1) block. It is D + Y'ZZ'Y/θ with D > 0, so
+	// in practice only the (2,2) factorisation fails.
+	ok := dpofa(wn, m2, col)
+	if ok {
+		// Then form L⁻¹(-L_a'+R_z') in the (1,2) block.
+		col2 := 2 * col
+		for js := col; js < col2; js++ {
+			dtrsl(wn, m2, col, wn[m2*js:m2*js+col], true)
 		}
+		// Form S'AA'Sθ + (L⁻¹(-L_a'+R_z'))'L⁻¹(-L_a'+R_z') in the upper
+		// triangle of (2,2).
+		for is := col; is < col2; is++ {
+			for js := is; js < col2; js++ {
+				wn[is+m2*js] += dot(wn[m2*is:m2*is+col], wn[m2*js:m2*js+col])
+			}
+		}
+		// Cholesky factorisation of the (2,2) block.
+		ok = dpofa(wn[col+m2*col:], m2, col)
 	}
-	// Cholesky factorisation of the (2,2) block.
-	return dpofa(wn[col+m2*col:], m2, col)
+	return ok
 }
 
 // subsm performs the subspace minimisation: it computes the Newton point of

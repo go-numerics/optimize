@@ -3,6 +3,507 @@
  "numpy": "2.5.4",
  "cases": [
   {
+   "name": "poly_formt_fail_skip",
+   "obj": "poly",
+   "x0": [
+    -2.0,
+    -0.5
+   ],
+   "analytic": true,
+   "bounds": null,
+   "params": {
+    "A": [
+     0.125,
+     0.375,
+     0.375,
+     1.125
+    ],
+    "b": [
+     -2.5,
+     -4
+    ],
+    "c": 0
+   },
+   "options": {
+    "maxcor": 2,
+    "maxls": 20
+   },
+   "tol": null,
+   "x": [
+    -4079376446990654.5,
+    1359792148996881.0
+   ],
+   "fun": -4886753035457561.0,
+   "jac": [
+    1.0625,
+    -0.5
+   ],
+   "nit": 32,
+   "nfev": 42,
+   "njev": 42,
+   "status": 0,
+   "success": true,
+   "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+   "trace": [
+    -9.063794607229848,
+    -12.470656149977138,
+    -13.958592654239308,
+    -26.27702270557929,
+    -55.94429681524225,
+    -184.05974906562062,
+    -670.8343713940158,
+    -2660.8498151141976,
+    -10527.693478039233,
+    -42173.66649595229,
+    -168392.76775209978,
+    -673991.0430617034,
+    -2694932.7521238327,
+    -10781594.69168663,
+    -43122444.57785034,
+    -172497432.23535156,
+    -689974192.1367188,
+    -2759927541.15625,
+    -11039648771.1875,
+    -44158729585.5,
+    -176635022164.0,
+    -706532233600.0,
+    -2826106909696.0,
+    -11305854119936.0,
+    -45213968924672.0,
+    -180580625809408.0,
+    -716892107964416.0,
+    -2955804361621504.0,
+    -4606718103257088.0,
+    -4759272521489104.0,
+    -4886753035457561.0,
+    -4886753035457561.0
+   ]
+  },
+  {
+   "name": "poly_zero_grad_bounded",
+   "obj": "poly",
+   "x0": [
+    -1.0,
+    -1.25
+   ],
+   "analytic": true,
+   "bounds": [
+    [
+     -1,
+     null
+    ],
+    [
+     null,
+     -0.25
+    ]
+   ],
+   "params": {
+    "A": [
+     1.625,
+     -1.25,
+     -1.25,
+     1
+    ],
+    "b": [
+     1.25,
+     -0.0
+    ],
+    "c": 0
+   },
+   "options": {
+    "maxcor": 2,
+    "maxls": 20
+   },
+   "tol": null,
+   "x": [
+    0.5769230769230769,
+    -0.25
+   ],
+   "fun": -0.23918269230769226,
+   "jac": [
+    0.0,
+    -0.971153846153846
+   ],
+   "nit": 5,
+   "nfev": 6,
+   "njev": 6,
+   "status": 0,
+   "success": true,
+   "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+   "trace": [
+    0.78125,
+    0.3600441542830659,
+    -0.2252401757251842,
+    -0.2338164831303487,
+    -0.23918269230769226
+   ]
+  },
+  {
+   "name": "poly_formk_fail_allfixed",
+   "obj": "poly",
+   "x0": [
+    2.5
+   ],
+   "analytic": true,
+   "bounds": [
+    [
+     -1,
+     null
+    ]
+   ],
+   "params": {
+    "A": [
+     0
+    ],
+    "b": [
+     -1.25
+    ],
+    "c": 1
+   },
+   "options": {
+    "maxcor": 2,
+    "maxls": 20
+   },
+   "tol": null,
+   "x": [
+    -0.678604373833647
+   ],
+   "fun": -0.6361916288894287,
+   "jac": [
+    1.675225547170811e-07
+   ],
+   "nit": 10,
+   "nfev": 13,
+   "njev": 13,
+   "status": 0,
+   "success": true,
+   "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+   "trace": [
+    6.9375,
+    3.565280419724157,
+    1.5044520713681582,
+    0.7702839614888033,
+    0.2701508786558615,
+    -0.5514771719425019,
+    -0.6349761025731122,
+    -0.6361898508612709,
+    -0.6361916270764771,
+    -0.6361916288894287
+   ]
+  },
+  {
+   "name": "poly_restart",
+   "obj": "poly",
+   "x0": [
+    -3.5
+   ],
+   "analytic": true,
+   "bounds": null,
+   "params": {
+    "A": [
+     0
+    ],
+    "b": [
+     1.25
+    ],
+    "c": 0.25
+   },
+   "options": {
+    "maxcor": 3,
+    "maxls": 1
+   },
+   "tol": null,
+   "x": [
+    0.7264711277188654
+   ],
+   "fun": -0.38114306390827646,
+   "jac": [
+    -0.8665973801230107
+   ],
+   "nit": 6,
+   "nfev": 9,
+   "njev": 9,
+   "status": 2,
+   "success": false,
+   "message": "ABNORMAL: ",
+   "trace": [
+    12.890625,
+    5.4787929512626645,
+    2.464003837826924,
+    1.2339545870972415,
+    0.4487623264552264,
+    -0.8384561762404807
+   ]
+  },
+  {
+   "name": "poly_subsm_upper",
+   "obj": "poly",
+   "x0": [
+    -0.75,
+    -2.5,
+    -1.75
+   ],
+   "analytic": true,
+   "bounds": [
+    [
+     null,
+     -0.0
+    ],
+    [
+     null,
+     null
+    ],
+    [
+     -0.25,
+     0.25
+    ]
+   ],
+   "params": {
+    "A": [
+     1.0625,
+     -1.3125,
+     0.4375,
+     -1.3125,
+     1.625,
+     -1.8125,
+     0.4375,
+     -1.8125,
+     2.5625
+    ],
+    "b": [
+     -0.5,
+     2.75,
+     -4.25
+    ],
+    "c": 0
+   },
+   "options": {
+    "maxcor": 2,
+    "maxls": 20
+   },
+   "tol": null,
+   "x": [
+    0.0,
+    1.4134615384615385,
+    -0.25
+   ],
+   "fun": -2.6056941105769234,
+   "jac": [
+    -1.4645432692307694,
+    0.0,
+    1.0474759615384612
+   ],
+   "nit": 6,
+   "nfev": 8,
+   "njev": 8,
+   "status": 0,
+   "success": true,
+   "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+   "trace": [
+    2.583017243674799,
+    -0.1290090027131955,
+    -1.6744061173450016,
+    -2.6033418950121323,
+    -2.6056383695060656,
+    -2.6056941105769234
+   ]
+  },
+  {
+   "name": "poly_formk_no_update",
+   "obj": "poly",
+   "x0": [
+    0.25,
+    -1.25
+   ],
+   "analytic": true,
+   "bounds": [
+    [
+     null,
+     null
+    ],
+    [
+     null,
+     -0.0
+    ]
+   ],
+   "params": {
+    "A": [
+     0.625,
+     -0.25,
+     -0.25,
+     -0.875
+    ],
+    "b": [
+     -0.25,
+     0.5
+    ],
+    "c": 1
+   },
+   "options": {
+    "maxcor": 2,
+    "maxls": 20
+   },
+   "tol": null,
+   "x": [
+    -0.2716732853741498,
+    0.0
+   ],
+   "fun": -0.039406448631958406,
+   "jac": [
+    -6.837681457427802e-07,
+    -0.4320816786564625
+   ],
+   "nit": 7,
+   "nfev": 9,
+   "njev": 9,
+   "status": 0,
+   "success": true,
+   "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+   "trace": [
+    0.08892132920363796,
+    0.07314530153849252,
+    -0.03332730299349937,
+    -0.03922376815999232,
+    -0.03940156433735079,
+    -0.039406443448824074,
+    -0.039406448631958406
+   ]
+  },
+  {
+   "name": "poly_subsm_backtrack",
+   "obj": "poly",
+   "x0": [
+    1.25,
+    0.5,
+    0.5
+   ],
+   "analytic": true,
+   "bounds": [
+    [
+     -0.75,
+     null
+    ],
+    [
+     -0.5,
+     null
+    ],
+    [
+     0.25,
+     0.75
+    ]
+   ],
+   "params": {
+    "A": [
+     1.8125,
+     0.4375,
+     0.625,
+     0.4375,
+     3.8125,
+     3.25,
+     0.625,
+     3.25,
+     2.3125
+    ],
+    "b": [
+     1.25,
+     1,
+     1.25
+    ],
+    "c": 0
+   },
+   "options": {
+    "maxcor": 1,
+    "maxls": 1
+   },
+   "tol": null,
+   "x": [
+    0.5369206576260984,
+    -0.43866146380682985,
+    0.75
+   ],
+   "fun": -0.8121320857474464,
+   "jac": [
+    4.301531815187332e-06,
+    5.9569478791932085e-06,
+    -0.6056993463558857
+   ],
+   "nit": 9,
+   "nfev": 10,
+   "njev": 10,
+   "status": 0,
+   "success": true,
+   "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+   "trace": [
+    -0.5823642922504504,
+    -0.6170667037157496,
+    -0.7269766559466628,
+    -0.7891998372230601,
+    -0.8012325465954209,
+    -0.8120883369857019,
+    -0.8121189290683772,
+    -0.812132077734366,
+    -0.8121320857474464
+   ]
+  },
+  {
+   "name": "poly_cauchy_at_breakpoint",
+   "obj": "poly",
+   "x0": [
+    1.5,
+    0.0
+   ],
+   "analytic": true,
+   "bounds": [
+    [
+     null,
+     0.5
+    ],
+    [
+     -1.5,
+     -1
+    ]
+   ],
+   "params": {
+    "A": [
+     5.3125,
+     -0.375,
+     -0.375,
+     0.5625
+    ],
+    "b": [
+     -1.75,
+     -1.75
+    ],
+    "c": 0
+   },
+   "options": {
+    "maxcor": 1,
+    "maxls": 20
+   },
+   "tol": null,
+   "x": [
+    -0.43529411764707127,
+    -1.5
+   ],
+   "fun": -2.4954963235294114,
+   "jac": [
+    -6.616929226765933e-14,
+    1.0694852941176518
+   ],
+   "nit": 4,
+   "nfev": 6,
+   "njev": 6,
+   "status": 0,
+   "success": true,
+   "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+   "trace": [
+    -2.0097476144248674,
+    -2.3217114315479703,
+    -2.495483336011782,
+    -2.4954963235294114
+   ]
+  },
+  {
    "name": "rosen2",
    "obj": "rosen",
    "x0": [
@@ -11,6 +512,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -84,6 +586,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -298,6 +801,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1037,6 +1541,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1081,6 +1586,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1122,6 +1628,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1174,6 +1681,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1282,6 +1790,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1448,6 +1957,7 @@
      0.8
     ]
    ],
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1529,6 +2039,7 @@
      0.8
     ]
    ],
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -1855,6 +2366,7 @@
      0.01
     ]
    ],
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2008,6 +2520,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2081,6 +2594,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2296,6 +2810,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2645,6 +3160,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2689,6 +3205,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2730,6 +3247,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2782,6 +3300,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -2890,6 +3409,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -3056,6 +3576,7 @@
      0.8
     ]
    ],
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -3137,6 +3658,7 @@
      0.8
     ]
    ],
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -3463,6 +3985,7 @@
      0.01
     ]
    ],
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -3522,52 +4045,52 @@
     6.221689867811516e-05,
     -1.3278267455215158e-05,
     -6.532552244069918e-05,
-    null,
+    "NaN",
     -1.2250000125463876,
     1.7800000137528877,
     -2.035937462721877,
     1.15463194621791e-06,
-    null,
+    "NaN",
     1.9954538910245945,
     -9.769962621843855e-06,
     1.7319479193268651e-06,
     -1.5987211563017217e-06,
-    null,
+    "NaN",
     -2.1250000870180665,
     3.2800000932032227,
     -3.5020835558969097,
     -3.952393969745923e-06,
-    null,
+    "NaN",
     2.873302262801769,
     2.7089441815112505e-06,
     -2.797762023528013e-06,
     4.751754547896784e-06,
-    null,
+    "NaN",
     -3.025000117080824,
     4.780000128244637,
     -4.99241083945128,
     4.440892100838116e-07,
-    null,
+    "NaN",
     3.7656626261874306,
     -2.220446050419058e-07,
     -5.595524047056026e-06,
     3.863576127729161e-06,
-    null,
+    "NaN",
     -3.925000191552503,
     6.280000163286052,
     -6.487829428160043,
     -2.14495088470481e-05,
-    null,
+    "NaN",
     4.661794772459134,
     -7.949196860500226e-06,
     3.974598430250113e-06,
     -6.572520309240411e-06,
-    null,
+    "NaN",
     -4.825000243819721,
     7.780000242736387,
     -7.985156379225515,
     1.0824674495792908e-05,
-    null,
+    "NaN",
     5.50000025526456
    ],
    "nit": 28,
@@ -3625,6 +4148,7 @@
      null
     ]
    ],
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -3669,6 +4193,7 @@
      0.4
     ]
    ],
+   "params": null,
    "options": {
     "maxcor": 3
    },
@@ -3713,6 +4238,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {
     "maxiter": 5
    },
@@ -3765,6 +4291,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {
     "maxfun": 10
    },
@@ -3805,6 +4332,7 @@
    ],
    "analytic": false,
    "bounds": null,
+   "params": null,
    "options": {
     "maxfun": 10
    },
@@ -3838,6 +4366,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {
     "maxls": 1
    },
@@ -3868,6 +4397,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": 0.001,
    "x": [
@@ -3938,6 +4468,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {
     "maxcor": 3
    },
@@ -4067,6 +4598,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -4096,6 +4628,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {
     "gtol": 1e-300
    },
@@ -4124,6 +4657,7 @@
    ],
    "analytic": true,
    "bounds": null,
+   "params": null,
    "options": {},
    "tol": null,
    "x": [
@@ -4141,6 +4675,104 @@
    "status": 0,
    "success": true,
    "message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+   "trace": []
+  },
+  {
+   "name": "x0_optimal_negative_gtol",
+   "obj": "rosen",
+   "x0": [
+    1.0,
+    1.0
+   ],
+   "analytic": true,
+   "bounds": null,
+   "params": null,
+   "options": {
+    "gtol": -1.0
+   },
+   "tol": null,
+   "x": [
+    1.0,
+    1.0
+   ],
+   "fun": 0.0,
+   "jac": [
+    -0.0,
+    0.0
+   ],
+   "nit": 0,
+   "nfev": 1,
+   "njev": 1,
+   "status": 2,
+   "success": false,
+   "message": "ABNORMAL: ",
+   "trace": []
+  },
+  {
+   "name": "nan_gradient",
+   "obj": "sphere_nang",
+   "x0": [
+    1.0,
+    2.0
+   ],
+   "analytic": true,
+   "bounds": null,
+   "params": null,
+   "options": {},
+   "tol": null,
+   "x": [
+    1.0,
+    2.0
+   ],
+   "fun": "NaN",
+   "jac": [
+    "NaN",
+    "NaN"
+   ],
+   "nit": 0,
+   "nfev": 21,
+   "njev": 21,
+   "status": 2,
+   "success": false,
+   "message": "ABNORMAL: ",
+   "trace": []
+  },
+  {
+   "name": "nan_gradient_bounded",
+   "obj": "sphere_nang",
+   "x0": [
+    1.0,
+    2.0
+   ],
+   "analytic": true,
+   "bounds": [
+    [
+     0.0,
+     3.0
+    ],
+    [
+     null,
+     null
+    ]
+   ],
+   "params": null,
+   "options": {},
+   "tol": null,
+   "x": [
+    1.0,
+    2.0
+   ],
+   "fun": "NaN",
+   "jac": [
+    "NaN",
+    "NaN"
+   ],
+   "nit": 0,
+   "nfev": 21,
+   "njev": 21,
+   "status": 2,
+   "success": false,
+   "message": "ABNORMAL: ",
    "trace": []
   }
  ]
