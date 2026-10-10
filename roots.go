@@ -139,6 +139,15 @@ func Bisect(f func(float64) float64, a, b float64, o *BracketOptions) (*RootResu
 // (scipy/optimize/Zeros/*.c, written by Charles Harris, BSD licence)
 // statement for statement, so that iterates and call counts agree.
 
+// cmin is C's MIN macro, a < b ? a : b, which unlike math.Min returns b
+// when a is NaN (Ridder relies on it after an infinite midpoint value).
+func cmin(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func sameSign(x, y float64) bool { return math.Signbit(x) == math.Signbit(y) }
 
 // bracketStart evaluates both ends and settles the trivial cases.
@@ -204,7 +213,7 @@ func brentSolver(hyperbolic bool) bracketSolver {
 						stry = -fcur * (fblk*dblk - fpre*dpre) / (dblk * dpre * (fblk - fpre))
 					}
 				}
-				if 2*math.Abs(stry) < math.Min(math.Abs(spre), 3*math.Abs(sbis)-delta) {
+				if 2*math.Abs(stry) < cmin(math.Abs(spre), 3*math.Abs(sbis)-delta) {
 					spre, scur = scur, stry
 				} else {
 					spre, scur = sbis, sbis
@@ -256,7 +265,7 @@ func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *R
 		if dn > 0 {
 			s = 1
 		}
-		xn = xm + s*math.Min(math.Abs(dn), math.Abs(dm)-0.5*tol)
+		xn = xm + s*cmin(math.Abs(dn), math.Abs(dm)-0.5*tol)
 		fn := f(xn)
 		st.FunctionCalls++
 		switch {
@@ -411,9 +420,9 @@ func Newton(f func(float64) float64, x0 float64, o *NewtonOptions) (*RootResult,
 			return res((p1+p0)/2, calls, itr+1, false, "secant"), nil
 		}
 		if math.Abs(q1) > math.Abs(q0) {
-			p = (-q0/q1*p1 + p0) / (1 - q0/q1)
+			p = (float64(-q0/q1*p1) + p0) / (1 - q0/q1) // float64(): no FMA, as in SciPy
 		} else {
-			p = (-q1/q0*p0 + p1) / (1 - q1/q0)
+			p = (float64(-q1/q0*p0) + p1) / (1 - q1/q0)
 		}
 		if isclose(p, p1) {
 			return res(p, calls, itr+1, true, "secant"), nil
