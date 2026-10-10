@@ -66,17 +66,17 @@ func (d *dcsrch) iterate(stp, f, g float64, task lsTask) (float64, lsTask) {
 		d.brackt = false
 		d.stage = 1
 		d.finit, d.ginit = f, g
-		d.gtest = d.ftol * d.ginit
+		d.gtest = float64(d.ftol * d.ginit)
 		d.width = d.stpmax - d.stpmin
 		d.width1 = d.width / p5
 		d.stx, d.fx, d.gx = 0, d.finit, d.ginit
 		d.sty, d.fy, d.gy = 0, d.finit, d.ginit
 		d.stmin = 0
-		d.stmax = stp + xtrapu*stp
+		d.stmax = stp + float64(xtrapu*stp)
 		return stp, lsFG
 	}
 
-	ftest := d.finit + stp*d.gtest
+	ftest := d.finit + float64(stp*d.gtest)
 	if d.stage == 1 && f <= ftest && g >= 0 {
 		d.stage = 2
 	}
@@ -104,15 +104,15 @@ func (d *dcsrch) iterate(stp, f, g float64, task lsTask) (float64, lsTask) {
 	// In the first stage use the modified function ψ(stp) = f − f(0) −
 	// ftol·stp·f'(0) while the step has not achieved sufficient decrease.
 	if d.stage == 1 && f <= d.fx && f > ftest {
-		fm := f - stp*d.gtest
-		fxm := d.fx - d.stx*d.gtest
-		fym := d.fy - d.sty*d.gtest
+		fm := f - float64(stp*d.gtest)
+		fxm := d.fx - float64(d.stx*d.gtest)
+		fym := d.fy - float64(d.sty*d.gtest)
 		gm := g - d.gtest
 		gxm := d.gx - d.gtest
 		gym := d.gy - d.gtest
 		stp = dcstep(&d.stx, &fxm, &gxm, &d.sty, &fym, &gym, stp, fm, gm, &d.brackt, d.stmin, d.stmax)
-		d.fx = fxm + d.stx*d.gtest
-		d.fy = fym + d.sty*d.gtest
+		d.fx = fxm + float64(d.stx*d.gtest)
+		d.fy = fym + float64(d.sty*d.gtest)
 		d.gx = gxm + d.gtest
 		d.gy = gym + d.gtest
 	} else {
@@ -122,15 +122,15 @@ func (d *dcsrch) iterate(stp, f, g float64, task lsTask) (float64, lsTask) {
 	// Force a sufficient decrease in the size of the bracketing interval.
 	if d.brackt {
 		if math.Abs(d.sty-d.stx) >= p66*d.width1 {
-			stp = d.stx + p5*(d.sty-d.stx)
+			stp = d.stx + float64(p5*(d.sty-d.stx))
 		}
 		d.width1 = d.width
 		d.width = math.Abs(d.sty - d.stx)
 		d.stmin = math.Min(d.stx, d.sty)
 		d.stmax = math.Max(d.stx, d.sty)
 	} else {
-		d.stmin = stp + xtrapl*(stp-d.stx)
-		d.stmax = stp + xtrapu*(stp-d.stx)
+		d.stmin = stp + float64(xtrapl*(stp-d.stx))
+		d.stmax = stp + float64(xtrapu*(stp-d.stx))
 	}
 	stp = math.Min(math.Max(stp, d.stpmin), d.stpmax)
 	// If further progress is not possible, let stp be the best point.
@@ -155,7 +155,7 @@ func sign(x float64) float64 {
 // interval [stx, sty] that contains a step satisfying the Wolfe conditions
 // (MINPACK-2 dcstep). It returns the new trial step.
 func dcstep(stx, fx, dx, sty, fy, dy *float64, stp, fp, dp float64, brackt *bool, stpmin, stpmax float64) float64 {
-	sgnd := sign(dp) * sign(*dx)
+	sgnd := float64(sign(dp) * sign(*dx))
 	var stpf float64
 	switch {
 	case fp > *fx:
@@ -164,15 +164,15 @@ func dcstep(stx, fx, dx, sty, fy, dy *float64, stp, fp, dp float64, brackt *bool
 		// their average.
 		theta := 3*(*fx-fp)/(stp-*stx) + *dx + dp
 		s := math.Max(math.Abs(theta), math.Max(math.Abs(*dx), math.Abs(dp)))
-		gamma := s * math.Sqrt((theta/s)*(theta/s)-(*dx/s)*(dp/s))
+		gamma := float64(s * math.Sqrt(float64((theta/s)*(theta/s))-float64((*dx/s)*(dp/s))))
 		if stp < *stx {
 			gamma = -gamma
 		}
 		p := (gamma - *dx) + theta
 		q := ((gamma - *dx) + gamma) + dp
 		r := p / q
-		stpc := *stx + r*(stp-*stx)
-		stpq := *stx + ((*dx/((*fx-fp)/(stp-*stx)+*dx))/2)*(stp-*stx)
+		stpc := *stx + float64(r*(stp-*stx))
+		stpq := *stx + float64(((*dx/((*fx-fp)/(stp-*stx)+*dx))/2)*(stp-*stx))
 		if math.Abs(stpc-*stx) <= math.Abs(stpq-*stx) {
 			stpf = stpc
 		} else {
@@ -184,15 +184,15 @@ func dcstep(stx, fx, dx, sty, fy, dy *float64, stp, fp, dp float64, brackt *bool
 		// step farther from stp.
 		theta := 3*(*fx-fp)/(stp-*stx) + *dx + dp
 		s := math.Max(math.Abs(theta), math.Max(math.Abs(*dx), math.Abs(dp)))
-		gamma := s * math.Sqrt((theta/s)*(theta/s)-(*dx/s)*(dp/s))
+		gamma := float64(s * math.Sqrt(float64((theta/s)*(theta/s))-float64((*dx/s)*(dp/s))))
 		if stp > *stx {
 			gamma = -gamma
 		}
 		p := (gamma - dp) + theta
 		q := ((gamma - dp) + gamma) + *dx
 		r := p / q
-		stpc := stp + r*(*stx-stp)
-		stpq := stp + (dp/(dp-*dx))*(*stx-stp)
+		stpc := stp + float64(r*(*stx-stp))
+		stpq := stp + float64((dp/(dp-*dx))*(*stx-stp))
 		if math.Abs(stpc-stp) > math.Abs(stpq-stp) {
 			stpf = stpc
 		} else {
@@ -205,7 +205,7 @@ func dcstep(stx, fx, dx, sty, fy, dy *float64, stp, fp, dp float64, brackt *bool
 		// or its minimum is beyond stp.
 		theta := 3*(*fx-fp)/(stp-*stx) + *dx + dp
 		s := math.Max(math.Abs(theta), math.Max(math.Abs(*dx), math.Abs(dp)))
-		gamma := s * math.Sqrt(math.Max(0, (theta/s)*(theta/s)-(*dx/s)*(dp/s)))
+		gamma := float64(s * math.Sqrt(math.Max(0, float64((theta/s)*(theta/s))-float64((*dx/s)*(dp/s)))))
 		if stp > *stx {
 			gamma = -gamma
 		}
@@ -215,13 +215,13 @@ func dcstep(stx, fx, dx, sty, fy, dy *float64, stp, fp, dp float64, brackt *bool
 		var stpc float64
 		switch {
 		case r < 0 && gamma != 0:
-			stpc = stp + r*(*stx-stp)
+			stpc = stp + float64(r*(*stx-stp))
 		case stp > *stx:
 			stpc = stpmax
 		default:
 			stpc = stpmin
 		}
-		stpq := stp + (dp/(dp-*dx))*(*stx-stp)
+		stpq := stp + float64((dp/(dp-*dx))*(*stx-stp))
 		if *brackt {
 			if math.Abs(stpc-stp) < math.Abs(stpq-stp) {
 				stpf = stpc
@@ -229,9 +229,9 @@ func dcstep(stx, fx, dx, sty, fy, dy *float64, stp, fp, dp float64, brackt *bool
 				stpf = stpq
 			}
 			if stp > *stx {
-				stpf = math.Min(stp+0.66*(*sty-stp), stpf)
+				stpf = math.Min(stp+float64(0.66*(*sty-stp)), stpf)
 			} else {
-				stpf = math.Max(stp+0.66*(*sty-stp), stpf)
+				stpf = math.Max(stp+float64(0.66*(*sty-stp)), stpf)
 			}
 		} else {
 			if math.Abs(stpc-stp) > math.Abs(stpq-stp) {
@@ -248,14 +248,14 @@ func dcstep(stx, fx, dx, sty, fy, dy *float64, stp, fp, dp float64, brackt *bool
 		case *brackt:
 			theta := 3*(fp-*fy)/(*sty-stp) + *dy + dp
 			s := math.Max(math.Abs(theta), math.Max(math.Abs(*dy), math.Abs(dp)))
-			gamma := s * math.Sqrt((theta/s)*(theta/s)-(*dy/s)*(dp/s))
+			gamma := float64(s * math.Sqrt(float64((theta/s)*(theta/s))-float64((*dy/s)*(dp/s))))
 			if stp > *sty {
 				gamma = -gamma
 			}
 			p := (gamma - dp) + theta
 			q := ((gamma - dp) + gamma) + *dy
 			r := p / q
-			stpf = stp + r*(*sty-stp)
+			stpf = stp + float64(r*(*sty-stp))
 		case stp > *stx:
 			stpf = stpmax
 		default:

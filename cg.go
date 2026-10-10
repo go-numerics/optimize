@@ -57,11 +57,11 @@ func minimizeCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	prp := func(g []float64) float64 {
 		beta := 0.0
 		for i := range g {
-			beta += (g[i] - gfk[i]) * g[i]
+			beta += float64((g[i] - gfk[i]) * g[i])
 		}
 		beta = math.Max(0, beta/deltak)
 		for i := range g {
-			pNext[i] = -g[i] + beta*pk[i]
+			pNext[i] = -g[i] + float64(beta*pk[i])
 		}
 		return norm(g, ord)
 	}
@@ -89,7 +89,7 @@ func minimizeCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 		}
 		gnorm = cachedGnorm
 		for i := range xk {
-			xk[i] += alpha * pk[i]
+			xk[i] += float64(alpha * pk[i])
 		}
 		copy(gfk, ls.g)
 		pk, pNext = pNext, pk

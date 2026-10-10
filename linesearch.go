@@ -20,7 +20,7 @@ func newLineSearch(sf *scalarFunc, n int) *lineSearch {
 
 func (ls *lineSearch) point(alpha float64) []float64 {
 	for i := range ls.x {
-		ls.x[i] = ls.xk[i] + alpha*ls.pk[i]
+		ls.x[i] = ls.xk[i] + float64(alpha*ls.pk[i])
 	}
 	return ls.x
 }
@@ -100,7 +100,7 @@ func (ls *lineSearch) wolfe2(phi0, oldPhi0, derphi0 float64, haveOld bool, c1, c
 		if alpha1 == 0 || alpha0 > amax {
 			return 0, phi0, false
 		}
-		if phiA1 > phi0+c1*alpha1*derphi0 || (phiA1 >= phiA0 && i > 0) {
+		if phiA1 > phi0+float64(c1*alpha1*derphi0) || (phiA1 >= phiA0 && i > 0) {
 			return ls.zoom(alpha0, alpha1, phiA0, phiA1, derphiA0, phi0, derphi0, c1, c2, accept)
 		}
 		derphiA1 := ls.derphi(alpha1)
@@ -137,19 +137,19 @@ func (ls *lineSearch) zoom(aLo, aHi, phiLo, phiHi, derphiLo, phi0, derphi0, c1, 
 		var aj float64
 		ok := false
 		if i > 0 {
-			cchk := delta1 * dalpha
+			cchk := float64(delta1 * dalpha)
 			aj, ok = cubicMin(aLo, phiLo, derphiLo, aHi, phiHi, aRec, phiRec)
 			ok = ok && aj <= b-cchk && aj >= a+cchk
 		}
 		if !ok {
-			qchk := delta2 * dalpha
+			qchk := float64(delta2 * dalpha)
 			aj, ok = quadMin(aLo, phiLo, derphiLo, aHi, phiHi)
 			if !ok || aj > b-qchk || aj < a+qchk {
-				aj = aLo + 0.5*dalpha
+				aj = aLo + float64(0.5*dalpha)
 			}
 		}
 		phiAj := ls.phi(aj)
-		if phiAj > phi0+c1*aj*derphi0 || phiAj >= phiLo {
+		if phiAj > phi0+float64(c1*aj*derphi0) || phiAj >= phiLo {
 			phiRec, aRec = phiHi, aHi
 			aHi, phiHi = aj, phiAj
 			continue
@@ -177,15 +177,15 @@ func cubicMin(a, fa, fpa, b, fb, c, fc float64) (float64, bool) {
 	C := fpa
 	db := b - a
 	dc := c - a
-	denom := (db * dc) * (db * dc) * (db - dc)
+	denom := float64((db * dc) * (db * dc) * (db - dc))
 	if denom == 0 {
 		return 0, false
 	}
-	u := fb - fa - C*db
-	v := fc - fa - C*dc
-	A := (dc*dc*u - db*db*v) / denom
-	B := (-dc*dc*dc*u + db*db*db*v) / denom
-	radical := B*B - 3*A*C
+	u := fb - fa - float64(C*db)
+	v := fc - fa - float64(C*dc)
+	A := (float64(dc*dc*u) - float64(db*db*v)) / denom
+	B := (float64(-dc*dc*dc*u) + float64(db*db*db*v)) / denom
+	radical := float64(B*B) - float64(3*A*C)
 	if radical < 0 || A == 0 {
 		return 0, false
 	}
@@ -203,7 +203,7 @@ func quadMin(a, fa, fpa, b, fb float64) (float64, bool) {
 	if db == 0 {
 		return 0, false
 	}
-	B := (fb - fa - fpa*db) / (db * db)
+	B := (fb - fa - float64(fpa*db)) / (db * db)
 	if B == 0 {
 		return 0, false
 	}

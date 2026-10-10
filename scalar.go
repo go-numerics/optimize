@@ -183,20 +183,20 @@ func bracket(f func(float64) float64, xa, xb, growLimit float64, maxiter int) (x
 		xa, xb = xb, xa
 		fa, fb = fb, fa
 	}
-	xc := xb + gold*(xb-xa)
+	xc := xb + float64(gold*(xb-xa))
 	fc := f(xc)
 	nfev = 3
 	iter := 0
 	for fc < fb {
-		tmp1 := (xb - xa) * (fb - fc)
-		tmp2 := (xb - xc) * (fb - fa)
+		tmp1 := float64((xb - xa) * (fb - fc))
+		tmp2 := float64((xb - xc) * (fb - fa))
 		val := tmp2 - tmp1
-		denom := 2 * val
+		denom := float64(2 * val)
 		if math.Abs(val) < verySmall {
-			denom = 2 * verySmall
+			denom = float64(2 * verySmall)
 		}
-		w := xb - ((xb-xc)*tmp2-(xb-xa)*tmp1)/denom
-		wlim := xb + growLimit*(xc-xb)
+		w := xb - (float64((xb-xc)*tmp2)-float64((xb-xa)*tmp1))/denom
+		wlim := xb + float64(growLimit*(xc-xb))
 		if iter > maxiter {
 			return x, fx, nfev, &BracketError{xa, xb, xc, fa, fb, fc, nfev,
 				"No valid bracket was found before the iteration limit was reached. " +
@@ -216,7 +216,7 @@ func bracket(f func(float64) float64, xa, xb, growLimit float64, maxiter int) (x
 				xc, fc = w, fw
 				goto done
 			}
-			w = xc + gold*(xc-xb)
+			w = xc + float64(gold*(xc-xb))
 			fw = f(w)
 			nfev++
 		case (w-wlim)*(wlim-xc) >= 0:
@@ -228,13 +228,13 @@ func bracket(f func(float64) float64, xa, xb, growLimit float64, maxiter int) (x
 			nfev++
 			if fw < fc {
 				xb, xc = xc, w
-				w = xc + gold*(xc-xb)
+				w = xc + float64(gold*(xc-xb))
 				fb, fc = fc, fw
 				fw = f(w)
 				nfev++
 			}
 		default:
-			w = xc + gold*(xc-xb)
+			w = xc + float64(gold*(xc-xb))
 			fw = f(w)
 			nfev++
 		}
@@ -294,6 +294,12 @@ func (p pyFloat) String() string {
 	return pyRepr(float64(p))
 }
 
+// The scalar routines below are statement-for-statement ports of SciPy's
+// Python code. Python never fuses a multiply with an add; Go does on arm64,
+// ppc64le, s390x, riscv64 and loong64, so the products that feed a sum are
+// wrapped in float64() (which forbids fusion) to keep the iterates identical
+// on every architecture.
+
 // minimizeScalarBrent is Brent's (1973) method as in SciPy's Brent class.
 func minimizeScalarBrent(f func(float64) float64, brack []float64, tol float64, maxiter int) (*ScalarResult, error) {
 	if maxiter == 0 {
@@ -315,10 +321,10 @@ func minimizeScalarBrent(f func(float64) float64, brack []float64, tol float64, 
 	deltax, rat := 0.0, 0.0
 	iter := 0
 	for iter < maxiter {
-		tol1 := tol*math.Abs(x) + mintol
-		tol2 := 2 * tol1
-		xmid := 0.5 * (a + b)
-		if math.Abs(x-xmid) < tol2-0.5*(b-a) {
+		tol1 := float64(tol*math.Abs(x)) + mintol
+		tol2 := float64(2 * tol1)
+		xmid := float64(0.5 * (a + b))
+		if math.Abs(x-xmid) < tol2-float64(0.5*(b-a)) {
 			break
 		}
 		if math.Abs(deltax) <= tol1 {
@@ -327,12 +333,12 @@ func minimizeScalarBrent(f func(float64) float64, brack []float64, tol float64, 
 			} else {
 				deltax = b - x
 			}
-			rat = cg * deltax
+			rat = float64(cg * deltax)
 		} else {
-			tmp1 := (x - w) * (fx - fv)
-			tmp2 := (x - v) * (fx - fw)
-			p := (x-v)*tmp2 - (x-w)*tmp1
-			tmp2 = 2 * (tmp2 - tmp1)
+			tmp1 := float64((x - w) * (fx - fv))
+			tmp2 := float64((x - v) * (fx - fw))
+			p := float64((x-v)*tmp2) - float64((x-w)*tmp1)
+			tmp2 = float64(2 * (tmp2 - tmp1))
 			if tmp2 > 0 {
 				p = -p
 			}
@@ -340,7 +346,7 @@ func minimizeScalarBrent(f func(float64) float64, brack []float64, tol float64, 
 			dxTemp := deltax
 			deltax = rat
 			if p > tmp2*(a-x) && p < tmp2*(b-x) && math.Abs(p) < math.Abs(0.5*tmp2*dxTemp) {
-				rat = p * 1.0 / tmp2
+				rat = float64(p * 1.0 / tmp2)
 				u := x + rat
 				if u-a < tol2 || b-u < tol2 {
 					if xmid-x >= 0 {
@@ -355,7 +361,7 @@ func minimizeScalarBrent(f func(float64) float64, brack []float64, tol float64, 
 				} else {
 					deltax = b - x
 				}
-				rat = cg * deltax
+				rat = float64(cg * deltax)
 			}
 		}
 		var u float64
@@ -407,16 +413,18 @@ func minimizeScalarGolden(f func(float64) float64, brack []float64, tol float64,
 		return nil, err
 	}
 	xa, xb, xc := xs[0], xs[1], xs[2]
-	const gR = 0.61803399
-	const gC = 1.0 - gR
+	// SciPy computes 1 − gR in float64 at run time; a Go constant
+	// expression would be exact and round differently.
+	gR := 0.61803399
+	gC := 1.0 - gR
 	x3, x0 := xc, xa
 	var x1, x2 float64
 	if math.Abs(xc-xb) > math.Abs(xb-xa) {
 		x1 = xb
-		x2 = xb + gC*(xc-xb)
+		x2 = xb + float64(gC*(xc-xb))
 	} else {
 		x2 = xb
-		x1 = xb - gC*(xb-xa)
+		x1 = xb - float64(gC*(xb-xa))
 	}
 	f1, f2 := f(x1), f(x2)
 	funcalls += 2
@@ -427,12 +435,12 @@ func minimizeScalarGolden(f func(float64) float64, brack []float64, tol float64,
 		}
 		if f2 < f1 {
 			x0, x1 = x1, x2
-			x2 = gR*x1 + gC*x3
+			x2 = float64(gR*x1) + float64(gC*x3)
 			f1 = f2
 			f2 = f(x2)
 		} else {
 			x3, x2 = x2, x1
-			x1 = gR*x2 + gC*x0
+			x1 = float64(gR*x2) + float64(gC*x0)
 			f2 = f1
 			f1 = f(x1)
 		}
@@ -458,9 +466,9 @@ func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfu
 	}
 	flag := 0
 	sqrtEps := math.Sqrt(2.2e-16)
-	goldenMean := 0.5 * (3.0 - math.Sqrt(5.0))
+	goldenMean := float64(0.5 * (3.0 - math.Sqrt(5.0)))
 	a, b := x1, x2
-	fulc := a + goldenMean*(b-a)
+	fulc := a + float64(goldenMean*(b-a))
 	nfc, xf := fulc, fulc
 	rat, e := 0.0, 0.0
 	x := xf
@@ -468,17 +476,17 @@ func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfu
 	num := 1
 	fu := math.Inf(1)
 	ffulc, fnfc := fx, fx
-	xm := 0.5 * (a + b)
-	tol1 := sqrtEps*math.Abs(xf) + xatol/3.0
-	tol2 := 2.0 * tol1
-	for math.Abs(xf-xm) > tol2-0.5*(b-a) {
+	xm := float64(0.5 * (a + b))
+	tol1 := float64(sqrtEps*math.Abs(xf)) + xatol/3.0
+	tol2 := float64(2.0 * tol1)
+	for math.Abs(xf-xm) > tol2-float64(0.5*(b-a)) {
 		golden := true
 		if math.Abs(e) > tol1 {
 			golden = false
-			r := (xf - nfc) * (fx - ffulc)
-			q := (xf - fulc) * (fx - fnfc)
-			p := (xf-fulc)*q - (xf-nfc)*r
-			q = 2.0 * (q - r)
+			r := float64((xf - nfc) * (fx - ffulc))
+			q := float64((xf - fulc) * (fx - fnfc))
+			p := float64((xf-fulc)*q) - float64((xf-nfc)*r)
+			q = float64(2.0 * (q - r))
 			if q > 0 {
 				p = -p
 			}
@@ -493,7 +501,7 @@ func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfu
 					if xm-xf == 0 {
 						si++
 					}
-					rat = tol1 * si
+					rat = float64(tol1 * si)
 				}
 			} else {
 				golden = true
@@ -505,13 +513,13 @@ func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfu
 			} else {
 				e = b - xf
 			}
-			rat = goldenMean * e
+			rat = float64(goldenMean * e)
 		}
 		si := sign(rat)
 		if rat == 0 {
 			si++
 		}
-		x = xf + si*math.Max(math.Abs(rat), tol1)
+		x = xf + float64(si*math.Max(math.Abs(rat), tol1))
 		fu = f(x)
 		num++
 		if fu <= fx {
@@ -536,9 +544,9 @@ func minimizeScalarBounded(f func(float64) float64, x1, x2, xatol float64, maxfu
 				fulc, ffulc = x, fu
 			}
 		}
-		xm = 0.5 * (a + b)
-		tol1 = sqrtEps*math.Abs(xf) + xatol/3.0
-		tol2 = 2.0 * tol1
+		xm = float64(0.5 * (a + b))
+		tol1 = float64(sqrtEps*math.Abs(xf)) + xatol/3.0
+		tol2 = float64(2.0 * tol1)
 		if num >= maxfun {
 			flag = 1
 			break

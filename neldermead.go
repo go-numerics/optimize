@@ -106,7 +106,7 @@ func minimizeNelderMead(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float
 		for k := range n {
 			y := clone(x0)
 			if y[k] != 0 {
-				y[k] = (1 + nonzdelt) * y[k]
+				y[k] = float64((1 + nonzdelt) * y[k])
 			} else {
 				y[k] = zdelt
 			}
@@ -129,7 +129,7 @@ func minimizeNelderMead(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float
 		for _, p := range sim {
 			for j := range p {
 				if p[j] > ub[j] {
-					p[j] = 2*ub[j] - p[j]
+					p[j] = float64(2*ub[j]) - p[j]
 				}
 			}
 			clip(p, lb, ub)
@@ -169,7 +169,7 @@ func minimizeNelderMead(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float
 		// dst = a·xbar − b·sim[n]
 		last := sim[n]
 		for j := range dst {
-			dst[j] = a*xbar[j] - b*last[j]
+			dst[j] = float64(a*xbar[j]) - float64(b*last[j])
 		}
 		clip(dst, lb, ub)
 	}
@@ -206,7 +206,7 @@ func minimizeNelderMead(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float
 			shrink := false
 			switch {
 			case fxr < fsim[0]:
-				comb(xe, 1+rho*chi, rho*chi)
+				comb(xe, 1+float64(rho*chi), rho*chi)
 				fxe := bud.f(xe)
 				if fxe < fxr {
 					copy(sim[n], xe)
@@ -219,7 +219,7 @@ func minimizeNelderMead(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float
 				copy(sim[n], xr)
 				fsim[n] = fxr
 			case fxr < fsim[n]:
-				comb(xc, 1+psi*rho, psi*rho)
+				comb(xc, 1+float64(psi*rho), psi*rho)
 				fxc := bud.f(xc)
 				if fxc <= fxr {
 					copy(sim[n], xc)
@@ -242,7 +242,7 @@ func minimizeNelderMead(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float
 				for j := 1; j <= n; j++ {
 					p := sim[j]
 					for k := range p {
-						p[k] = sim[0][k] + sigma*(p[k]-sim[0][k])
+						p[k] = sim[0][k] + float64(sigma*(p[k]-sim[0][k]))
 					}
 					clip(p, lb, ub)
 					fsim[j] = bud.f(p)

@@ -28,9 +28,9 @@ func rosenDer(x, g []float64) {
 		g[i] = 0
 	}
 	for i := 0; i+1 < n; i++ {
-		a := x[i+1] - x[i]*x[i]
-		g[i] += -400*x[i]*a - 2*(1-x[i])
-		g[i+1] += 200 * a
+		a := x[i+1] - float64(x[i]*x[i])
+		g[i] += float64(-400*x[i]*a) - float64(2*(1-x[i]))
+		g[i+1] += float64(200 * a)
 	}
 }
 
@@ -40,9 +40,9 @@ func rosenHess(x, h []float64) {
 		h[i] = 0
 	}
 	for i := 0; i+1 < n; i++ {
-		h[i*n+i] += 1200*x[i]*x[i] - 400*x[i+1] + 2
-		h[i*n+i+1] += -400 * x[i]
-		h[(i+1)*n+i] += -400 * x[i]
+		h[i*n+i] += float64(1200*x[i]*x[i]) - float64(400*x[i+1]) + 2
+		h[i*n+i+1] += float64(-400 * x[i])
+		h[(i+1)*n+i] += float64(-400 * x[i])
 		h[(i+1)*n+i+1] += 200
 	}
 }
@@ -58,61 +58,60 @@ func rosenHessP(x, p, hp []float64) {
 
 func beale(x []float64) float64 {
 	a, b := x[0], x[1]
-	t1 := 1.5 - a + a*b
-	t2 := 2.25 - a + a*b*b
-	t3 := 2.625 - a + a*b*b*b
-	return t1*t1 + t2*t2 + t3*t3
+	t1 := 1.5 - a + float64(a*b)
+	t2 := 2.25 - a + float64(a*b*b)
+	t3 := 2.625 - a + float64(a*b*b*b)
+	return float64(t1*t1) + float64(t2*t2) + float64(t3*t3)
 }
 
 func bealeDer(x, g []float64) {
 	a, b := x[0], x[1]
-	t1 := 1.5 - a + a*b
-	t2 := 2.25 - a + a*b*b
-	t3 := 2.625 - a + a*b*b*b
-	g[0] = 2*t1*(b-1) + 2*t2*(b*b-1) + 2*t3*(b*b*b-1)
-	g[1] = 2*t1*a + 2*t2*2*a*b + 2*t3*3*a*b*b
+	t1 := 1.5 - a + float64(a*b)
+	t2 := 2.25 - a + float64(a*b*b)
+	t3 := 2.625 - a + float64(a*b*b*b)
+	g[0] = float64(2*t1*(b-1)) + float64(2*t2*(float64(b*b)-1)) + float64(2*t3*(float64(b*b*b)-1))
+	g[1] = float64(2*t1*a) + float64(2*t2*2*a*b) + float64(2*t3*3*a*b*b)
 }
 
 func himmelblau(x []float64) float64 {
 	a, b := x[0], x[1]
-	u := a*a + b - 11
-	v := a + b*b - 7
-	return u*u + v*v
+	u := float64(a*a) + b - 11
+	v := a + float64(b*b) - 7
+	return float64(u*u) + float64(v*v)
 }
 
 func himmelblauDer(x, g []float64) {
 	a, b := x[0], x[1]
-	u := a*a + b - 11
-	v := a + b*b - 7
-	g[0] = 4*a*u + 2*v
-	g[1] = 2*u + 4*b*v
+	u := float64(a*a) + b - 11
+	v := a + float64(b*b) - 7
+	g[0] = float64(4*a*u) + float64(2*v)
+	g[1] = float64(2*u) + float64(4*b*v)
 }
 
 func powellSing(x []float64) float64 {
 	a, b, c, d := x[0], x[1], x[2], x[3]
-	return (a+10*b)*(a+10*b) + 5*(c-d)*(c-d) + math.Pow(b-2*c, 4) + 10*math.Pow(a-d, 4)
+	return float64((a+float64(10*b))*(a+float64(10*b))) + float64(5*(c-d)*(c-d)) + math.Pow(b-float64(2*c), 4) + float64(10*math.Pow(a-d, 4))
 }
 
 func powellSingDer(x, g []float64) {
 	a, b, c, d := x[0], x[1], x[2], x[3]
-	g[0] = 2*(a+10*b) + 40*math.Pow(a-d, 3)
-	g[1] = 20*(a+10*b) + 4*math.Pow(b-2*c, 3)
-	g[2] = 10*(c-d) - 8*math.Pow(b-2*c, 3)
-	g[3] = -10*(c-d) - 40*math.Pow(a-d, 3)
+	g[0] = float64(2*(a+float64(10*b))) + float64(40*math.Pow(a-d, 3))
+	g[1] = float64(20*(a+float64(10*b))) + float64(4*math.Pow(b-float64(2*c), 3))
+	g[2] = float64(10*(c-d)) - float64(8*math.Pow(b-float64(2*c), 3))
+	g[3] = float64(-10*(c-d)) - float64(40*math.Pow(a-d, 3))
 }
 
 func wood(x []float64) float64 {
 	a, b, c, d := x[0], x[1], x[2], x[3]
-	return 100*(b-a*a)*(b-a*a) + (1-a)*(1-a) + 90*(d-c*c)*(d-c*c) + (1-c)*(1-c) +
-		10.1*((b-1)*(b-1)+(d-1)*(d-1)) + 19.8*(b-1)*(d-1)
+	return float64(100*(b-float64(a*a))*(b-float64(a*a))) + float64((1-a)*(1-a)) + float64(90*(d-float64(c*c))*(d-float64(c*c))) + float64((1-c)*(1-c)) + float64(10.1*(float64((b-1)*(b-1))+float64((d-1)*(d-1)))) + float64(19.8*(b-1)*(d-1))
 }
 
 func woodDer(x, g []float64) {
 	a, b, c, d := x[0], x[1], x[2], x[3]
-	g[0] = -400*a*(b-a*a) - 2*(1-a)
-	g[1] = 200*(b-a*a) + 20.2*(b-1) + 19.8*(d-1)
-	g[2] = -360*c*(d-c*c) - 2*(1-c)
-	g[3] = 180*(d-c*c) + 20.2*(d-1) + 19.8*(b-1)
+	g[0] = float64(-400*a*(b-float64(a*a))) - float64(2*(1-a))
+	g[1] = float64(200*(b-float64(a*a))) + float64(20.2*(b-1)) + float64(19.8*(d-1))
+	g[2] = float64(-360*c*(d-float64(c*c))) - float64(2*(1-c))
+	g[3] = float64(180*(d-float64(c*c))) + float64(20.2*(d-1)) + float64(19.8*(b-1))
 }
 
 var testFuncs = map[string]testFunc{

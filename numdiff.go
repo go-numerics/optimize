@@ -44,12 +44,12 @@ func (s fdStep) steps(x0 []float64) (h []float64, oneSided []bool) {
 		if x < 0 {
 			sign = -1
 		}
-		dflt := def * sign * math.Max(1, math.Abs(x))
+		dflt := float64(def * sign * math.Max(1, math.Abs(x)))
 		switch {
 		case s.abs != 0:
 			h[i] = s.abs
 		case s.rel != 0:
-			h[i] = s.rel * sign * math.Abs(x)
+			h[i] = float64(s.rel * sign * math.Abs(x))
 		default:
 			h[i] = dflt
 		}
@@ -121,10 +121,10 @@ func (s fdStep) gradFD(f func([]float64) float64, x0 []float64, f0 float64, g []
 		} else if one[i] {
 			x[i] = xi + h[i]
 			f1 := f(x)
-			x[i] = xi + 2*h[i]
+			x[i] = xi + float64(2*h[i])
 			f2 := f(x)
 			dx := x[i] - xi
-			g[i] = (-3*f0 + 4*f1 - f2) / dx
+			g[i] = (float64(-3*f0) + float64(4*f1) - f2) / dx
 			nfev += 2
 		} else {
 			x[i] = xi - h[i]
@@ -163,11 +163,11 @@ func (s fdStep) jacFD(f func(x, out []float64), x0, f0, jac []float64) int {
 		} else if one[j] {
 			x[j] = xj + h[j]
 			f(x, f1)
-			x[j] = xj + 2*h[j]
+			x[j] = xj + float64(2*h[j])
 			f(x, f2)
 			dx := x[j] - xj
 			for i := 0; i < m; i++ {
-				jac[i*n+j] = (-3*f0[i] + 4*f1[i] - f2[i]) / dx
+				jac[i*n+j] = (float64(-3*f0[i]) + float64(4*f1[i]) - f2[i]) / dx
 			}
 			nfev += 2
 		} else {

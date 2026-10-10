@@ -79,7 +79,7 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 			s := 0.0
 			row := H[i*n : i*n+n]
 			for j, h := range row {
-				s += h * gfk[j]
+				s += float64(h * gfk[j])
 			}
 			pk[i] = -s
 		}
@@ -90,7 +90,7 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 		}
 		oldOld, oldF = oldF, fNew
 		for i := range n {
-			sk[i] = alpha * pk[i]
+			sk[i] = float64(alpha * pk[i])
 			xk[i] += sk[i]
 			yk[i] = ls.g[i] - gfk[i]
 		}
@@ -125,17 +125,17 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 			yi := yk[i]
 			s := 0.0
 			for j, h := range row {
-				s += h * yk[j]
-				yh[j] += yi * h
+				s += float64(h * yk[j])
+				yh[j] += float64(yi * h)
 			}
 			hy[i] = s
 		}
-		c := rho*rho*dot(yk, hy) + rho
+		c := float64(rho*rho*dot(yk, hy)) + rho
 		for i := range n {
 			row := H[i*n : i*n+n]
 			si, hyi := sk[i], hy[i]
 			for j := range row {
-				row[j] += -rho*si*yh[j] - rho*hyi*sk[j] + c*si*sk[j]
+				row[j] += float64(-rho*si*yh[j]) - float64(rho*hyi*sk[j]) + float64(c*si*sk[j])
 			}
 		}
 	}

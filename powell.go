@@ -47,7 +47,7 @@ func powellLineSearch(f func([]float64) float64, p, xi []float64, tol float64, l
 	x := make([]float64, len(p))
 	along := func(alpha float64) float64 {
 		for i := range x {
-			x[i] = p[i] + alpha*xi[i]
+			x[i] = p[i] + float64(alpha*xi[i])
 		}
 		return f(x)
 	}
@@ -55,7 +55,7 @@ func powellLineSearch(f func([]float64) float64, p, xi []float64, tol float64, l
 		nx := make([]float64, len(p))
 		nxi := make([]float64, len(p))
 		for i := range p {
-			nxi[i] = alpha * xi[i]
+			nxi[i] = float64(alpha * xi[i])
 			nx[i] = p[i] + nxi[i]
 		}
 		return fun, nx, nxi
@@ -146,7 +146,7 @@ func minimizePowell(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 				stop = true
 				return
 			}
-			bnd := ftol*(math.Abs(fx)+math.Abs(fval)) + 1e-20
+			bnd := float64(ftol*(math.Abs(fx)+math.Abs(fval))) + 1e-20
 			if 2*(fx-fval) <= bnd || bud.ncalls >= maxfun || iter >= maxiter ||
 				(math.IsNaN(fx) && math.IsNaN(fval)) {
 				stop = true
@@ -164,15 +164,15 @@ func minimizePowell(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 			x2 := make([]float64, n)
 			s := math.Min(lmax, 1)
 			for i := range x2 {
-				x2[i] = x[i] + s*direc1[i]
+				x2[i] = x[i] + float64(s*direc1[i])
 			}
 			fx2 := bud.f(x2)
 			if fx > fx2 {
-				t := 2 * (fx + fx2 - 2*fval)
+				t := float64(2 * (fx + fx2 - float64(2*fval)))
 				temp := fx - fval - delta
-				t *= temp * temp
+				t *= float64(temp * temp)
 				temp = fx - fx2
-				t -= delta * temp * temp
+				t -= float64(delta * temp * temp)
 				if t < 0 {
 					fval, x, direc1 = powellLineSearch(bud.f, x, direc1, xtol*100, lb, ub, fval)
 					nonzero := false
