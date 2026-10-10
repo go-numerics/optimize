@@ -51,7 +51,7 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 	switch name {
 	case "rosenbrock":
 		return LSProblem{M: 2,
-			Func: func(x, f []float64) { f[0], f[1] = 10*(x[1]-x[0]*x[0]), 1-x[0] },
+			Func: func(x, f []float64) { f[0], f[1] = float64(10*(x[1]-float64(x[0]*x[0]))), 1-x[0] },
 			Jac:  func(x, j []float64) { copy(j, []float64{-20 * x[0], 10, -1, 0}) }}
 	case "helical":
 		theta := func(x []float64) float64 {
@@ -63,11 +63,11 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 		}
 		return LSProblem{M: 3,
 			Func: func(x, f []float64) {
-				r := math.Sqrt(x[0]*x[0] + x[1]*x[1])
-				f[0], f[1], f[2] = 10*(x[2]-10*theta(x)), 10*(r-1), x[2]
+				r := math.Sqrt(float64(x[0]*x[0]) + float64(x[1]*x[1]))
+				f[0], f[1], f[2] = float64(10*(x[2]-float64(10*theta(x)))), float64(10*(r-1)), x[2]
 			},
 			Jac: func(x, j []float64) {
-				r2 := x[0]*x[0] + x[1]*x[1]
+				r2 := float64(x[0]*x[0]) + float64(x[1]*x[1])
 				r := math.Sqrt(r2)
 				c := 100 / (2 * math.Pi * r2)
 				copy(j, []float64{c * x[1], -c * x[0], 10, 10 * x[0] / r, 10 * x[1] / r, 0, 0, 0, 1})
@@ -75,21 +75,21 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 	case "powell":
 		return LSProblem{M: 4,
 			Func: func(x, f []float64) {
-				a, b := x[1]-2*x[2], x[0]-x[3]
-				f[0], f[1], f[2], f[3] = x[0]+10*x[1], s5*(x[2]-x[3]), a*a, s10*b*b
+				a, b := x[1]-float64(2*x[2]), x[0]-x[3]
+				f[0], f[1], f[2], f[3] = x[0]+float64(10*x[1]), float64(s5*(x[2]-x[3])), float64(a*a), float64(s10*b*b)
 			},
 			Jac: func(x, j []float64) {
-				a, b := x[1]-2*x[2], x[0]-x[3]
+				a, b := x[1]-float64(2*x[2]), x[0]-x[3]
 				copy(j, []float64{1, 10, 0, 0, 0, 0, s5, -s5, 0, 2 * a, -4 * a, 0, 2 * s10 * b, 0, 0, -2 * s10 * b})
 			}}
 	case "freudenstein":
 		return LSProblem{M: 2,
 			Func: func(x, f []float64) {
-				f[0] = -13 + x[0] + ((5-x[1])*x[1]-2)*x[1]
-				f[1] = -29 + x[0] + ((x[1]+1)*x[1]-14)*x[1]
+				f[0] = -13 + x[0] + float64((float64((5-x[1])*x[1])-2)*x[1])
+				f[1] = -29 + x[0] + float64((float64((x[1]+1)*x[1])-14)*x[1])
 			},
 			Jac: func(x, j []float64) {
-				copy(j, []float64{1, (10-3*x[1])*x[1] - 2, 1, (3*x[1]+2)*x[1] - 14})
+				copy(j, []float64{1, float64((10-float64(3*x[1]))*x[1]) - 2, 1, float64((float64(3*x[1])+2)*x[1]) - 14})
 			}}
 	case "bard":
 		y := data["bard_y"]
@@ -101,14 +101,14 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 			Func: func(x, f []float64) {
 				for i := range f {
 					u, v, w := uvw(i)
-					f[i] = y[i] - (x[0] + u/(v*x[1]+w*x[2]))
+					f[i] = y[i] - (x[0] + u/(float64(v*x[1])+float64(w*x[2])))
 				}
 			},
 			Jac: func(x, j []float64) {
 				for i := 0; i < 15; i++ {
 					u, v, w := uvw(i)
-					den := v*x[1] + w*x[2]
-					den2 := den * den
+					den := float64(v*x[1]) + float64(w*x[2])
+					den2 := float64(den * den)
 					copy(j[3*i:], []float64{-1, u * v / den2, u * w / den2})
 				}
 			}}
@@ -117,16 +117,16 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 		return LSProblem{M: 11,
 			Func: func(x, f []float64) {
 				for i, u := range us {
-					num := u*u + u*x[1]
-					den := u*u + u*x[2] + x[3]
+					num := float64(u*u) + float64(u*x[1])
+					den := float64(u*u) + float64(u*x[2]) + x[3]
 					f[i] = y[i] - x[0]*num/den
 				}
 			},
 			Jac: func(x, j []float64) {
 				for i, u := range us {
-					num := u*u + u*x[1]
-					den := u*u + u*x[2] + x[3]
-					den2 := den * den
+					num := float64(u*u) + float64(u*x[1])
+					den := float64(u*u) + float64(u*x[2]) + x[3]
+					den2 := float64(den * den)
 					copy(j[4*i:], []float64{-num / den, -x[0] * u / den, x[0] * num * u / den2, x[0] * num / den2})
 				}
 			}}
@@ -134,13 +134,13 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 		return LSProblem{M: 10,
 			Func: func(x, f []float64) {
 				for i := range f {
-					t := 0.1 * float64(i+1)
-					f[i] = math.Exp(-t*x[0]) - math.Exp(-t*x[1]) - x[2]*(math.Exp(-t)-math.Exp(-10*t))
+					t := float64(0.1 * float64(i+1))
+					f[i] = math.Exp(-t*x[0]) - math.Exp(-t*x[1]) - float64(x[2]*(math.Exp(-t)-math.Exp(-10*t)))
 				}
 			},
 			Jac: func(x, j []float64) {
 				for i := 0; i < 10; i++ {
-					t := 0.1 * float64(i+1)
+					t := float64(0.1 * float64(i+1))
 					copy(j[3*i:], []float64{-t * math.Exp(-t*x[0]), t * math.Exp(-t*x[1]), -(math.Exp(-t) - math.Exp(-10*t))})
 				}
 			}}
@@ -149,25 +149,25 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 			Func: func(x, f []float64) {
 				for i := range f {
 					k := float64(i) + 1
-					f[i] = 2 + 2*k - (math.Exp(k*x[0]) + math.Exp(k*x[1]))
+					f[i] = 2 + float64(2*k) - (math.Exp(k*x[0]) + math.Exp(k*x[1]))
 				}
 			},
 			Jac: func(x, j []float64) {
 				for i := 0; i < 10; i++ {
 					k := float64(i) + 1
-					j[2*i], j[2*i+1] = -k*math.Exp(k*x[0]), -k*math.Exp(k*x[1])
+					j[2*i], j[2*i+1] = float64(-k*math.Exp(k*x[0])), float64(-k*math.Exp(k*x[1]))
 				}
 			}}
 	case "brown_dennis":
 		ab := func(x []float64, i int) (float64, float64, float64) {
 			t := float64(i+1) / 5
-			return x[0] + t*x[1] - math.Exp(t), x[2] + x[3]*math.Sin(t) - math.Cos(t), t
+			return x[0] + float64(t*x[1]) - math.Exp(t), x[2] + float64(x[3]*math.Sin(t)) - math.Cos(t), t
 		}
 		return LSProblem{M: 20,
 			Func: func(x, f []float64) {
 				for i := range f {
 					a, b, _ := ab(x, i)
-					f[i] = a*a + b*b
+					f[i] = float64(a*a) + float64(b*b)
 				}
 			},
 			Jac: func(x, j []float64) {
@@ -181,13 +181,13 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 		return LSProblem{M: 33,
 			Func: func(x, f []float64) {
 				for i := range f {
-					t := 10 * float64(i)
-					f[i] = y[i] - (x[0] + x[1]*math.Exp(-t*x[3]) + x[2]*math.Exp(-t*x[4]))
+					t := float64(10 * float64(i))
+					f[i] = y[i] - (x[0] + float64(x[1]*math.Exp(-t*x[3])) + float64(x[2]*math.Exp(-t*x[4])))
 				}
 			},
 			Jac: func(x, j []float64) {
 				for i := 0; i < 33; i++ {
-					t := 10 * float64(i)
+					t := float64(10 * float64(i))
 					e4, e5 := math.Exp(-t*x[3]), math.Exp(-t*x[4])
 					copy(j[5*i:], []float64{-1, -e4, -e5, t * x[1] * e4, t * x[2] * e5})
 				}
@@ -196,14 +196,14 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 		return LSProblem{M: 13,
 			Func: func(x, f []float64) {
 				for i := range f {
-					t := 0.1 * float64(i+1)
-					y := math.Exp(-t) - 5*math.Exp(-10*t) + 3*math.Exp(-4*t)
-					f[i] = x[2]*math.Exp(-t*x[0]) - x[3]*math.Exp(-t*x[1]) + x[5]*math.Exp(-t*x[4]) - y
+					t := float64(0.1 * float64(i+1))
+					y := math.Exp(-t) - float64(5*math.Exp(-10*t)) + float64(3*math.Exp(-4*t))
+					f[i] = float64(x[2]*math.Exp(-t*x[0])) - float64(x[3]*math.Exp(-t*x[1])) + float64(x[5]*math.Exp(-t*x[4])) - y
 				}
 			},
 			Jac: func(x, j []float64) {
 				for i := 0; i < 13; i++ {
-					t := 0.1 * float64(i+1)
+					t := float64(0.1 * float64(i+1))
 					e1, e2, e5 := math.Exp(-t*x[0]), math.Exp(-t*x[1]), math.Exp(-t*x[4])
 					copy(j[6*i:], []float64{-t * x[2] * e1, t * x[3] * e2, e1, -e2, -t * x[5] * e5, e5})
 				}
@@ -215,8 +215,7 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 				for i := range f {
 					t := float64(i) / 10
 					d9, d10, d11 := t-x[8], t-x[9], t-x[10]
-					f[i] = y[i] - (x[0]*math.Exp(-t*x[4]) + x[1]*math.Exp(-d9*d9*x[5]) +
-						x[2]*math.Exp(-d10*d10*x[6]) + x[3]*math.Exp(-d11*d11*x[7]))
+					f[i] = y[i] - (float64(x[0]*math.Exp(-t*x[4])) + float64(x[1]*math.Exp(-d9*d9*x[5])) + float64(x[2]*math.Exp(-d10*d10*x[6])) + float64(x[3]*math.Exp(-d11*d11*x[7])))
 				}
 			},
 			Jac: func(x, j []float64) {
@@ -238,19 +237,19 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 					t := float64(i+1) / 29
 					s1, tj := 0.0, 1.0
 					for j := 1; j < n; j++ {
-						s1 += float64(j) * x[j] * tj
+						s1 += float64(float64(j) * x[j] * tj)
 						tj *= t
 					}
 					s2 := 0.0
 					tj = 1
 					for j := 0; j < n; j++ {
-						s2 += x[j] * tj
+						s2 += float64(x[j] * tj)
 						tj *= t
 					}
-					f[i] = s1 - s2*s2 - 1
+					f[i] = s1 - float64(s2*s2) - 1
 				}
 				f[29] = x[0]
-				f[30] = x[1] - x[0]*x[0] - 1
+				f[30] = x[1] - float64(x[0]*x[0]) - 1
 			},
 			Jac: func(x, jac []float64) {
 				for k := range jac {
@@ -260,19 +259,19 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 					t := float64(i+1) / 29
 					s2, tj := 0.0, 1.0
 					for j := 0; j < n; j++ {
-						s2 += x[j] * tj
+						s2 += float64(x[j] * tj)
 						tj *= t
 					}
 					tj = 1
 					tjm := 0.0
 					for j := 0; j < n; j++ {
-						jac[i*n+j] = float64(j)*tjm - 2*s2*tj
+						jac[i*n+j] = float64(float64(j)*tjm) - float64(2*s2*tj)
 						tjm = tj
 						tj *= t
 					}
 				}
 				jac[29*n] = 1
-				jac[30*n] = -2 * x[0]
+				jac[30*n] = float64(-2 * x[0])
 				jac[30*n+1] = 1
 			}}
 	case "expfit", "clean":
@@ -283,7 +282,7 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 		return LSProblem{M: len(ts),
 			Func: func(x, f []float64) {
 				for i, t := range ts {
-					f[i] = x[0] + x[1]*math.Exp(x[2]*t) - y[i]
+					f[i] = x[0] + float64(x[1]*math.Exp(x[2]*t)) - y[i]
 				}
 			},
 			Jac: func(x, j []float64) {
@@ -298,11 +297,11 @@ func trfProblem(name string, data map[string][]float64) LSProblem {
 			Jac:  func(x, j []float64) { copy(j, []float64{1 / x[0], 0, 0, 1}) }}
 	case "circle":
 		return LSProblem{M: 1,
-			Func: func(x, f []float64) { f[0] = x[0]*x[0] + x[1]*x[1] - 1 },
-			Jac:  func(x, j []float64) { j[0], j[1] = 2*x[0], 2*x[1] }}
+			Func: func(x, f []float64) { f[0] = float64(x[0]*x[0]) + float64(x[1]*x[1]) - 1 },
+			Jac:  func(x, j []float64) { j[0], j[1] = float64(2*x[0]), float64(2*x[1]) }}
 	case "zerocol":
 		return LSProblem{M: 2,
-			Func: func(x, f []float64) { f[0], f[1] = x[0]*x[0]+x[1]-3, x[1]-1 },
+			Func: func(x, f []float64) { f[0], f[1] = float64(x[0]*x[0])+x[1]-3, x[1]-1 },
 			Jac:  func(x, j []float64) { copy(j, []float64{2 * x[0], 1, 0, 1}) }}
 	case "balanced":
 		return LSProblem{M: 2,
@@ -393,7 +392,7 @@ func TestTRFAgainstSciPy(t *testing.T) {
 		t.Logf("%-32s nfev %3d/%3d njev %3d/%3d status %d/%d  |dx| %.1e  dcost %.1e  opt %.2e/%.2e",
 			c.Name, r.Nfev, c.Nfev, r.Njev, c.Njev, r.Status, c.Status, dx, dcost, r.Optimality, c.Optimality)
 		switch {
-		case math.Abs(r.Cost-c.Cost) > 1e-6*c.Cost+1e-12:
+		case math.Abs(r.Cost-c.Cost) > float64(1e-6*c.Cost)+1e-12:
 			t.Errorf("%s: cost %.17g, SciPy %.17g", c.Name, r.Cost, c.Cost)
 		}
 		for i := range c.ActiveMask {
@@ -433,7 +432,7 @@ func TestTRFErrors(t *testing.T) {
 		{"jac-fd", LSProblem{M: 2, Func: func(x, f []float64) {
 			f[0], f[1] = x[0], 0
 			if x[0] != 3 {
-				f[1] = 1e308 * (x[0] - 3) * 1e10
+				f[1] = float64(1e308 * (x[0] - 3) * 1e10)
 			}
 		}}, nil},
 		{"svd", LSProblem{M: 2, Func: lin, Jac: func(x, j []float64) { copy(j, []float64{1e300, 0, 0, 1}) }},

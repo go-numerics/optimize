@@ -69,7 +69,7 @@ func (f *lpFactor) factor(b []float64, m int, rel float64) bool {
 			lu[i*m+k] = l
 			if l != 0 {
 				for j := k + 1; j < m; j++ {
-					lu[i*m+j] -= l * lu[k*m+j]
+					lu[i*m+j] -= float64(l * lu[k*m+j])
 				}
 			}
 		}
@@ -87,14 +87,14 @@ func (f *lpFactor) ftran(v []float64) []float64 {
 	for i := 0; i < m; i++ {
 		s := w[i]
 		for k := 0; k < i; k++ {
-			s -= lu[i*m+k] * w[k]
+			s -= float64(lu[i*m+k] * w[k])
 		}
 		w[i] = s
 	}
 	for i := m - 1; i >= 0; i-- {
 		s := w[i]
 		for k := i + 1; k < m; k++ {
-			s -= lu[i*m+k] * w[k]
+			s -= float64(lu[i*m+k] * w[k])
 		}
 		w[i] = s / lu[i*m+i]
 	}
@@ -102,7 +102,7 @@ func (f *lpFactor) ftran(v []float64) []float64 {
 		a := f.etaV[e]
 		xr := w[r] / a[r]
 		for i := range w {
-			w[i] -= a[i] * xr
+			w[i] -= float64(a[i] * xr)
 		}
 		w[r] = xr
 	}
@@ -118,7 +118,7 @@ func (f *lpFactor) btran(v []float64) []float64 {
 		s := w[r]
 		for i := range w {
 			if i != r {
-				s -= a[i] * w[i]
+				s -= float64(a[i] * w[i])
 			}
 		}
 		w[r] = s / a[r]
@@ -126,14 +126,14 @@ func (f *lpFactor) btran(v []float64) []float64 {
 	for i := 0; i < m; i++ {
 		s := w[i]
 		for k := 0; k < i; k++ {
-			s -= lu[k*m+i] * w[k]
+			s -= float64(lu[k*m+i] * w[k])
 		}
 		w[i] = s / lu[i*m+i]
 	}
 	for i := m - 1; i >= 0; i-- {
 		s := w[i]
 		for k := i + 1; k < m; k++ {
-			s -= lu[k*m+i] * w[k]
+			s -= float64(lu[k*m+i] * w[k])
 		}
 		w[i] = s
 	}
@@ -204,7 +204,7 @@ func newSimplex(p *lpProblem, tol float64) *lpSimplex {
 	r := clone(s.b)
 	for j := 0; j < p.n; j++ {
 		for i := range r {
-			r[i] -= s.cols[j][i] * s.x[j]
+			r[i] -= float64(s.cols[j][i] * s.x[j])
 		}
 	}
 	s.head = make([]int, m)
@@ -254,7 +254,7 @@ func (s *lpSimplex) refactorise() bool {
 	for j := 0; j < s.ncol; j++ {
 		if s.pos[j] < 0 && s.x[j] != 0 {
 			for i := range rhs {
-				rhs[i] -= s.cols[j][i] * s.x[j]
+				rhs[i] -= float64(s.cols[j][i] * s.x[j])
 			}
 		}
 	}
@@ -270,7 +270,7 @@ func (s *lpSimplex) refactorise() bool {
 // singular basis (LPNumericalFail).
 func (s *lpSimplex) run(maxIter int) int {
 	m := s.m
-	ctol := s.tol * math.Max(1, norm(s.cost, math.Inf(1)))
+	ctol := float64(s.tol * math.Max(1, norm(s.cost, math.Inf(1))))
 	cb := make([]float64, m)
 	for {
 		if s.refactor && !s.refactorise() {
@@ -315,9 +315,9 @@ func (s *lpSimplex) run(maxIter int) int {
 			return LPUnbounded
 		}
 		s.nit++
-		s.x[q] += dir * t
+		s.x[q] += float64(dir * t)
 		for i, j := range s.head {
-			s.x[j] -= dir * t * alpha[i]
+			s.x[j] -= float64(dir * t * alpha[i])
 		}
 		if r < 0 { // bound flip
 			s.x[q] = s.hi[q]
@@ -352,13 +352,13 @@ func (s *lpSimplex) run(maxIter int) int {
 func (s *lpSimplex) ratio(q int, dir float64, alpha []float64) (r int, t float64, ok bool) {
 	flip := s.hi[q] - s.lo[q]
 	amax := norm(alpha, math.Inf(1))
-	pt := 1e-9 * math.Max(1, amax)
+	pt := float64(1e-9 * math.Max(1, amax))
 	ftol := s.tol
 	// rate[i] is d x_B[i] / d t; limit returns the distance to the bound
 	// it heads for, relaxed by slack.
 	limit := func(i int, slack float64) float64 {
 		j := s.head[i]
-		a := -dir * alpha[i]
+		a := float64(-dir * alpha[i])
 		switch {
 		case a < -pt:
 			return (s.x[j] - s.lo[j] + slack) / -a
@@ -418,7 +418,7 @@ func simplexLP(p *lpProblem, tol float64, maxIter int) lpSolution {
 	for j := s.n + s.mub; j < s.ncol; j++ {
 		infeas += math.Abs(s.x[j])
 	}
-	if lim := tol * (1 + norm(s.b, math.Inf(1))); infeas > lim {
+	if lim := float64(tol * (1 + norm(s.b, math.Inf(1)))); infeas > lim {
 		return finish(LPInfeasible, fmt.Sprintf("The problem appears infeasible, as the "+
 			"phase one auxiliary problem terminated successfully with a residual of "+
 			"%.1e, greater than the tolerance %.1e required for the solution to be "+

@@ -205,9 +205,9 @@ func lpIndependentRows(a, b []float64, m, n int, tol float64) (keep []int, ok bo
 			for k, q := range qs {
 				r := dot(q, v)
 				for j := range v {
-					v[j] -= r * q[j]
+					v[j] -= float64(r * q[j])
 				}
-				bb -= r * betas[k]
+				bb -= float64(r * betas[k])
 			}
 		}
 		vn := enorm(v)

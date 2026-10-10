@@ -130,7 +130,7 @@ func arrayData(a *ndarray.Array) []float64 {
 func dot(a, b []float64) float64 {
 	s := 0.0
 	for i := range a {
-		s += a[i] * b[i]
+		s += float64(a[i] * b[i])
 	}
 	return s
 }
@@ -171,16 +171,16 @@ func enorm(v []float64) float64 {
 		}
 		ax := math.Abs(x)
 		if scale < ax {
-			ssq = 1 + ssq*(scale/ax)*(scale/ax)
+			ssq = 1 + float64(ssq*(scale/ax)*(scale/ax))
 			scale = ax
 		} else {
-			ssq += (ax / scale) * (ax / scale)
+			ssq += float64((ax / scale) * (ax / scale))
 		}
 	}
 	if math.IsInf(scale, 1) {
 		return scale
 	}
-	return scale * math.Sqrt(ssq)
+	return float64(scale * math.Sqrt(ssq))
 }
 
 func clone(v []float64) []float64 { return append([]float64(nil), v...) }

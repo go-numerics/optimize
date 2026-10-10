@@ -108,8 +108,16 @@ func TestMinimizeAgainstSciPy(t *testing.T) {
 				return
 			}
 			if !c.Success {
-				// SciPy did not converge: we must not do worse.
-				if r.Fun > c.Fun*(1+1e-9)+1e-12 {
+				// SciPy stopped on a budget: we must stop the same way, at a
+				// comparable point. Where the run is cut half-way along a
+				// long valley (L-BFGS-B on rosen100 with finite differences)
+				// f depends on the path, and SciPy's own path depends on its
+				// BLAS (Accelerate's blocked FMA kernels), so only a 10%
+				// band is meaningful.
+				if r.Status != c.Status || r.Message != c.Message {
+					t.Errorf("status %d %q, SciPy %d %q", r.Status, r.Message, c.Status, c.Message)
+				}
+				if r.Fun > 1.1*c.Fun+1e-12 {
 					t.Errorf("fun %.6e worse than SciPy's unconverged %.6e", r.Fun, c.Fun)
 				}
 				return

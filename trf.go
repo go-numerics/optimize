@@ -46,21 +46,21 @@ type lsRobust struct {
 func (l *lsRobust) rho(f []float64) {
 	for i, fi := range f {
 		t := fi / l.fs
-		z := t * t
+		z := float64(t * t)
 		switch l.kind {
 		case LossHuber:
 			if z <= 1 {
 				l.rho0[i], l.rho1[i], l.rho2[i] = z, 1, 0
 			} else {
-				l.rho0[i] = 2*math.Sqrt(z) - 1
+				l.rho0[i] = float64(2*math.Sqrt(z)) - 1
 				l.rho1[i] = math.Pow(z, -0.5)
-				l.rho2[i] = -0.5 * math.Pow(z, -1.5)
+				l.rho2[i] = float64(-0.5 * math.Pow(z, -1.5))
 			}
 		case LossSoftL1:
 			t := 1 + z
-			l.rho0[i] = 2 * (math.Sqrt(t) - 1)
+			l.rho0[i] = float64(2 * (math.Sqrt(t) - 1))
 			l.rho1[i] = math.Pow(t, -0.5)
-			l.rho2[i] = -0.5 * math.Pow(t, -1.5)
+			l.rho2[i] = float64(-0.5 * math.Pow(t, -1.5))
 		case LossCauchy:
 			l.rho0[i] = math.Log1p(z)
 			t := 1 + z
@@ -68,7 +68,7 @@ func (l *lsRobust) rho(f []float64) {
 			l.rho2[i] = -1 / (t * t)
 		default: // LossArctan
 			l.rho0[i] = math.Atan(z)
-			t := 1 + z*z
+			t := 1 + float64(z*z)
 			l.rho1[i] = 1 / t
 			l.rho2[i] = -2 * z / (t * t)
 		}
@@ -78,13 +78,13 @@ func (l *lsRobust) rho(f []float64) {
 // cost is loss_function(f, cost_only=True): ½·fs²·Σρ(z).
 func (l *lsRobust) cost(f []float64) float64 {
 	l.rho(f)
-	return 0.5 * (l.fs * l.fs) * trfSum(l.rho0)
+	return float64(0.5 * (l.fs * l.fs) * trfSum(l.rho0))
 }
 
 // eval is loss_function(f): ρ scaled by fs² and the second derivative by 1/fs².
 func (l *lsRobust) eval(f []float64) {
 	l.rho(f)
-	fs2 := l.fs * l.fs
+	fs2 := float64(l.fs * l.fs)
 	for i := range l.rho0 {
 		l.rho0[i] *= fs2
 		l.rho2[i] /= fs2
@@ -96,12 +96,12 @@ func (l *lsRobust) eval(f []float64) {
 // becomes an ordinary least-squares one.
 func (l *lsRobust) scale(j, f []float64, n int) {
 	for i, fi := range f {
-		s := l.rho1[i] + 2*l.rho2[i]*fi*fi
+		s := l.rho1[i] + float64(2*l.rho2[i]*fi*fi)
 		if s < epsmch {
 			s = epsmch
 		}
 		s = math.Sqrt(s)
-		f[i] = fi * (l.rho1[i] / s)
+		f[i] = float64(fi * (l.rho1[i] / s))
 		row := j[i*n : (i+1)*n]
 		for k := range row {
 			row[k] *= s
@@ -166,10 +166,10 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 		loss = &lsRobust{kind: o.Loss, fs: o.FScale,
 			rho0: make([]float64, m), rho1: make([]float64, m), rho2: make([]float64, m)}
 		loss.eval(f)
-		cost = 0.5 * trfSum(loss.rho0)
+		cost = float64(0.5 * trfSum(loss.rho0))
 		loss.scale(J, f, n)
 	} else {
-		cost = 0.5 * dot(f, f)
+		cost = float64(0.5 * dot(f, f))
 	}
 	g := make([]float64, n)
 	gradTF(J, f, g)
@@ -201,7 +201,7 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 		}
 	} else {
 		for i := range tmp {
-			tmp[i] = x0[i] * scaleInv[i]
+			tmp[i] = float64(x0[i] * scaleInv[i])
 		}
 	}
 	Delta := trfNorm2(tmp)
@@ -234,7 +234,7 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 		if bounded {
 			clScaling(x, g, lb, ub, v, dv)
 			for i := range tmp {
-				tmp[i] = g[i] * v[i]
+				tmp[i] = float64(g[i] * v[i])
 			}
 			gNorm = norm(tmp, math.Inf(1))
 		} else {
@@ -252,16 +252,16 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 				if dv[i] != 0 {
 					v[i] *= scaleInv[i]
 				}
-				d[i] = math.Sqrt(v[i]) * scale[i]
-				diagH[i] = g[i] * dv[i] * scale[i]
+				d[i] = float64(math.Sqrt(v[i]) * scale[i])
+				diagH[i] = float64(g[i] * dv[i] * scale[i])
 			} else {
 				d[i] = scale[i]
 			}
-			gh[i] = d[i] * g[i]
+			gh[i] = float64(d[i] * g[i])
 		}
 		for i := 0; i < m; i++ {
 			for k := 0; k < n; k++ {
-				Jaug[i*n+k] = J[i*n+k] * d[k]
+				Jaug[i*n+k] = float64(J[i*n+k] * d[k])
 			}
 		}
 		copy(faug, f)
@@ -284,7 +284,7 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 		for c := 0; c < k; c++ {
 			acc := 0.0
 			for r := 0; r < rows; r++ {
-				acc += U[r*k+c] * faug[r]
+				acc += float64(U[r*k+c] * faug[r])
 			}
 			uf[c] = acc
 		}
@@ -299,7 +299,7 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 			if bounded {
 				pp := make([]float64, n)
 				for i := range pp {
-					pp[i] = d[i] * ph[i]
+					pp[i] = float64(d[i] * ph[i])
 				}
 				step, stepH, predicted = selectStep(x, Jh, m, diagH, gh, pp, ph, d, Delta, lb, ub, theta)
 				for i := range xNew {
@@ -310,7 +310,7 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 				predicted = -evaluateQuadratic(Jh, m, gh, ph, nil, jtmp)
 				step = make([]float64, n)
 				for i := range step {
-					step[i] = d[i] * ph[i]
+					step[i] = float64(d[i] * ph[i])
 					xNew[i] = x[i] + step[i]
 				}
 				stepH = ph
@@ -319,13 +319,13 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 			nfev++
 			stepHNorm := trfNorm2(stepH)
 			if !trfFinite(fNew) {
-				Delta = 0.25 * stepHNorm
+				Delta = float64(0.25 * stepHNorm)
 				continue
 			}
 			if loss != nil {
 				costNew = loss.cost(fNew)
 			} else {
-				costNew = 0.5 * dot(fNew, fNew)
+				costNew = float64(0.5 * dot(fNew, fNew))
 			}
 			actualReduction = cost - costNew
 			DeltaNew, ratio := updateTrRadius(Delta, actualReduction, predicted,
@@ -389,7 +389,7 @@ func gradTF(J, f, g []float64) {
 	for i, fi := range f {
 		row := J[i*n : (i+1)*n]
 		for k, jik := range row {
-			g[k] += jik * fi
+			g[k] += float64(jik * fi)
 		}
 	}
 }
@@ -401,7 +401,7 @@ func jacScale(J []float64, m, n int, old []float64) (scale, scaleInv []float64) 
 	for k := range scaleInv {
 		s := 0.0
 		for i := 0; i < m; i++ {
-			s += J[i*n+k] * J[i*n+k]
+			s += float64(J[i*n+k] * J[i*n+k])
 		}
 		scaleInv[k] = math.Sqrt(s)
 		if old == nil {
@@ -459,7 +459,7 @@ func updateTrRadius(Delta, actual, predicted, stepNorm float64, boundHit bool) (
 		ratio = 1
 	}
 	if ratio < 0.25 {
-		Delta = 0.25 * stepNorm
+		Delta = float64(0.25 * stepNorm)
 	} else if ratio > 0.75 && boundHit {
 		Delta *= 2
 	}
@@ -475,17 +475,17 @@ func solveLsqTrustRegion(n, m int, uf, s, V []float64, Delta, initialAlpha float
 	k := len(s)
 	suf := make([]float64, k)
 	for i := range suf {
-		suf[i] = s[i] * uf[i]
+		suf[i] = float64(s[i] * uf[i])
 	}
 	w := make([]float64, k)
 	phiAndDerivative := func(alpha float64) (float64, float64) {
 		for i := range w {
-			w[i] = suf[i] / (s[i]*s[i] + alpha)
+			w[i] = suf[i] / (float64(s[i]*s[i]) + alpha)
 		}
 		pNorm := trfNorm2(w)
 		acc := 0.0
 		for i := range w {
-			den := s[i]*s[i] + alpha
+			den := float64(s[i]*s[i]) + alpha
 			acc += suf[i] * suf[i] / (den * den * den)
 		}
 		return pNorm - Delta, -acc / pNorm
@@ -495,7 +495,7 @@ func solveLsqTrustRegion(n, m int, uf, s, V []float64, Delta, initialAlpha float
 		for r := 0; r < n; r++ {
 			acc := 0.0
 			for c := 0; c < k; c++ {
-				acc += V[r*k+c] * w[c]
+				acc += float64(V[r*k+c] * w[c])
 			}
 			p[r] = -acc
 		}
@@ -540,7 +540,7 @@ func solveLsqTrustRegion(n, m int, uf, s, V []float64, Delta, initialAlpha float
 		}
 	}
 	for i := range w {
-		w[i] = suf[i] / (s[i]*s[i] + alpha)
+		w[i] = suf[i] / (float64(s[i]*s[i]) + alpha)
 	}
 	p := vmul(w)
 	f := Delta / trfNorm2(p)
@@ -561,14 +561,14 @@ func evaluateQuadratic(J []float64, m int, g, s, diag, js []float64) float64 {
 	if diag != nil {
 		q += diagQuad(s, diag, s)
 	}
-	return 0.5*q + dot(s, g)
+	return float64(0.5*q) + dot(s, g)
 }
 
 // diagQuad is np.dot(a * diag, b).
 func diagQuad(a, diag, b []float64) float64 {
 	r := 0.0
 	for i := range a {
-		r += a[i] * diag[i] * b[i]
+		r += float64(a[i] * diag[i] * b[i])
 	}
 	return r
 }
@@ -591,9 +591,9 @@ func buildQuadratic1D(J []float64, m int, g, s, diag, s0 []float64) (a, b, c flo
 			u[i] = dot(J[i*n:(i+1)*n], s0)
 		}
 		b += dot(u, v)
-		c = 0.5*dot(u, u) + dot(g, s0)
+		c = float64(0.5*dot(u, u)) + dot(g, s0)
 		b += diagQuad(s0, diag, s)
-		c += 0.5 * diagQuad(s0, diag, s0)
+		c += float64(0.5 * diagQuad(s0, diag, s0))
 	}
 	return a, b, c
 }
@@ -607,9 +607,9 @@ func minimizeQuadratic1D(a, b, lb, ub, c float64) (float64, float64) {
 			ts = append(ts, e)
 		}
 	}
-	bt, by := ts[0], ts[0]*(a*ts[0]+b)+c
+	bt, by := ts[0], float64(ts[0]*(float64(a*ts[0])+b))+c
 	for _, t := range ts[1:] {
-		if y := t*(a*t+b) + c; y < by {
+		if y := float64(t*(float64(a*t)+b)) + c; y < by {
 			bt, by = t, y
 		}
 	}
@@ -621,8 +621,8 @@ func minimizeQuadratic1D(a, b, lb, ub, c float64) (float64, float64) {
 func intersectTrustRegion(x, s []float64, Delta float64) (float64, float64) {
 	a := dot(s, s)
 	b := dot(x, s)
-	c := dot(x, x) - Delta*Delta
-	d := math.Sqrt(b*b - a*c)
+	c := dot(x, x) - float64(Delta*Delta)
+	d := math.Sqrt(float64(b*b) - float64(a*c))
 	q := -(b + math.Copysign(d, b))
 	t1, t2 := q/a, c/q
 	if t1 < t2 {
@@ -681,8 +681,8 @@ func findActiveConstraints(x, lb, ub []float64, rtol float64) []int {
 			continue
 		}
 		lo, up := x[i]-lb[i], ub[i]-x[i]
-		loT := rtol * math.Max(1, math.Abs(lb[i]))
-		upT := rtol * math.Max(1, math.Abs(ub[i]))
+		loT := float64(rtol * math.Max(1, math.Abs(lb[i])))
+		upT := float64(rtol * math.Max(1, math.Abs(ub[i])))
 		if !math.IsInf(lb[i], 0) && lo <= math.Min(up, loT) {
 			active[i] = -1
 		}
@@ -706,12 +706,12 @@ func makeStrictlyFeasible(x, lb, ub []float64, rstep float64) []float64 {
 		case a == 1 && rstep == 0:
 			out[i] = math.Nextafter(ub[i], lb[i])
 		case a == -1:
-			out[i] = lb[i] + rstep*math.Max(1, math.Abs(lb[i]))
+			out[i] = lb[i] + float64(rstep*math.Max(1, math.Abs(lb[i])))
 		case a == 1:
-			out[i] = ub[i] - rstep*math.Max(1, math.Abs(ub[i]))
+			out[i] = ub[i] - float64(rstep*math.Max(1, math.Abs(ub[i])))
 		}
 		if out[i] < lb[i] || out[i] > ub[i] {
-			out[i] = 0.5 * (lb[i] + ub[i])
+			out[i] = float64(0.5 * (lb[i] + ub[i]))
 		}
 	}
 	return out
@@ -742,7 +742,7 @@ func selectStep(x, Jh []float64, m int, diagH, gh, p, ph, d []float64, Delta flo
 		if hits[i] != 0 {
 			rh[i] = -rh[i]
 		}
-		r[i] = d[i] * rh[i]
+		r[i] = float64(d[i] * rh[i])
 		p[i] *= pStride
 		ph[i] *= pStride
 		xOnBound[i] = x[i] + p[i]
@@ -754,7 +754,7 @@ func selectStep(x, Jh []float64, m int, diagH, gh, p, ph, d []float64, Delta flo
 	if rStride > 0 {
 		rStrideL = (1 - theta) * pStride / rStride
 		if rStride == toBound {
-			rStrideU = theta * toBound
+			rStrideU = float64(theta * toBound)
 		} else {
 			rStrideU = toTr
 		}
@@ -766,8 +766,8 @@ func selectStep(x, Jh []float64, m int, diagH, gh, p, ph, d []float64, Delta flo
 		a, b, c := buildQuadratic1D(Jh, m, gh, rh, diagH, ph)
 		rStride, rValue = minimizeQuadratic1D(a, b, rStrideL, rStrideU, c)
 		for i := range rh {
-			rh[i] = rh[i]*rStride + ph[i]
-			r[i] = rh[i] * d[i]
+			rh[i] = float64(rh[i]*rStride) + ph[i]
+			r[i] = float64(rh[i] * d[i])
 		}
 	}
 
@@ -783,13 +783,13 @@ func selectStep(x, Jh []float64, m int, diagH, gh, p, ph, d []float64, Delta flo
 	ag := make([]float64, n)
 	for i := range agh {
 		agh[i] = -gh[i]
-		ag[i] = d[i] * agh[i]
+		ag[i] = float64(d[i] * agh[i])
 	}
 	toTr = Delta / trfNorm2(agh)
 	toBound, _ = stepSizeToBound(x, ag, lb, ub)
 	agStride := toTr
 	if toBound < toTr {
-		agStride = theta * toBound
+		agStride = float64(theta * toBound)
 	}
 	a, b, _ := buildQuadratic1D(Jh, m, gh, agh, diagH, nil)
 	agStride, agValue := minimizeQuadratic1D(a, b, 0, agStride, 0)

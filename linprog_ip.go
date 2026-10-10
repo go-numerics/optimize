@@ -60,7 +60,7 @@ func standardForm(p *lpProblem) *lpStandard {
 	row := func(i int) []float64 { return s.a[i*nn : (i+1)*nn] }
 	for i := 0; i < p.mub; i++ {
 		for j := 0; j < n; j++ {
-			row(i)[j] = sign[j] * p.aub[i*n+j]
+			row(i)[j] = float64(sign[j] * p.aub[i*n+j])
 		}
 		s.b[i] = p.bub[i]
 	}
@@ -70,7 +70,7 @@ func standardForm(p *lpProblem) *lpStandard {
 	}
 	for i := 0; i < p.meq; i++ {
 		for j := 0; j < n; j++ {
-			row(mu + i)[j] = sign[j] * p.aeq[i*n+j]
+			row(mu + i)[j] = float64(sign[j] * p.aeq[i*n+j])
 		}
 		s.b[mu+i] = p.beq[i]
 	}
@@ -87,7 +87,7 @@ func standardForm(p *lpProblem) *lpStandard {
 	for j := 0; j < n; j++ {
 		if !math.IsInf(lb[j], -1) && lb[j] != 0 {
 			for i := 0; i < m; i++ {
-				s.b[i] -= row(i)[j] * lb[j]
+				s.b[i] -= float64(row(i)[j] * lb[j])
 			}
 		}
 	}
@@ -121,7 +121,7 @@ func lpCholesky(a []float64, m int) bool {
 	for j := 0; j < m; j++ {
 		d := a[j*m+j]
 		for k := 0; k < j; k++ {
-			d -= a[j*m+k] * a[j*m+k]
+			d -= float64(a[j*m+k] * a[j*m+k])
 		}
 		if !(d > 0) {
 			return false
@@ -131,7 +131,7 @@ func lpCholesky(a []float64, m int) bool {
 		for i := j + 1; i < m; i++ {
 			s := a[i*m+j]
 			for k := 0; k < j; k++ {
-				s -= a[i*m+k] * a[j*m+k]
+				s -= float64(a[i*m+k] * a[j*m+k])
 			}
 			a[i*m+j] = s / d
 		}
@@ -193,14 +193,14 @@ func lpCholSolve(l []float64, m int, r []float64) []float64 {
 	for i := 0; i < m; i++ {
 		s := v[i]
 		for k := 0; k < i; k++ {
-			s -= l[i*m+k] * v[k]
+			s -= float64(l[i*m+k] * v[k])
 		}
 		v[i] = s / l[i*m+i]
 	}
 	for i := m - 1; i >= 0; i-- {
 		s := v[i]
 		for k := i + 1; k < m; k++ {
-			s -= l[k*m+i] * v[k]
+			s -= float64(l[k*m+i] * v[k])
 		}
 		v[i] = s / l[i*m+i]
 	}
@@ -220,7 +220,7 @@ func (s *lpStandard) mulAT(y []float64) []float64 {
 	for i, yi := range y {
 		if yi != 0 {
 			for j, v := range s.a[i*s.nn : (i+1)*s.nn] {
-				out[j] += v * yi
+				out[j] += float64(v * yi)
 			}
 		}
 	}
@@ -241,16 +241,16 @@ func (h *lpHSD) indicators() (rhoP, rhoD, rhoA, rhoG, rhoMu float64) {
 	ax := s.mulA(h.x)
 	rp := make([]float64, s.m)
 	for i := range rp {
-		rp[i] = s.b[i]*h.tau - ax[i]
+		rp[i] = float64(s.b[i]*h.tau) - ax[i]
 	}
 	aty := s.mulAT(h.y)
 	rd := make([]float64, s.nn)
 	for j := range rd {
-		rd[j] = s.c[j]*h.tau - aty[j] - h.z[j]
+		rd[j] = float64(s.c[j]*h.tau) - aty[j] - h.z[j]
 	}
 	cx, by := dot(s.c, h.x), dot(s.b, h.y)
 	rg := h.kappa + cx - by
-	mu := (dot(h.x, h.z) + h.tau*h.kappa) / float64(s.nn+1)
+	mu := (dot(h.x, h.z) + float64(h.tau*h.kappa)) / float64(s.nn+1)
 	rhoA = math.Abs(cx-by) / (h.tau + math.Abs(by))
 	rhoP = enorm(rp) / math.Max(1, h.rp0)
 	rhoD = enorm(rd) / math.Max(1, h.rd0)
@@ -267,14 +267,14 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 	ax, aty := s.mulA(x), s.mulAT(y)
 	rP := make([]float64, m)
 	for i := range rP {
-		rP[i] = s.b[i]*tau - ax[i]
+		rP[i] = float64(s.b[i]*tau) - ax[i]
 	}
 	rD := make([]float64, nn)
 	for j := range rD {
-		rD[j] = s.c[j]*tau - aty[j] - z[j]
+		rD[j] = float64(s.c[j]*tau) - aty[j] - z[j]
 	}
 	rG := dot(s.c, x) - dot(s.b, y) + kappa
-	mu := (dot(x, z) + tau*kappa) / float64(nn+1)
+	mu := (dot(x, z) + float64(tau*kappa)) / float64(nn+1)
 	dinv := make([]float64, nn)
 	for j := range dinv {
 		dinv[j] = x[j] / z[j]
@@ -286,7 +286,7 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 			ak := s.a[k*nn : (k+1)*nn]
 			v := 0.0
 			for j, d := range dinv {
-				v += ai[j] * d * ak[j]
+				v += float64(ai[j] * d * ak[j])
 			}
 			mm[i*m+k], mm[k*m+i] = v, v
 		}
@@ -295,7 +295,7 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 	symSolve := func(r1, r2 []float64) (u, v []float64) {
 		t := make([]float64, nn)
 		for j := range t {
-			t[j] = dinv[j] * r1[j]
+			t[j] = float64(dinv[j] * r1[j])
 		}
 		r := s.mulA(t)
 		for i := range r {
@@ -304,7 +304,7 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 		v = ns.solve(r)
 		u = s.mulAT(v)
 		for j := range u {
-			u[j] = dinv[j] * (u[j] - r1[j])
+			u[j] = float64(dinv[j] * (u[j] - r1[j]))
 		}
 		return u, v
 	}
@@ -317,21 +317,21 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 	for pass := 0; pass < 2; pass++ {
 		eta := 1 - gamma
 		for i := range rhatp {
-			rhatp[i] = eta * rP[i]
+			rhatp[i] = float64(eta * rP[i])
 		}
-		rhatg := eta * rG
-		rhattk := gamma*mu - tau*kappa
+		rhatg := float64(eta * rG)
+		rhattk := float64(gamma*mu) - float64(tau*kappa)
 		for j := range rhatxs {
-			rhatxs[j] = gamma*mu - x[j]*z[j]
+			rhatxs[j] = float64(gamma*mu) - float64(x[j]*z[j])
 			if pass == 1 {
-				rhatxs[j] -= dx[j] * dz[j]
+				rhatxs[j] -= float64(dx[j] * dz[j])
 			}
 		}
 		if pass == 1 {
-			rhattk -= dtau * dkappa
+			rhattk -= float64(dtau * dkappa)
 		}
 		for j := range r1 {
-			r1[j] = eta*rD[j] - rhatxs[j]/x[j]
+			r1[j] = float64(eta*rD[j]) - rhatxs[j]/x[j]
 		}
 		u, v := symSolve(r1, rhatp)
 		dtau = (rhatg + rhattk/tau - (-dot(s.c, u) + dot(s.b, v))) / (kappa/tau + (-cp + bq))
@@ -339,15 +339,15 @@ func (h *lpHSD) direction() (dx, dy, dz []float64, dtau, dkappa float64) {
 		dz = make([]float64, nn)
 		dy = make([]float64, m)
 		for j := range dx {
-			dx[j] = u[j] + p[j]*dtau
-			dz[j] = (rhatxs[j] - z[j]*dx[j]) / x[j]
+			dx[j] = u[j] + float64(p[j]*dtau)
+			dz[j] = (rhatxs[j] - float64(z[j]*dx[j])) / x[j]
 		}
 		for i := range dy {
-			dy[i] = v[i] + q[i]*dtau
+			dy[i] = v[i] + float64(q[i]*dtau)
 		}
-		dkappa = (rhattk - kappa*dtau) / tau
+		dkappa = (rhattk - float64(kappa*dtau)) / tau
 		alpha := h.step(dx, dz, dtau, dkappa, 1)
-		gamma = (1 - alpha) * (1 - alpha) * math.Min(0.1, 1-alpha)
+		gamma = float64((1 - alpha) * (1 - alpha) * math.Min(0.1, 1-alpha))
 	}
 	return dx, dy, dz, dtau, dkappa
 }
@@ -393,14 +393,14 @@ func interiorPointLP(p *lpProblem, tol float64, maxIter int) lpSolution {
 		}
 		alpha := h.step(dx, dz, dtau, dkappa, 0.99995)
 		for j := range h.x {
-			h.x[j] += alpha * dx[j]
-			h.z[j] += alpha * dz[j]
+			h.x[j] += float64(alpha * dx[j])
+			h.z[j] += float64(alpha * dz[j])
 		}
 		for i := range h.y {
-			h.y[i] += alpha * dy[i]
+			h.y[i] += float64(alpha * dy[i])
 		}
-		h.tau += alpha * dtau
-		h.kappa += alpha * dkappa
+		h.tau += float64(alpha * dtau)
+		h.kappa += float64(alpha * dkappa)
 		var rhoG, rhoMu float64
 		rhoP, rhoD, rhoA, rhoG, rhoMu = h.indicators()
 		inf1 := rhoP < tol && rhoD < tol && rhoG < tol && h.tau < tol*math.Max(1, h.kappa)

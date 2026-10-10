@@ -19,18 +19,18 @@ type rootFn struct {
 
 // The functions of testdata/gen/roots.py.
 var rootFns = map[string]rootFn{
-	"cubic": {func(x float64) float64 { return float64(x*x*x) - float64(2*x) - 5 }, func(x float64) float64 { return 3*x*x - 2 },
-		func(x float64) float64 { return 6 * x }, [2]float64{2, 3}, 2},
+	"cubic": {func(x float64) float64 { return float64(x*x*x) - float64(2*x) - 5 }, func(x float64) float64 { return float64(3*x*x) - 2 },
+		func(x float64) float64 { return float64(6 * x) }, [2]float64{2, 3}, 2},
 	"cosx": {func(x float64) float64 { return math.Cos(x) - x }, func(x float64) float64 { return -math.Sin(x) - 1 },
 		func(x float64) float64 { return -math.Cos(x) }, [2]float64{0, 1}, 0.5},
-	"triple": {func(x float64) float64 { return math.Pow(x-1, 3) }, func(x float64) float64 { return 3 * (x - 1) * (x - 1) },
-		func(x float64) float64 { return 6 * (x - 1) }, [2]float64{0, 2.5}, 2},
-	"ninth": {func(x float64) float64 { return math.Pow(x-1, 9) }, func(x float64) float64 { return 9 * math.Pow(x-1, 8) },
-		func(x float64) float64 { return 72 * math.Pow(x-1, 7) }, [2]float64{-1, 4}, 3},
-	"tiny": {func(x float64) float64 { return 1e-12 * (x - 1) }, func(float64) float64 { return 1e-12 },
+	"triple": {func(x float64) float64 { return math.Pow(x-1, 3) }, func(x float64) float64 { return float64(3 * (x - 1) * (x - 1)) },
+		func(x float64) float64 { return float64(6 * (x - 1)) }, [2]float64{0, 2.5}, 2},
+	"ninth": {func(x float64) float64 { return math.Pow(x-1, 9) }, func(x float64) float64 { return float64(9 * math.Pow(x-1, 8)) },
+		func(x float64) float64 { return float64(72 * math.Pow(x-1, 7)) }, [2]float64{-1, 4}, 3},
+	"tiny": {func(x float64) float64 { return float64(1e-12 * (x - 1)) }, func(float64) float64 { return 1e-12 },
 		func(float64) float64 { return 0 }, [2]float64{0, 3}, 0},
-	"steep": {func(x float64) float64 { return math.Exp(20*x) - 1e8 }, func(x float64) float64 { return 20 * math.Exp(20*x) },
-		func(x float64) float64 { return 400 * math.Exp(20*x) }, [2]float64{0, 2}, 1.5},
+	"steep": {func(x float64) float64 { return math.Exp(20*x) - 1e8 }, func(x float64) float64 { return float64(20 * math.Exp(20*x)) },
+		func(x float64) float64 { return float64(400 * math.Exp(20*x)) }, [2]float64{0, 2}, 1.5},
 	"flat": {f: func(x float64) float64 {
 		if x == 0 {
 			return -1e-3
@@ -39,13 +39,13 @@ var rootFns = map[string]rootFn{
 	}, br: [2]float64{0.01, 2}},
 	"sinhalf": {func(x float64) float64 { return math.Sin(x) - x/2 }, func(x float64) float64 { return math.Cos(x) - 0.5 },
 		func(x float64) float64 { return -math.Sin(x) }, [2]float64{math.Pi / 2, math.Pi}, 2},
-	"apsx": {func(x float64) float64 { return x*math.Exp(-x) - 0.1 }, func(x float64) float64 { return math.Exp(-x) * (1 - x) },
-		func(x float64) float64 { return math.Exp(-x) * (x - 2) }, [2]float64{0, 1}, 0},
+	"apsx": {func(x float64) float64 { return float64(x*math.Exp(-x)) - 0.1 }, func(x float64) float64 { return float64(math.Exp(-x) * (1 - x)) },
+		func(x float64) float64 { return float64(math.Exp(-x) * (x - 2)) }, [2]float64{0, 1}, 0},
 	"kink": {f: func(x float64) float64 {
 		if x < 0.3 {
 			return x - 0.3
 		}
-		return 1000 * (x - 0.3)
+		return float64(1000 * (x - 0.3))
 	}, br: [2]float64{-1, 1}},
 	"pole": {f: func(x float64) float64 {
 		if x == 0.5 {
@@ -133,9 +133,9 @@ func TestRootsAgainstSciPy(t *testing.T) {
 			// Bracketing tolerance 4(xtol + rtol|x|); Newton's 1.48e-8 step
 			// test can leave the root further off on multiple roots, where
 			// the comparison is with SciPy's own distance to the root.
-			tol := 4 * (2e-12 + 4*epsmch*math.Abs(c.Root))
+			tol := float64(4 * (2e-12 + float64(4*epsmch*math.Abs(c.Root))))
 			if !c.Converged || c.Method == "newton" || c.Method == "halley" || c.Method == "secant" {
-				tol = math.Max(tol, 2*math.Abs(c.Root-math.Round(c.Root*1e6)/1e6)+1e-8)
+				tol = math.Max(tol, float64(2*math.Abs(c.Root-math.Round(c.Root*1e6)/1e6))+1e-8)
 			}
 			if math.Abs(r.Root-c.Root) > tol {
 				t.Errorf("root %.17g, SciPy %.17g", r.Root, c.Root)
@@ -145,7 +145,7 @@ func TestRootsAgainstSciPy(t *testing.T) {
 }
 
 func TestRootErrors(t *testing.T) {
-	sq := func(x float64) float64 { return x*x + 1 }
+	sq := func(x float64) float64 { return float64(x*x) + 1 }
 	for _, s := range []func(func(float64) float64, float64, float64, *BracketOptions) (*RootResult, error){Brentq, Brenth, Ridder, Bisect} {
 		if _, err := s(sq, -1, 1, nil); !errors.Is(err, ErrBracket) {
 			t.Errorf("no sign change: %v", err)
@@ -192,7 +192,7 @@ func TestRootErrors(t *testing.T) {
 	if r, _ := Bisect(func(x float64) float64 { return x - 0.3 }, 0, 1, &BracketOptions{MaxIter: 3}); r.Converged || r.Flag != FlagConvErr {
 		t.Errorf("bisect maxiter: %+v", r)
 	}
-	if r, _ := Ridder(func(x float64) float64 { return x*x*x - 0.3 }, 0, 1, &BracketOptions{MaxIter: 1}); r.Converged {
+	if r, _ := Ridder(func(x float64) float64 { return float64(x*x*x) - 0.3 }, 0, 1, &BracketOptions{MaxIter: 1}); r.Converged {
 		t.Errorf("ridder maxiter: %+v", r)
 	}
 	// Newton argument checks and failure modes.
@@ -205,13 +205,13 @@ func TestRootErrors(t *testing.T) {
 	if _, err := Newton(sq, 1, &NewtonOptions{X1: 1}); !errors.Is(err, ErrInput) {
 		t.Error(err)
 	}
-	if r, _ := Newton(sq, 0, &NewtonOptions{Fprime: func(x float64) float64 { return 2 * x }}); r.Converged {
+	if r, _ := Newton(sq, 0, &NewtonOptions{Fprime: func(x float64) float64 { return float64(2 * x) }}); r.Converged {
 		t.Errorf("zero derivative: %+v", r)
 	}
 	if r, _ := Newton(func(x float64) float64 { return x }, 0, &NewtonOptions{Fprime: func(float64) float64 { return 1 }}); !r.Converged || r.Root != 0 {
 		t.Errorf("f(x0)=0: %+v", r)
 	}
-	if r, _ := Newton(sq, 1, &NewtonOptions{Fprime: func(x float64) float64 { return 2 * x }, MaxIter: 5}); r.Converged {
+	if r, _ := Newton(sq, 1, &NewtonOptions{Fprime: func(x float64) float64 { return float64(2 * x) }, MaxIter: 5}); r.Converged {
 		t.Errorf("newton maxiter: %+v", r)
 	}
 	if r, _ := Newton(sq, 1, &NewtonOptions{MaxIter: 5}); r.Converged {
@@ -227,9 +227,9 @@ func TestRootErrors(t *testing.T) {
 		t.Errorf("explicit x1=0: %+v", r)
 	}
 	// RootScalar selection and argument errors.
-	cube := func(x float64) float64 { return x*x*x - 2 }
-	d := func(x float64) float64 { return 3 * x * x }
-	d2 := func(x float64) float64 { return 6 * x }
+	cube := func(x float64) float64 { return float64(x*x*x) - 2 }
+	d := func(x float64) float64 { return float64(3 * x * x) }
+	d2 := func(x float64) float64 { return float64(6 * x) }
 	for _, o := range []*RootScalarOptions{
 		{Bracket: []float64{0, 2}}, {X0: 1, Fprime: d}, {X0: 1, Fprime: d, Fprime2: d2}, {X0: 1, X1: 2},
 	} {

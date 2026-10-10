@@ -193,7 +193,7 @@ func brentSolver(hyperbolic bool) bracketSolver {
 				xpre, xcur, xblk = xcur, xblk, xcur
 				fpre, fcur, fblk = fcur, fblk, fcur
 			}
-			delta := (xtol + rtol*math.Abs(xcur)) / 2
+			delta := (xtol + float64(rtol*math.Abs(xcur))) / 2
 			sbis := (xblk - xcur) / 2
 			if fcur == 0 || math.Abs(sbis) < delta {
 				return converged(st, xcur)
@@ -208,12 +208,12 @@ func brentSolver(hyperbolic bool) bracketSolver {
 					dpre := (fpre - fcur) / (xpre - xcur)
 					dblk := (fblk - fcur) / (xblk - xcur)
 					if hyperbolic {
-						stry = -fcur * (fblk - fpre) / (fblk*dpre - fpre*dblk)
+						stry = -fcur * (fblk - fpre) / (float64(fblk*dpre) - float64(fpre*dblk))
 					} else {
-						stry = -fcur * (fblk*dblk - fpre*dpre) / (dblk * dpre * (fblk - fpre))
+						stry = -fcur * (float64(fblk*dblk) - float64(fpre*dpre)) / (dblk * dpre * (fblk - fpre))
 					}
 				}
-				if 2*math.Abs(stry) < cmin(math.Abs(spre), 3*math.Abs(sbis)-delta) {
+				if 2*math.Abs(stry) < cmin(math.Abs(spre), float64(3*math.Abs(sbis))-delta) {
 					spre, scur = scur, stry
 				} else {
 					spre, scur = sbis, sbis
@@ -243,7 +243,7 @@ var (
 )
 
 func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *RootResult) float64 {
-	tol := xtol + rtol*math.Min(math.Abs(xa), math.Abs(xb))
+	tol := xtol + float64(rtol*math.Min(math.Abs(xa), math.Abs(xb)))
 	fa, fb, root, done := bracketStart(f, xa, xb, st)
 	if done {
 		return root
@@ -251,7 +251,7 @@ func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *R
 	xn := 0.0
 	for range iter {
 		st.Iterations++
-		dm := 0.5 * (xb - xa)
+		dm := float64(0.5 * (xb - xa))
 		xm := xa + dm
 		fm := f(xm)
 		st.FunctionCalls++
@@ -260,12 +260,12 @@ func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *R
 		}
 		// Ridders' update, normalised by fa to avoid underflow in fm².
 		ratio := fm / fa
-		dn := dm * ratio / math.Sqrt(ratio*ratio-fb/fa)
+		dn := dm * ratio / math.Sqrt(float64(ratio*ratio)-fb/fa)
 		s := -1.0
 		if dn > 0 {
 			s = 1
 		}
-		xn = xm + s*cmin(math.Abs(dn), math.Abs(dm)-0.5*tol)
+		xn = xm + float64(s*cmin(math.Abs(dn), math.Abs(dm)-float64(0.5*tol)))
 		fn := f(xn)
 		st.FunctionCalls++
 		switch {
@@ -276,7 +276,7 @@ func ridder(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *R
 		default:
 			xa, fa = xn, fn
 		}
-		tol = xtol + rtol*xn
+		tol = xtol + float64(rtol*xn)
 		if fn == 0 || math.Abs(xb-xa) < tol {
 			return converged(st, xn)
 		}
@@ -300,7 +300,7 @@ func bisect(f func(float64) float64, xa, xb, xtol, rtol float64, iter int, st *R
 		if sameSign(fm, fa) {
 			xa = xm
 		}
-		if fm == 0 || math.Abs(dm) < xtol+rtol*math.Abs(xm) {
+		if fm == 0 || math.Abs(dm) < xtol+float64(rtol*math.Abs(xm)) {
 			return converged(st, xm)
 		}
 	}
@@ -351,7 +351,7 @@ func Newton(f func(float64) float64, x0 float64, o *NewtonOptions) (*RootResult,
 	if maxiter < 1 {
 		return nil, fmt.Errorf("%w: maxiter must be greater than 0", ErrInput)
 	}
-	isclose := func(a, b float64) bool { return math.Abs(a-b) <= tol+opt.Rtol*math.Abs(b) }
+	isclose := func(a, b float64) bool { return math.Abs(a-b) <= tol+float64(opt.Rtol*math.Abs(b)) }
 	res := func(x float64, calls, it int, ok bool, method string) *RootResult {
 		r := &RootResult{Root: x, FunctionCalls: calls, Iterations: it, Converged: ok, Method: method, Flag: FlagConvErr}
 		if ok {
@@ -401,7 +401,7 @@ func Newton(f func(float64) float64, x0 float64, o *NewtonOptions) (*RootResult,
 		p1 = opt.X1
 	} else {
 		const eps = 1e-4
-		p1 = x0 * (1 + eps)
+		p1 = float64(x0 * (1 + eps))
 		if p1 >= 0 {
 			p1 += eps
 		} else {

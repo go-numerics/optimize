@@ -310,12 +310,12 @@ func finishLP(p *lpProblem, res *LPResult, x []float64, d *lpSolution, tol float
 		red := clone(p.c)
 		for i := 0; i < p.mub; i++ {
 			for j := 0; j < p.n; j++ {
-				red[j] -= p.aub[i*p.n+j] * d.yub[i]
+				red[j] -= float64(p.aub[i*p.n+j] * d.yub[i])
 			}
 		}
 		for i := 0; i < p.meq; i++ {
 			for j := 0; j < p.n; j++ {
-				red[j] -= p.aeq[i*p.n+j] * d.yeq[i]
+				red[j] -= float64(p.aeq[i*p.n+j] * d.yeq[i])
 			}
 		}
 		res.Lower.Marginals = make([]float64, p.n)
@@ -345,7 +345,7 @@ func lpRowResidual(a, b []float64, m, n int, x []float64) []float64 {
 // checkLP is SciPy's _check_result: a point claimed optimal must satisfy the
 // bounds and constraints to 10·√tol, and a point claimed infeasible must not.
 func checkLP(p *lpProblem, res *LPResult, tol float64) (int, string) {
-	tol = math.Sqrt(tol) * 10
+	tol = float64(math.Sqrt(tol) * 10)
 	feasible := !math.IsNaN(res.Fun)
 	for j, x := range res.X {
 		if !(x >= p.lb[j]-tol && x <= p.ub[j]+tol) {

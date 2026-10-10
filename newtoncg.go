@@ -35,7 +35,7 @@ func minimizeNewtonCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error)
 		eps = math.Sqrt(epsmch)
 	}
 	cgMaxiter := 20 * n
-	xtol := float64(n) * avextol
+	xtol := float64(float64(n) * avextol)
 	update := math.MaxFloat64
 
 	xk := clone(x0)
@@ -76,7 +76,7 @@ func minimizeNewtonCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error)
 			maggrad += math.Abs(b[i])
 		}
 		eta := math.Min(0.5, math.Sqrt(maggrad))
-		termcond := eta * maggrad
+		termcond := float64(eta * maggrad)
 		for i := range xsupi {
 			xsupi[i] = 0
 			ri[i] = gfk[i]
@@ -107,7 +107,7 @@ func minimizeNewtonCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error)
 				hcalls++
 			default:
 				for p := range n {
-					xe[p] = xk[p] + eps*psupi[p]
+					xe[p] = xk[p] + float64(eps*psupi[p])
 				}
 				sf.grad(xk, g1)
 				sf.grad(xe, g2)
@@ -125,7 +125,7 @@ func minimizeNewtonCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error)
 					// Negative curvature on the first step: use the
 					// steepest-descent direction scaled to the CG model.
 					for p := range n {
-						xsupi[p] = dri0 / (-curv) * b[p]
+						xsupi[p] = float64(dri0 / (-curv) * b[p])
 					}
 				}
 				converged = true
@@ -133,13 +133,13 @@ func minimizeNewtonCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error)
 			}
 			alphai := dri0 / curv
 			for p := range n {
-				xsupi[p] += alphai * psupi[p]
-				ri[p] += alphai * ap[p]
+				xsupi[p] += float64(alphai * psupi[p])
+				ri[p] += float64(alphai * ap[p])
 			}
 			dri1 := dot(ri, ri)
 			betai := dri1 / dri0
 			for p := range n {
-				psupi[p] = -ri[p] + betai*psupi[p]
+				psupi[p] = -ri[p] + float64(betai*psupi[p])
 			}
 			dri0 = dri1
 		}
@@ -154,7 +154,7 @@ func minimizeNewtonCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error)
 		oldOld, oldF, haveOld = oldF, fNew, true
 		update = 0
 		for p := range n {
-			u := alpha * pk[p]
+			u := float64(alpha * pk[p])
 			xk[p] += u
 			update += math.Abs(u)
 		}
