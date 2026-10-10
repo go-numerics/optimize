@@ -93,6 +93,21 @@ func TestMinimizeAgainstSciPy(t *testing.T) {
 	for _, c := range loadMinimizeCases(t) {
 		t.Run(c.name(), func(t *testing.T) {
 			r := runCase(t, c)
+			// Iterate parity. On problems built from + − × ÷ alone the ports
+			// follow SciPy's floating-point path exactly (products are
+			// rounded explicitly, so this holds on every architecture), so
+			// the counts must be identical. Known exceptions: BFGS applies its
+			// update in O(n²) rather than as two matrix products, which
+			// rounds differently and shows with finite-difference
+			// gradients; Newton-CG on Beale differs by one gradient call.
+			exactProblem := c.Problem == "rosen2" || c.Problem == "beale" || c.Problem == "himmelblau"
+			known := map[string]bool{"rosen2/BFGS/grad=false": true, "beale/Newton-CG/grad=true": true}
+			if exactProblem && !known[c.name()] {
+				if r.Nit != c.Nit || r.Nfev != c.Nfev || (c.Njev >= 0 && r.Njev != c.Njev) {
+					t.Errorf("iterate parity: nit/nfev/njev %d/%d/%d, SciPy %d/%d/%d",
+						r.Nit, r.Nfev, r.Njev, c.Nit, c.Nfev, c.Njev)
+				}
+			}
 			t.Logf("COUNTS %-48s nit %5d/%-5d nfev %5d/%-5d njev %5d/%-5d fun %.3e/%.3e",
 				c.name(), r.Nit, c.Nit, r.Nfev, c.Nfev, r.Njev, c.Njev, r.Fun, c.Fun)
 			if c.MaxIter != 0 || c.MaxFev != 0 {
