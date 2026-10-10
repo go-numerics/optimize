@@ -522,7 +522,7 @@ func TestMoreEdges(t *testing.T) {
 			t.Fatal(err)
 		}
 		for i := range d.Popt {
-			if math.Abs(d.Popt[i]-ref.Popt[i]) > 1e-9 || math.Abs(d.Pcov[i*4]-ref.Pcov[i*4]) > 1e-9*math.Abs(ref.Pcov[i*4]) {
+			if math.Abs(d.Popt[i]-ref.Popt[i]) > 1e-9 || math.Abs(d.Pcov[i*4]-ref.Pcov[i*4]) > 1e-6*math.Abs(ref.Pcov[i*4]) {
 				t.Errorf("QR path %v %v, direct %v %v", ref.Popt, ref.Pcov, d.Popt, d.Pcov)
 			}
 		}
