@@ -1,8 +1,16 @@
+<p align="center"><img src="https://raw.githubusercontent.com/go-numerics/brand/main/social/go-numerics.png" alt="go-numerics/optimize" width="720"></p>
+
 # optimize
+
+[![Docs](https://img.shields.io/badge/docs-hugo%20%2B%20hextra-7445AD)](https://go-numerics.github.io/docs/latest/optimize/)
+[![pkg.go.dev](https://img.shields.io/badge/pkg.go.dev-optimize-007d9c?logo=go&logoColor=white)](https://pkg.go.dev/github.com/go-numerics/optimize)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-7445AD)](LICENSE)
 
 Numerical optimisation and root finding in pure Go (CGO=0): minimisation,
 scalar and system roots, nonlinear least squares, curve fitting with parameter
 covariance, and linear programming.
+
+🌐 **[Website](https://go-numerics.github.io)** · 📚 **[Documentation](https://go-numerics.github.io/docs/latest/optimize/)**
 
 The package covers the parts of `scipy.optimize` that scientific notebooks use
 most. Each function documents the SciPy call it corresponds to. The test suite
