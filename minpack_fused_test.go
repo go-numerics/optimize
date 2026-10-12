@@ -379,3 +379,91 @@ func TestHouseholderRMatchesReference(t *testing.T) {
 	}
 	t.Logf("%d factorisations identical to the reference", cases)
 }
+
+// qformRef is qform before its sums were fused.
+func qformRef(n int, q []float64, ldq int, wa []float64) {
+	for j := 1; j < n; j++ {
+		for i := 0; i < j; i++ {
+			q[i+j*ldq] = 0
+		}
+	}
+	for k := n - 1; k >= 0; k-- {
+		for i := k; i < n; i++ {
+			wa[i] = q[i+ldq*k]
+			q[i+ldq*k] = 0
+		}
+		q[k+ldq*k] = 1
+		if wa[k] == 0 {
+			continue
+		}
+		for j := k; j < n; j++ {
+			sum := 0.0
+			for i := k; i < n; i++ {
+				sum += float64(q[i+ldq*j] * wa[i])
+			}
+			temp := sum / wa[k]
+			for i := k; i < n; i++ {
+				q[i+ldq*j] -= float64(temp * wa[i])
+			}
+		}
+	}
+}
+
+func TestQformMatchesReference(t *testing.T) {
+	r := rand.New(rand.NewPCG(9, 10))
+	for n := 1; n <= 13; n++ {
+		for trial := range 8 {
+			ld := n + trial%2
+			a := make([]float64, ld*n)
+			for j := range n {
+				for i := range n {
+					switch {
+					case trial%4 == 3 && j == n/2:
+						a[i+ld*j] = 0 // a zero column: a zero Householder vector
+					case trial%4 == 1:
+						a[i+ld*j] = fusedEntry(r, n)
+					default:
+						a[i+ld*j] = r.NormFloat64()
+					}
+				}
+			}
+			w1, w2, w3, b := make([]float64, n), make([]float64, n), make([]float64, n), make([]float64, n)
+			qrfac(n, n, a, ld, false, nil, w1, w2, w3, b)
+			q1, q2 := clone(a), clone(a)
+			qformRef(n, q1, ld, make([]float64, n))
+			qform(n, q2, ld, make([]float64, n))
+			if !sameBits(q1, q2) {
+				t.Fatalf("n=%d trial=%d: fused qform differs from the reference", n, trial)
+			}
+		}
+	}
+}
+
+func TestPackedRowDotsMatchesReference(t *testing.T) {
+	r := rand.New(rand.NewPCG(11, 12))
+	for n := 1; n <= 14; n++ {
+		p := make([]float64, n*(n+1)/2)
+		for i := range p {
+			p[i] = fusedEntry(r, n)
+		}
+		x := make([]float64, n)
+		for i := range x {
+			x[i] = fusedEntry(r, n)
+		}
+		got := make([]float64, n)
+		packedRowDots(n, p, x, got)
+		want := make([]float64, n)
+		l := 0
+		for i := 0; i < n; i++ {
+			sum := 0.0
+			for j := i; j < n; j++ {
+				sum += float64(p[l] * x[j])
+				l++
+			}
+			want[i] = sum
+		}
+		if !sameBits(got, want) {
+			t.Fatalf("n=%d: %v, reference %v", n, got, want)
+		}
+	}
+}

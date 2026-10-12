@@ -813,15 +813,7 @@ func dogleg(n int, r, diag, qtb []float64, delta float64, x, wa1, wa2 []float64)
 			wa1[j] /= gnorm
 			wa1[j] /= diag[j]
 		}
-		l = 0
-		for j := 0; j < n; j++ {
-			sum := 0.0
-			for i := j; i < n; i++ {
-				sum += float64(r[l] * wa1[i])
-				l++
-			}
-			wa2[j] = sum
-		}
+		packedRowDots(n, r, wa1, wa2)
 		temp := mpEnorm(wa2[:n])
 		sgnorm = (gnorm / temp) / temp
 		// The scaled gradient step lies inside the region: walk along the
@@ -843,6 +835,43 @@ func dogleg(n int, r, diag, qtb []float64, delta float64, x, wa1, wa2 []float64)
 	}
 }
 
+// packedRowDots sets out[i] = Σ_{j>=i} R[i][j]·x[j] (j ascending, from 0.0)
+// for the n×n upper-triangular R packed by rows in r. The sums of four rows
+// advance in the same pass: each row first takes its terms left of the
+// group's last diagonal, then the four take the shared columns together.
+func packedRowDots(n int, r, x, out []float64) {
+	start := func(i int) int { return i*n - i*(i-1)/2 } // row i's offset
+	i := 0
+	for ; i+4 <= n; i += 4 {
+		r0, r1, r2, r3 := r[start(i):start(i+1)], r[start(i+1):start(i+2)], r[start(i+2):start(i+3)], r[start(i+3):start(i+4)]
+		var s0, s1, s2, s3 float64
+		s0 += float64(r0[0] * x[i])
+		s0 += float64(r0[1] * x[i+1])
+		s0 += float64(r0[2] * x[i+2])
+		s1 += float64(r1[0] * x[i+1])
+		s1 += float64(r1[1] * x[i+2])
+		s2 += float64(r2[0] * x[i+2])
+		r0, r1, r2 = r0[3:], r1[2:], r2[1:]
+		xs := x[i+3 : n]
+		r0, r1, r2, r3 = r0[:len(xs)], r1[:len(xs)], r2[:len(xs)], r3[:len(xs)]
+		for j, xj := range xs {
+			s0 += float64(r0[j] * xj)
+			s1 += float64(r1[j] * xj)
+			s2 += float64(r2[j] * xj)
+			s3 += float64(r3[j] * xj)
+		}
+		out[i], out[i+1], out[i+2], out[i+3] = s0, s1, s2, s3
+	}
+	for ; i < n; i++ {
+		ri := r[start(i) : start(i)+n-i]
+		sum := 0.0
+		for j, rij := range ri {
+			sum += float64(rij * x[i+j])
+		}
+		out[i] = sum
+	}
+}
+
 // qform accumulates the n×n orthogonal matrix Q from the Householder vectors
 // that qrfac left in the lower triangle of q (column-major, leading dimension
 // ldq).
@@ -851,6 +880,14 @@ func qform(n int, q []float64, ldq int, wa []float64) {
 		for i := 0; i < j; i++ {
 			q[i+j*ldq] = 0
 		}
+	}
+	// The columns j >= k are independent of one another at step k: their
+	// sums advance four to a pass, each in MINPACK's order.
+	var colStack [8][]float64
+	var tStack [8]float64
+	cols, temps := colStack[:0], tStack[:]
+	if n > len(tStack) {
+		temps = make([]float64, n)
 	}
 	for k := n - 1; k >= 0; k-- {
 		for i := k; i < n; i++ {
@@ -861,16 +898,39 @@ func qform(n int, q []float64, ldq int, wa []float64) {
 		if wa[k] == 0 {
 			continue
 		}
+		v := wa[k:n]
+		cols = cols[:0]
 		for j := k; j < n; j++ {
-			sum := 0.0
-			for i := k; i < n; i++ {
-				sum += float64(q[i+ldq*j] * wa[i])
-			}
-			temp := sum / wa[k]
-			for i := k; i < n; i++ {
-				q[i+ldq*j] -= float64(temp * wa[i])
-			}
+			cols = append(cols, q[k+ldq*j:n+ldq*j])
 		}
+		dotCols(v, cols, temps)
+		for c := range cols {
+			temps[c] /= v[0]
+		}
+		applyReflection(v, cols, temps, -1)
+	}
+}
+
+// dotCols sets sums[c] = Σ v[i]·cols[c][i] (index order, from 0.0), four
+// columns per pass. cols is not empty.
+func dotCols(v []float64, cols [][]float64, sums []float64) {
+	n := len(v)
+	for g := 0; g < len(cols); g += 4 {
+		// Pad a short group with repeated columns: their sums are dropped.
+		var c [4][]float64
+		for k := range c {
+			c[k] = cols[min(g+k, len(cols)-1)][:n]
+		}
+		c0, c1, c2, c3 := c[0], c[1], c[2], c[3]
+		var s0, s1, s2, s3 float64
+		for i, vi := range v {
+			s0 += float64(vi * c0[i])
+			s1 += float64(vi * c1[i])
+			s2 += float64(vi * c2[i])
+			s3 += float64(vi * c3[i])
+		}
+		s := [4]float64{s0, s1, s2, s3}
+		copy(sums[g:min(g+4, len(cols))], s[:])
 	}
 }
 
