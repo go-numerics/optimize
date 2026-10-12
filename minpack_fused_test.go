@@ -369,7 +369,7 @@ func TestHouseholderRMatchesReference(t *testing.T) {
 					}
 				}
 				R1, q1 := householderRRef(clone(a), f, m, n)
-				R2, q2 := householderR(clone(a), f, m, n)
+				R2, q2 := householderR(clone(a), f, m, n, nil)
 				if !sameBits(R1, R2) || !sameBits(q1, q2) {
 					t.Fatalf("m=%d n=%d trial=%d: fused householderR differs from the reference", m, n, trial)
 				}

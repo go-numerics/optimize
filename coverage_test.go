@@ -529,7 +529,7 @@ func TestMoreEdges(t *testing.T) {
 	}
 	tall := make([]float64, 2*trfQRMin)
 	tall[3] = math.Inf(1)
-	if _, _, _, err := trfSVDf(tall, make([]float64, trfQRMin), trfQRMin, 2); err == nil {
+	if _, _, _, err := trfSVDf(tall, make([]float64, trfQRMin), trfQRMin, 2, nil); err == nil {
 		t.Error("non-finite tall Jacobian")
 	}
 	nan := []float64{math.NaN(), 1, 1, 1}

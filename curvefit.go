@@ -122,12 +122,13 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 	if model.F == nil || xdata == nil || ydata == nil {
 		return nil, fmt.Errorf("%w: CurveFit needs a model, xdata and ydata", ErrInput)
 	}
-	y := arrayData(ydata)
+	// y is only read; xs reaches the model only through samples, which are
+	// copies unless the model is a scalar one (CurveFit) that sees values.
+	y := arrayView(ydata)
 	m := len(y)
 	if m == 0 {
 		return nil, fmt.Errorf("%w: ydata must not be empty", ErrInput)
 	}
-	xs := arrayData(xdata)
 	k := 1
 	switch xdata.Ndim() {
 	case 1:
@@ -135,6 +136,12 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 		k = xdata.Shape()[0]
 	default:
 		return nil, fmt.Errorf("%w: xdata must be 1-D or 2-D", ErrDimension)
+	}
+	var xs []float64
+	if model.f1 != nil && k == 1 {
+		xs = arrayView(xdata)
+	} else {
+		xs = arrayData(xdata)
 	}
 	if len(xs) != k*m {
 		return nil, fmt.Errorf("%w: xdata has %d samples, ydata %d", ErrDimension, len(xs)/k, m)
@@ -329,7 +336,7 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 func pinvNormal(J []float64, m, n int) []float64 {
 	if m >= trfQRMin && 6*m >= 11*n && trfFinite(J) {
 		// JᵀJ = RᵀR for J = QR: the SVD of the n×n R has the same s and V.
-		J, _ = householderR(J, nil, m, n)
+		J, _ = householderR(J, nil, m, n, nil)
 		m = n
 	}
 	_, s, vt, err := linalg.SVD(matArray(J, m, n), false)

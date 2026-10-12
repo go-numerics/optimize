@@ -124,7 +124,7 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 	if bounded {
 		x0 = makeStrictlyFeasible(x0, lb, ub, 1e-10)
 	}
-	fd := fdStep{method: o.FDMethod, rel: o.DiffStep, lb: lb, ub: ub}
+	fd := fdStep{method: o.FDMethod, rel: o.DiffStep, lb: lb, ub: ub, buf: &fdBuf{}}
 	jac := func(x, f, j []float64) error {
 		if p.Jac != nil {
 			p.Jac(x, j)
@@ -216,6 +216,10 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 	xNew := make([]float64, n)
 	fNew := make([]float64, m)
 	jtmp := make([]float64, m)
+	var hwork []float64 // householderR's workspace, for tall Jacobians
+	if rows >= trfQRMin {
+		hwork = make([]float64, rows*n+rows)
+	}
 
 	alpha := 0.0
 	status := noStatus
@@ -265,7 +269,7 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 			}
 		}
 		Jh := Jaug[:m*n]
-		uf, s, V, err := trfSVDf(Jaug, faug, rows, n)
+		uf, s, V, err := trfSVDf(Jaug, faug, rows, n, hwork)
 		if err != nil {
 			return nil, err
 		}
@@ -299,14 +303,21 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 			p.Func(xNew, fNew)
 			nfev++
 			stepHNorm := trfNorm2(stepH)
-			if !trfFinite(fNew) {
+			var ff float64
+			finite := true
+			if loss != nil {
+				finite = trfFinite(fNew)
+			} else {
+				ff, finite = trfFiniteDot(fNew)
+			}
+			if !finite {
 				Delta = float64(0.25 * stepHNorm)
 				continue
 			}
 			if loss != nil {
 				costNew = loss.cost(fNew)
 			} else {
-				costNew = float64(0.5 * dot(fNew, fNew))
+				costNew = float64(0.5 * ff)
 			}
 			actualReduction = cost - costNew
 			DeltaNew, ratio := updateTrRadius(Delta, actualReduction, predicted,
@@ -353,12 +364,29 @@ func lsTRF(p LSProblem, x0, lb, ub []float64, o *LSOptions) (*LSResult, error) {
 }
 
 func trfFinite(v []float64) bool {
+	// A float is NaN or ±Inf exactly when its exponent bits are all set.
+	const exp = 0x7ff0000000000000
 	for _, x := range v {
-		if math.IsNaN(x) || math.IsInf(x, 0) {
+		if math.Float64bits(x)&exp == exp {
 			return false
 		}
 	}
 	return true
+}
+
+// trfFiniteDot returns v·v (summed in index order, as dot) and true when
+// every element of v is finite, and false (with no sum) otherwise, in one
+// pass.
+func trfFiniteDot(v []float64) (float64, bool) {
+	const exp = 0x7ff0000000000000
+	s := 0.0
+	for _, x := range v {
+		if math.Float64bits(x)&exp == exp {
+			return 0, false
+		}
+		s += float64(x * x)
+	}
+	return s, true
 }
 
 // gradTF is compute_grad: g = Jᵀf.
@@ -535,10 +563,12 @@ func solveLsqTrustRegion(n, m int, uf, s, V []float64, Delta, initialAlpha float
 // for an m×n J; js is scratch of length m.
 func evaluateQuadratic(J []float64, m int, g, s, diag, js []float64) float64 {
 	n := len(s)
+	q := 0.0 // dot(js, js), accumulated as js is formed
 	for i := 0; i < m; i++ {
-		js[i] = dot(J[i*n:(i+1)*n], s)
+		v := dot(J[i*n:(i+1)*n], s)
+		js[i] = v
+		q += float64(v * v)
 	}
-	q := dot(js[:m], js[:m])
 	if diag != nil {
 		q += diagQuad(s, diag, s)
 	}
@@ -803,7 +833,7 @@ func selectStep(x, Jh []float64, m int, diagH, gh, p, ph, d []float64, Delta flo
 // applies them to f, and takes the SVD of the c×c R only: Uᵀf = U_Rᵀ(Qᵀf).
 // This is O(r·c²) with no r×c U, the dominant saving for curve fits of many
 // points.
-func trfSVDf(a, f []float64, r, c int) (uf, s, V []float64, err error) {
+func trfSVDf(a, f []float64, r, c int, work []float64) (uf, s, V []float64, err error) {
 	if r < trfQRMin || 6*r < 11*c {
 		U, s, V, err := trfSVD(a, r, c)
 		if err != nil {
@@ -820,7 +850,7 @@ func trfSVDf(a, f []float64, r, c int) (uf, s, V []float64, err error) {
 		}
 		return uf, s, V, nil
 	}
-	R, qf := householderR(a, f, r, c) // a non-finite a gives a non-finite R
+	R, qf := householderR(a, f, r, c, work) // a non-finite a gives a non-finite R
 	U, s, V, err := trfSVD(R, c, c)
 	if err != nil {
 		return nil, nil, nil, err
@@ -845,10 +875,16 @@ func trfSVDf(a, f []float64, r, c int) (uf, s, V []float64, err error) {
 // the result is that algorithm's to the last bit; but the sums that do not
 // depend on one another advance in the same pass: vᵀv with every vᵀc, and
 // the norm of the next column with the updates that produce it.
-func householderR(a, f []float64, r, c int) (R, qf []float64) {
+//
+// work, if it holds at least r·c+r elements, is used for the column-major
+// copy and for Qᵀf (which then aliases it); otherwise they are allocated.
+func householderR(a, f []float64, r, c int, work []float64) (R, qf []float64) {
+	if len(work) < r*c+r {
+		work = make([]float64, r*c+r)
+	}
 	// Column-major copy for cache-friendly Householder updates; the norm of
 	// the first column is accumulated on the way.
-	q := make([]float64, r*c)
+	q := work[:r*c]
 	scale, ssq := 0.0, 1.0
 	for i := 0; i < r; i++ {
 		row := a[i*c : i*c+c]
@@ -861,7 +897,8 @@ func householderR(a, f []float64, r, c int) (R, qf []float64) {
 	}
 	next, nextOK := enormEnd(scale, ssq), true
 	if f != nil {
-		qf = clone(f)
+		qf = work[r*c : r*c+r]
+		copy(qf, f)
 	}
 	R = make([]float64, c*c)
 	var colStack [8][]float64
