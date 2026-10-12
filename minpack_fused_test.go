@@ -214,6 +214,39 @@ func TestQrfacMatchesReference(t *testing.T) {
 }
 
 func TestMpEnormMatchesReference(t *testing.T) {
+	// The bounds of the intermediate range, and their neighbours.
+	ag := rgiant / 4
+	edges := []float64{rdwarf, math.Nextafter(rdwarf, 1), math.Nextafter(rdwarf, 0), ag,
+		math.Nextafter(ag, 0), math.Nextafter(ag, math.Inf(1)), math.Inf(1), math.NaN(), 0, 1}
+	re := rand.New(rand.NewPCG(7, 8))
+	for _, e := range edges {
+		for trial := range 200 {
+			k := trial % 4
+			// Neighbours of a similar magnitude, so that classifying e on
+			// the wrong side of a bound changes the rounding (for some).
+			v := make([][]float64, 4)
+			for i := range v {
+				v[i] = make([]float64, 4)
+				for j := range v[i] {
+					// All below e on even trials, all above on odd ones.
+					v[i][j] = (0.1 + 0.89*re.Float64()) * e
+					if trial%2 == 1 {
+						v[i][j] = (1.01 + 3*re.Float64()) * e
+					}
+					if e == 0 || math.IsInf(e, 0) || math.IsNaN(e) {
+						v[i][j] = re.Float64()
+					}
+				}
+			}
+			v[k][k] = -e
+			n0, n1, n2, n3 := mpEnorm4(v[0], v[1], v[2], v[3])
+			for i, got := range []float64{n0, n1, n2, n3} {
+				if w := mpEnormRef(v[i]); math.Float64bits(w) != math.Float64bits(got) {
+					t.Fatalf("mpEnorm4 with %v at %d: %v, reference %v", e, k, got, w)
+				}
+			}
+		}
+	}
 	r := rand.New(rand.NewPCG(3, 4))
 	for _, m := range []int{0, 1, 2, 3, 4, 5, 7, 64} {
 		for range 50 {

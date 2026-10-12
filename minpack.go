@@ -97,10 +97,25 @@ func mpEnorm4(c0, c1, c2, c3 []float64) (n0, n1, n2, n3 float64) {
 	n := len(c0)
 	c1, c2, c3 = c1[:n], c2[:n], c3[:n]
 	agiant := rgiant / float64(n)
+	// A magnitude a lies in the open interval (rdwarf, agiant) exactly when
+	// bits(a) − bits(rdwarf) − 1 < bits(agiant) − bits(rdwarf) − 1 as
+	// unsigned integers (non-negative floats order as their bit patterns;
+	// NaN's bits lie above +Inf's). One test then covers four components.
+	// (agiant >= rgiant/MaxInt ≫ rdwarf, so the interval is never empty.)
+	lo := math.Float64bits(rdwarf) + 1
+	span := math.Float64bits(agiant) - lo
 	var s0, s1, s2, s3 float64
 	var t0, t1, t2, t3 enormTail
 	for i := range c0 {
 		a0, a1, a2, a3 := math.Abs(c0[i]), math.Abs(c1[i]), math.Abs(c2[i]), math.Abs(c3[i])
+		u := max(math.Float64bits(a0)-lo, math.Float64bits(a1)-lo, math.Float64bits(a2)-lo, math.Float64bits(a3)-lo)
+		if u < span {
+			s0 += float64(a0 * a0)
+			s1 += float64(a1 * a1)
+			s2 += float64(a2 * a2)
+			s3 += float64(a3 * a3)
+			continue
+		}
 		if a0 > rdwarf && a0 < agiant {
 			s0 += float64(a0 * a0)
 		} else {
