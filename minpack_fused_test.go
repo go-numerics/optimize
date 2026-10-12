@@ -246,3 +246,103 @@ func TestMpEnormMatchesReference(t *testing.T) {
 		}
 	}
 }
+
+// householderRRef is householderR before its sums were fused.
+func householderRRef(a, f []float64, r, c int) (R, qf []float64) {
+	q := make([]float64, r*c)
+	for i := 0; i < r; i++ {
+		for j := 0; j < c; j++ {
+			q[j*r+i] = a[i*c+j]
+		}
+	}
+	if f != nil {
+		qf = clone(f)
+	}
+	R = make([]float64, c*c)
+	for j := 0; j < c; j++ {
+		col := q[j*r : (j+1)*r]
+		alpha := enorm(col[j:])
+		if col[j] > 0 {
+			alpha = -alpha
+		}
+		if alpha != 0 {
+			col[j] -= alpha
+			vv := 0.0
+			for i := j; i < r; i++ {
+				vv += float64(col[i] * col[i])
+			}
+			for k := j + 1; k < c; k++ {
+				ck := q[k*r : (k+1)*r]
+				d := 0.0
+				for i := j; i < r; i++ {
+					d += float64(col[i] * ck[i])
+				}
+				d = 2 * d / vv
+				for i := j; i < r; i++ {
+					ck[i] -= float64(d * col[i])
+				}
+			}
+			if qf != nil {
+				d := 0.0
+				for i := j; i < r; i++ {
+					d += float64(col[i] * qf[i])
+				}
+				d = 2 * d / vv
+				for i := j; i < r; i++ {
+					qf[i] -= float64(d * col[i])
+				}
+			}
+		}
+		R[j*c+j] = alpha
+		for k := j + 1; k < c; k++ {
+			R[j*c+k] = q[k*r+j]
+		}
+	}
+	return R, qf
+}
+
+func TestHouseholderRMatchesReference(t *testing.T) {
+	r := rand.New(rand.NewPCG(5, 6))
+	cases := 0
+	for _, m := range []int{1, 2, 3, 4, 7, 30, 250} {
+		for n := 1; n <= 9; n++ {
+			if n > m {
+				continue // householderR factors tall matrices
+			}
+			for trial := range 10 {
+				a := make([]float64, m*n)
+				for i := range a {
+					switch trial % 3 {
+					case 0:
+						a[i] = r.NormFloat64()
+					case 1:
+						a[i] = fusedEntry(r, m)
+					default: // zero and repeated columns
+						if i%n == 1 {
+							a[i] = 0
+						} else {
+							a[i] = float64(i/n%3) + 1
+						}
+					}
+				}
+				if trial == 9 {
+					a[0] = math.Inf(1)
+				}
+				var f []float64
+				if trial%2 == 0 {
+					f = make([]float64, m)
+					for i := range f {
+						f[i] = fusedEntry(r, m)
+					}
+				}
+				R1, q1 := householderRRef(clone(a), f, m, n)
+				R2, q2 := householderR(clone(a), f, m, n)
+				if !sameBits(R1, R2) || !sameBits(q1, q2) {
+					t.Fatalf("m=%d n=%d trial=%d: fused householderR differs from the reference", m, n, trial)
+				}
+				cases++
+			}
+		}
+	}
+	t.Logf("%d factorisations identical to the reference", cases)
+}

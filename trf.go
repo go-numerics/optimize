@@ -839,52 +839,64 @@ func trfSVDf(a, f []float64, r, c int) (uf, s, V []float64, err error) {
 // householderR factors the r×c row-major matrix a = Q·R by Householder
 // reflections and returns the c×c upper-triangular R (row-major) and Qᵀf
 // (nil f gives nil).
+//
+// Each sum is accumulated in the order of the plain algorithm (norm of the
+// column, then vᵀv and vᵀc for the remaining columns, then the updates), so
+// the result is that algorithm's to the last bit; but the sums that do not
+// depend on one another advance in the same pass: vᵀv with every vᵀc, and
+// the norm of the next column with the updates that produce it.
 func householderR(a, f []float64, r, c int) (R, qf []float64) {
-	// Column-major copy for cache-friendly Householder updates.
+	// Column-major copy for cache-friendly Householder updates; the norm of
+	// the first column is accumulated on the way.
 	q := make([]float64, r*c)
+	scale, ssq := 0.0, 1.0
 	for i := 0; i < r; i++ {
-		for j := 0; j < c; j++ {
-			q[j*r+i] = a[i*c+j]
+		row := a[i*c : i*c+c]
+		x := row[0]
+		q[i] = x
+		scale, ssq = enormStep(scale, ssq, x)
+		for j := 1; j < c; j++ {
+			q[j*r+i] = row[j]
 		}
 	}
+	next, nextOK := enormEnd(scale, ssq), true
 	if f != nil {
 		qf = clone(f)
 	}
 	R = make([]float64, c*c)
+	var colStack [8][]float64
+	var dStack [8]float64
+	cols, d := colStack[:0], dStack[:]
+	if c+1 > len(dStack) {
+		d = make([]float64, c+1)
+	}
 	for j := 0; j < c; j++ {
 		col := q[j*r : (j+1)*r]
-		alpha := enorm(col[j:])
+		alpha := next
+		if !nextOK {
+			alpha = enorm(col[j:])
+		}
+		nextOK = false
 		if col[j] > 0 {
 			alpha = -alpha
 		}
 		if alpha != 0 {
 			// v = x − α e₁ stored in col[j:], τ = 2/‖v‖².
 			col[j] -= alpha
-			vv := 0.0
-			for i := j; i < r; i++ {
-				vv += float64(col[i] * col[i])
-			}
+			v := col[j:]
+			cols = cols[:0]
 			for k := j + 1; k < c; k++ {
-				ck := q[k*r : (k+1)*r]
-				d := 0.0
-				for i := j; i < r; i++ {
-					d += float64(col[i] * ck[i])
-				}
-				d = 2 * d / vv
-				for i := j; i < r; i++ {
-					ck[i] -= float64(d * col[i])
-				}
+				cols = append(cols, q[k*r+j:(k+1)*r])
 			}
 			if qf != nil {
-				d := 0.0
-				for i := j; i < r; i++ {
-					d += float64(col[i] * qf[i])
-				}
-				d = 2 * d / vv
-				for i := j; i < r; i++ {
-					qf[i] -= float64(d * col[i])
-				}
+				cols = append(cols, qf[j:])
 			}
+			vv := householderDots(v, cols, d)
+			for k := range cols {
+				d[k] = 2 * d[k] / vv
+			}
+			nextOK = j+1 < c
+			next = householderApply(v, cols, d, nextOK)
 		}
 		R[j*c+j] = alpha
 		for k := j + 1; k < c; k++ {
@@ -892,6 +904,114 @@ func householderR(a, f []float64, r, c int) (R, qf []float64) {
 		}
 	}
 	return R, qf
+}
+
+// enormStep advances the package's enorm by one component: (scale, ssq)
+// starts at (0, 1), and the norm is enormEnd(scale, ssq). It returns the new
+// state instead of updating a struct, so that the state stays in registers.
+func enormStep(scale, ssq, x float64) (float64, float64) {
+	if x == 0 {
+		return scale, ssq
+	}
+	ax := math.Abs(x)
+	if scale < ax {
+		return ax, 1 + float64(ssq*(scale/ax)*(scale/ax))
+	}
+	return scale, ssq + float64((ax/scale)*(ax/scale))
+}
+
+func enormEnd(scale, ssq float64) float64 {
+	if math.IsInf(scale, 1) {
+		return scale
+	}
+	return float64(scale * math.Sqrt(ssq))
+}
+
+// householderDots returns vᵀv and sets d[k] = vᵀcols[k], each summed in
+// index order from 0.0, three columns per pass beside vᵀv.
+func householderDots(v []float64, cols [][]float64, d []float64) (vv float64) {
+	n := len(v)
+	for g := 0; g == 0 || g < len(cols); g += 3 {
+		var c [3][]float64
+		cnt := max(0, min(3, len(cols)-g))
+		for k := range c {
+			c[k] = v // padding: its sums are dropped
+			if k < cnt {
+				c[k] = cols[g+k][:n]
+			}
+		}
+		c0, c1, c2 := c[0], c[1], c[2]
+		var s, s0, s1, s2 float64
+		for i, vi := range v {
+			s += float64(vi * vi)
+			s0 += float64(vi * c0[i])
+			s1 += float64(vi * c1[i])
+			s2 += float64(vi * c2[i])
+		}
+		if g == 0 {
+			vv = s
+		}
+		sums := [3]float64{s0, s1, s2}
+		copy(d[g:g+cnt], sums[:cnt])
+	}
+	return vv
+}
+
+// householderApply sets cols[k] −= d[k]·v for every k. With norm set it
+// also returns the package's enorm of the updated cols[0][1:], accumulated
+// in the same pass.
+func householderApply(v []float64, cols [][]float64, d []float64, norm bool) float64 {
+	n := len(v)
+	done := 0
+	var nrm float64
+	if norm {
+		// cols[0] with its norm, and up to two more columns.
+		c0, d0 := cols[0][:n], d[0]
+		c0[0] -= float64(d0 * v[0])
+		scale, ssq := 0.0, 1.0
+		switch len(cols) {
+		case 1:
+			for i := 1; i < n; i++ {
+				x := c0[i] - float64(d0*v[i])
+				c0[i] = x
+				scale, ssq = enormStep(scale, ssq, x)
+			}
+			done = 1
+		case 2:
+			c1, d1 := cols[1][:n], d[1]
+			c1[0] -= float64(d1 * v[0])
+			for i := 1; i < n; i++ {
+				vi := v[i]
+				c1[i] -= float64(d1 * vi)
+				x := c0[i] - float64(d0*vi)
+				c0[i] = x
+				scale, ssq = enormStep(scale, ssq, x)
+			}
+			done = 2
+		default:
+			c1, d1 := cols[1][:n], d[1]
+			c2, d2 := cols[2][:n], d[2]
+			c1[0] -= float64(d1 * v[0])
+			c2[0] -= float64(d2 * v[0])
+			for i := 1; i < n; i++ {
+				vi := v[i]
+				c1[i] -= float64(d1 * vi)
+				c2[i] -= float64(d2 * vi)
+				x := c0[i] - float64(d0*vi)
+				c0[i] = x
+				scale, ssq = enormStep(scale, ssq, x)
+			}
+			done = 3
+		}
+		nrm = enormEnd(scale, ssq)
+	}
+	for k := done; k < len(cols); k++ {
+		ck, dk := cols[k][:n], d[k]
+		for i, vi := range v {
+			ck[i] -= float64(dk * vi)
+		}
+	}
+	return nrm
 }
 
 // trfQRMin is the row count from which trfSVDf factors QR first.
