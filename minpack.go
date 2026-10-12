@@ -219,18 +219,18 @@ func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm
 	var next float64
 	nextOK := false
 	for j := 0; j < minmn; j++ {
-		orig := j
+		orig, kmax := j, j
 		if pivot {
 			// Bring the column of largest remaining norm into the pivot
-			// position.
-			kmax := j
+			// position. Rows 0..j−1 are exchanged here; rows j..m below,
+			// in the scaling pass when it can do it.
 			for k := j; k < n; k++ {
 				if rdiag[k] > rdiag[kmax] {
 					kmax = k
 				}
 			}
 			if kmax != j {
-				for i := 0; i < m; i++ {
+				for i := 0; i < j; i++ {
 					a[i+lda*j], a[i+lda*kmax] = a[i+lda*kmax], a[i+lda*j]
 				}
 				rdiag[kmax] = rdiag[j]
@@ -239,6 +239,8 @@ func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm
 			}
 			orig = ipvt[j]
 		}
+		// src holds rows j..m of the pivot column, still in column kmax.
+		src := a[lda*kmax+j : lda*kmax+m]
 		// The Householder transformation that reduces column j to a multiple
 		// of the j-th unit vector. For j = 0 the column is an input column
 		// whose norm acnorm already holds.
@@ -249,25 +251,45 @@ func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm
 		case nextOK:
 			ajnorm = next
 		default:
-			ajnorm = mpEnorm(a[lda*j+j : lda*j+m])
+			ajnorm = mpEnorm(src)
 		}
 		nextOK = false
-		if ajnorm == 0 {
-			rdiag[j] = -ajnorm
-			continue
-		}
-		if a[lda*j+j] < 0 {
-			ajnorm = -ajnorm
-		}
-		// v ← v/ajnorm, v[0] += 1, and the sums vᵀc of the reflection for
-		// the remaining columns (and qtb), in one pass.
 		v := a[lda*j+j : lda*j+m]
 		cols = cols[:0]
 		for k := j + 1; k < n; k++ {
 			cols = append(cols, a[lda*k+j:lda*k+m])
 		}
 		cols = append(cols, qtb[j:m])
-		scaleDots(v, ajnorm, cols, temps)
+		// The exchange of rows j..m goes into the scaling pass when that
+		// pass is a single one (at most four columns to reflect).
+		fused := kmax != j && ajnorm != 0 && len(cols) <= 4
+		if kmax != j && !fused {
+			for i := range v {
+				v[i], src[i] = src[i], v[i]
+			}
+		}
+		if ajnorm == 0 {
+			rdiag[j] = -ajnorm
+			continue
+		}
+		head := v[0]
+		if fused {
+			head = src[0]
+		}
+		if head < 0 {
+			ajnorm = -ajnorm
+		}
+		// v ← v/ajnorm, v[0] += 1, and the sums vᵀc of the reflection for
+		// the remaining columns (and qtb), in one pass.
+		if fused {
+			// Column kmax's entry reads the old column j, which the pass
+			// moves there as it overwrites it with v.
+			cols[kmax-j-1] = v
+			scaleDotsSwap(src, v, ajnorm, cols, temps)
+			cols[kmax-j-1] = src
+		} else {
+			scaleDots(v, ajnorm, cols, temps)
+		}
 		for c := range cols {
 			temps[c] /= v[0]
 		}
@@ -353,6 +375,43 @@ func scaleDots(v []float64, ajnorm float64, cols [][]float64, sums []float64) {
 		s := [4]float64{s0, s1, s2, s3}
 		copy(sums[g:min(g+4, len(cols))], s[:])
 	}
+}
+
+// scaleDotsSwap is scaleDots for a pivot column that is still in another
+// column's place: it exchanges src (rows j..m of the pivot column) with dst
+// (those of column j), forming the Householder vector in dst from src's
+// values, and sums against cols, which reads every column before the pass
+// writes it (an entry may be dst itself, for the old column j). cols has one
+// to four entries.
+func scaleDotsSwap(src, dst []float64, ajnorm float64, cols [][]float64, sums []float64) {
+	n := len(dst)
+	src = src[:n]
+	var c [4][]float64
+	for k := range c {
+		c[k] = cols[min(k, len(cols)-1)][:n]
+	}
+	c0, c1, c2, c3 := c[0], c[1], c[2], c[3]
+	var s0, s1, s2, s3 float64
+	x0, x1, x2, x3 := c0[0], c1[0], c2[0], c3[0]
+	old := dst[0]
+	v0 := src[0]/ajnorm + 1
+	dst[0], src[0] = v0, old
+	s0 += float64(v0 * x0)
+	s1 += float64(v0 * x1)
+	s2 += float64(v0 * x2)
+	s3 += float64(v0 * x3)
+	for i := 1; i < n; i++ {
+		x0, x1, x2, x3 := c0[i], c1[i], c2[i], c3[i]
+		old := dst[i]
+		vi := src[i] / ajnorm
+		dst[i], src[i] = vi, old
+		s0 += float64(vi * x0)
+		s1 += float64(vi * x1)
+		s2 += float64(vi * x2)
+		s3 += float64(vi * x3)
+	}
+	s := [4]float64{s0, s1, s2, s3}
+	copy(sums[:len(cols)], s[:])
 }
 
 // applyReflection sets c −= temps[k]·v for each column c = cols[k], up to
