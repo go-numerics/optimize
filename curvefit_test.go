@@ -234,4 +234,19 @@ func TestCurveFitScalarPaths(t *testing.T) {
 			t.Errorf("xdata %v: popt %v nfev %d, CurveFitModel %v nfev %d", xd.Shape(), got.Popt, got.Nfev, want.Popt, want.Nfev)
 		}
 	}
+	// Other dtypes are converted, as by CurveFitModel.
+	x32, y32 := x.AsType(ndarray.Float32), y.AsType(ndarray.Float32)
+	want, err = CurveFitModel(Model{F: cfExp}, x32, y32, []float64{1, 1, 1}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, xd := range []*ndarray.Array{x32} {
+		got, err := CurveFit(f, xd, y32, []float64{1, 1, 1}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !sameBits(got.Popt, want.Popt) || !sameBits(got.Pcov, want.Pcov) || got.Nfev != want.Nfev {
+			t.Errorf("xdata %v: popt %v nfev %d, CurveFitModel %v nfev %d", xd.Shape(), got.Popt, got.Nfev, want.Popt, want.Nfev)
+		}
+	}
 }
