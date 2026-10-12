@@ -212,3 +212,26 @@ func TestCurveFitErrors(t *testing.T) {
 		t.Errorf("scalar sigma: %v %+v", err, r)
 	}
 }
+
+// CurveFit calls a scalar model directly for 1-D xdata; with (k, m) xdata it
+// sees the first variable of each sample, through Model.F. Both paths give
+// the fit of CurveFitModel with the equivalent Model.
+func TestCurveFitScalarPaths(t *testing.T) {
+	x, y := curveFitData(200)
+	f := func(x float64, p []float64) float64 { return cfExp([]float64{x}, p) }
+	want, err := CurveFitModel(Model{F: cfExp}, x, y, []float64{1, 1, 1}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xs := arrayData(x)
+	x2, _ := ndarray.FromData(append(clone(xs), make([]float64, len(xs))...), 2, len(xs))
+	for _, xd := range []*ndarray.Array{x, x2} {
+		got, err := CurveFit(f, xd, y, []float64{1, 1, 1}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !sameBits(got.Popt, want.Popt) || !sameBits(got.Pcov, want.Pcov) || got.Nfev != want.Nfev {
+			t.Errorf("xdata %v: popt %v nfev %d, CurveFitModel %v nfev %d", xd.Shape(), got.Popt, got.Nfev, want.Popt, want.Nfev)
+		}
+	}
+}

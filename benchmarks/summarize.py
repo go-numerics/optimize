@@ -5,7 +5,7 @@ d = sys.argv[1]
 go, py = {}, {}
 for f in sorted(glob.glob(os.path.join(d, "go-*.txt"))):
     for line in open(f):
-        m = re.match(r"Benchmark(\S+?)-\d+\s+\d+\s+([\d.]+) ns/op", line)
+        m = re.match(r"Benchmark(\S+?)(?:-\d+)?\s+\d+\s+([\d.]+) ns/op", line)
         if m:
             go.setdefault(m.group(1), []).append(float(m.group(2)) * 1e-9)
 for f in sorted(glob.glob(os.path.join(d, "py-*.json"))):

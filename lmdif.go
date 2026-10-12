@@ -76,7 +76,10 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			jac(x, fvec, fjac)
 			o.njev++
 		}
-		qrfac(m, n, fjac, ldfjac, true, ipvt, wa1, wa2, wa3)
+		// The factorisation also forms Qᵀ·fvec in wa4 (MINPACK forms it
+		// afterwards, with the same sums).
+		copy(wa4, fvec)
+		qrfac(m, n, fjac, ldfjac, true, ipvt, wa1, wa2, wa3, wa4)
 		// On the first iteration, scale by the column norms (mode 1) and
 		// set the step bound delta.
 		if iter == 1 {
@@ -94,20 +97,9 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			xnorm = mpEnorm(wa3)
 			delta = initialStepBound(c.factor, xnorm)
 		}
-		// Qᵀ·fvec, keeping its first n components in qtf; R's diagonal
-		// goes back into fjac.
-		copy(wa4, fvec)
+		// Keep the first n components of Qᵀ·fvec in qtf; R's diagonal goes
+		// back into fjac.
 		for j := 0; j < n; j++ {
-			if fjac[j+ldfjac*j] != 0 {
-				sum := 0.0
-				for i := j; i < m; i++ {
-					sum += float64(fjac[i+ldfjac*j] * wa4[i])
-				}
-				temp := -sum / fjac[j+ldfjac*j]
-				for i := j; i < m; i++ {
-					wa4[i] += float64(fjac[i+ldfjac*j] * temp)
-				}
-			}
 			fjac[j+ldfjac*j] = wa1[j]
 			qtf[j] = wa4[j]
 		}

@@ -72,7 +72,10 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			jac(x, fvec, fjac)
 			o.njev++
 		}
-		qrfac(n, n, fjac, ldfjac, false, nil, wa1, wa2, wa3)
+		// The factorisation also forms Qᵀ·fvec in qtf (MINPACK forms it
+		// afterwards, with the same sums).
+		copy(qtf, fvec)
+		qrfac(n, n, fjac, ldfjac, false, nil, wa1, wa2, wa3, qtf)
 		// On the first iteration, scale by the column norms (mode 1) and
 		// set the step bound delta.
 		if iter == 1 {
@@ -89,20 +92,6 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			}
 			xnorm = mpEnorm(wa3)
 			delta = initialStepBound(c.factor, xnorm)
-		}
-		// Qᵀ·fvec into qtf.
-		copy(qtf, fvec)
-		for j := 0; j < n; j++ {
-			if fjac[j+ldfjac*j] != 0 {
-				sum := 0.0
-				for i := j; i < n; i++ {
-					sum += float64(fjac[i+ldfjac*j] * qtf[i])
-				}
-				temp := -sum / fjac[j+ldfjac*j]
-				for i := j; i < n; i++ {
-					qtf[i] += float64(fjac[i+ldfjac*j] * temp)
-				}
-			}
 		}
 		// Copy the triangular factor into r, packed by rows.
 		for j := 0; j < n; j++ {

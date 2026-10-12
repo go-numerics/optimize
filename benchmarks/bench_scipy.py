@@ -4,11 +4,17 @@ Run: uv run --with scipy --with numpy python benchmarks/bench_scipy.py [reps]
 Prints one JSON object: benchmark name -> median seconds per call, plus the
 part of it spent in the Python objective/gradient callbacks ("<name>/callbacks").
 """
-import json, math, sys, time
+import json, math, os, re, sys, time
 import numpy as np
 from scipy import optimize
 
 REPS = int(sys.argv[1]) if len(sys.argv) > 1 else 5
+WANT = re.compile(os.environ.get("BENCH", "."))
+
+
+def want(name):
+    """Whether name is selected by $BENCH (a regexp, as go test -bench)."""
+    return WANT.search(name) is not None
 
 
 def alt(n):
@@ -51,6 +57,8 @@ cases = {
     "Rosen2NelderMead": (2, "Nelder-Mead", False),
 }
 for name, (n, m, grad) in cases.items():
+    if not want(name):
+        continue
     x0 = alt(n)
     jac = rosen_der if grad else None
     call = lambda: optimize.minimize(rosen, x0, jac=jac, method=m)
@@ -62,8 +70,11 @@ x = 4 * np.arange(m) / (m - 1)
 y = 2.5 * np.exp(-1.3 * x) + 0.5 + 0.2 * np.sin(np.arange(m) * 12.9898)
 model = lambda x, a, b, c: a * np.exp(-b * x) + c
 for meth, name in (("lm", "CurveFit1e4LM"), ("trf", "CurveFit1e4TRF")):
+    if not want(name):
+        continue
     out[name] = timed(lambda: optimize.curve_fit(model, x, y, p0=[1, 1, 1], method=meth))
 
 f = lambda x: x * x * x - 2 * x - 5
-out["Brentq"] = timed(lambda: optimize.brentq(f, 2, 3), 0.05)
+if want("Brentq"):
+    out["Brentq"] = timed(lambda: optimize.brentq(f, 2, 3), 0.05)
 print(json.dumps(out))
