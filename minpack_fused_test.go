@@ -9,7 +9,7 @@ import (
 // The reference kernels below are MINPACK's qrfac and enorm as ported before
 // the fused passes of minpack.go, followed by the Qᵀ·b loop that lmdif and
 // hybrd ran after the factorisation. The fused kernels must reproduce them to
-// the last bit, NaN payloads and signed zeros included.
+// the last bit, signed zeros included (and NaN where the reference has NaN).
 
 func mpEnormRef(x []float64) float64 {
 	var s1, s2, s3, x1max, x3max float64
@@ -142,9 +142,13 @@ func fusedEntry(r *rand.Rand, m int) float64 {
 	return s * r.Float64()
 }
 
+// sameBits reports whether a and b hold the same values bit for bit (signed
+// zeros included), counting any two NaNs as equal: which NaN payload an
+// operation on NaNs returns is the architecture's choice (loong64 differs
+// from arm64 and amd64), not part of the result.
 func sameBits(a, b []float64) bool {
 	for i := range a {
-		if math.Float64bits(a[i]) != math.Float64bits(b[i]) {
+		if math.Float64bits(a[i]) != math.Float64bits(b[i]) && !(math.IsNaN(a[i]) && math.IsNaN(b[i])) {
 			return false
 		}
 	}
@@ -244,7 +248,7 @@ func TestMpEnormMatchesReference(t *testing.T) {
 			v[k][k] = -e
 			n0, n1, n2, n3 := mpEnorm4(v[0], v[1], v[2], v[3])
 			for i, got := range []float64{n0, n1, n2, n3} {
-				if w := mpEnormRef(v[i]); math.Float64bits(w) != math.Float64bits(got) {
+				if w := mpEnormRef(v[i]); !sameBits([]float64{w}, []float64{got}) {
 					t.Fatalf("mpEnorm4 with %v at %d: %v, reference %v", e, k, got, w)
 				}
 			}
@@ -274,7 +278,7 @@ func TestMpEnormMatchesReference(t *testing.T) {
 				out := make([]float64, nc)
 				colEnorms(a, m, 0, m, out)
 				for k := range out {
-					if w := mpEnormRef(a[k*m : k*m+m]); math.Float64bits(w) != math.Float64bits(out[k]) {
+					if w := mpEnormRef(a[k*m : k*m+m]); !sameBits([]float64{w}, []float64{out[k]}) {
 						t.Fatalf("colEnorms m=%d column %d of %d: %v, reference %v", m, k, nc, out[k], w)
 					}
 				}
