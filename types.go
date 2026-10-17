@@ -112,6 +112,17 @@ func matArray(m []float64, r, c int) *ndarray.Array {
 	return a
 }
 
+// arrayView returns the elements of a as a float64 slice in row-major order,
+// converting other dtypes; it may alias a's storage, so the caller must only
+// read it and must not hand it to user code.
+func arrayView(a *ndarray.Array) []float64 {
+	if a.DType() != ndarray.Float64 {
+		a = a.AsType(ndarray.Float64)
+	}
+	d, _ := ndarray.Data[float64](a)
+	return d
+}
+
 // arrayData returns the elements of a as a float64 slice in row-major order,
 // converting other dtypes. It never aliases a.
 func arrayData(a *ndarray.Array) []float64 {

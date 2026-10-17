@@ -24,6 +24,10 @@ type Model struct {
 	// Grad writes ∂f/∂p at sample x into grad (len(p) values). Optional:
 	// finite differences are used when it is nil (SciPy's jac=callable).
 	Grad func(x, p, grad []float64)
+
+	// f1 is the scalar model of CurveFit, which F wraps: for 1-D xdata it
+	// is called directly, saving a call per sample.
+	f1 func(x float64, p []float64) float64
 }
 
 // CurveFitOptions configures CurveFit. Zero values select SciPy's defaults.
@@ -97,7 +101,7 @@ func (r *CurveFitResult) Perr() []float64 {
 // absolute_sigma=..., bounds=..., method=...). See CurveFitModel for models
 // of several independent variables or with analytic derivatives.
 func CurveFit(f func(x float64, p []float64) float64, xdata, ydata *ndarray.Array, p0 []float64, o *CurveFitOptions) (*CurveFitResult, error) {
-	return CurveFitModel(Model{F: func(x, p []float64) float64 { return f(x[0], p) }}, xdata, ydata, p0, o)
+	return CurveFitModel(Model{F: func(x, p []float64) float64 { return f(x[0], p) }, f1: f}, xdata, ydata, p0, o)
 }
 
 // CurveFitModel is CurveFit for a general Model. xdata is 1-D (m samples)
@@ -118,12 +122,13 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 	if model.F == nil || xdata == nil || ydata == nil {
 		return nil, fmt.Errorf("%w: CurveFit needs a model, xdata and ydata", ErrInput)
 	}
-	y := arrayData(ydata)
+	// y is only read; xs reaches the model only through samples, which are
+	// copies unless the model is a scalar one (CurveFit) that sees values.
+	y := arrayView(ydata)
 	m := len(y)
 	if m == 0 {
 		return nil, fmt.Errorf("%w: ydata must not be empty", ErrInput)
 	}
-	xs := arrayData(xdata)
 	k := 1
 	switch xdata.Ndim() {
 	case 1:
@@ -132,23 +137,29 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 	default:
 		return nil, fmt.Errorf("%w: xdata must be 1-D or 2-D", ErrDimension)
 	}
+	var xs []float64
+	if model.f1 != nil && k == 1 {
+		xs = arrayView(xdata)
+	} else {
+		xs = arrayData(xdata)
+	}
 	if len(xs) != k*m {
 		return nil, fmt.Errorf("%w: xdata has %d samples, ydata %d", ErrDimension, len(xs)/k, m)
 	}
-	for _, v := range append(append([]float64(nil), xs...), y...) {
-		if math.IsNaN(v) || math.IsInf(v, 0) {
-			return nil, fmt.Errorf("%w: xdata and ydata must be finite", ErrInput)
-		}
+	if !trfFinite(xs) || !trfFinite(y) {
+		return nil, fmt.Errorf("%w: xdata and ydata must be finite", ErrInput)
 	}
-	// Sample j as a k-vector (columns of a (k, m) xdata).
-	samples := make([][]float64, m)
-	back := make([]float64, k*m)
-	for j := range samples {
-		s := back[j*k : j*k+k : j*k+k]
-		for i := range s {
-			s[i] = xs[i*m+j]
+	// sample(j) is sample j as a k-vector (a column of a (k, m) xdata);
+	// for 1-D xdata it is a one-element window of xs.
+	sample := func(j int) []float64 { return xs[j : j+1 : j+1] }
+	if k > 1 {
+		back := make([]float64, k*m)
+		for j := range m {
+			for i := range k {
+				back[j*k+i] = xs[i*m+j]
+			}
 		}
-		samples[j] = s
+		sample = func(j int) []float64 { return back[j*k : j*k+k : j*k+k] }
 	}
 	n := len(p0)
 	if p0 == nil {
@@ -236,8 +247,15 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 	}
 	resid := func(p, f []float64) {
 		over(func(lo, hi int) {
+			if f1 := model.f1; f1 != nil && k == 1 {
+				x, y, f := xs[lo:hi], y[lo:hi], f[lo:hi]
+				for j, xj := range x {
+					f[j] = f1(xj, p) - y[j]
+				}
+				return
+			}
 			for j := lo; j < hi; j++ {
-				f[j] = model.F(samples[j], p) - y[j]
+				f[j] = model.F(sample(j), p) - y[j]
 			}
 		})
 		weigh(f, 1)
@@ -247,7 +265,7 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 		jac = func(p, J []float64) {
 			over(func(lo, hi int) {
 				for j := lo; j < hi; j++ {
-					model.Grad(samples[j], p, J[j*n:j*n+n])
+					model.Grad(sample(j), p, J[j*n:j*n+n])
 				}
 			})
 			weigh(J, n)
@@ -318,7 +336,7 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 func pinvNormal(J []float64, m, n int) []float64 {
 	if m >= trfQRMin && 6*m >= 11*n && trfFinite(J) {
 		// JᵀJ = RᵀR for J = QR: the SVD of the n×n R has the same s and V.
-		J, _ = householderR(J, nil, m, n)
+		J, _ = householderR(J, nil, m, n, nil)
 		m = n
 	}
 	_, s, vt, err := linalg.SVD(matArray(J, m, n), false)

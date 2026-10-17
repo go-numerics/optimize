@@ -55,6 +55,15 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 	wa2 := make([]float64, n)
 	wa3 := make([]float64, n)
 	wa4 := make([]float64, n)
+	var cols [][]float64
+	var sumStack [32]float64
+	sums := sumStack[:min(n, len(sumStack))]
+	if n > len(sumStack) {
+		sums = make([]float64, n)
+	}
+	if n >= fuseMin {
+		cols = make([][]float64, 0, n)
+	}
 
 	fcn(x, fvec)
 	o.nfev = 1
@@ -72,7 +81,10 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			jac(x, fvec, fjac)
 			o.njev++
 		}
-		qrfac(n, n, fjac, ldfjac, false, nil, wa1, wa2, wa3)
+		// The factorisation also forms Qᵀ·fvec in qtf (MINPACK forms it
+		// afterwards, with the same sums).
+		copy(qtf, fvec)
+		qrfac(n, n, fjac, ldfjac, false, nil, wa1, wa2, wa3, qtf)
 		// On the first iteration, scale by the column norms (mode 1) and
 		// set the step bound delta.
 		if iter == 1 {
@@ -89,20 +101,6 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			}
 			xnorm = mpEnorm(wa3)
 			delta = initialStepBound(c.factor, xnorm)
-		}
-		// Qᵀ·fvec into qtf.
-		copy(qtf, fvec)
-		for j := 0; j < n; j++ {
-			if fjac[j+ldfjac*j] != 0 {
-				sum := 0.0
-				for i := j; i < n; i++ {
-					sum += float64(fjac[i+ldfjac*j] * qtf[i])
-				}
-				temp := -sum / fjac[j+ldfjac*j]
-				for i := j; i < n; i++ {
-					qtf[i] += float64(fjac[i+ldfjac*j] * temp)
-				}
-			}
 		}
 		// Copy the triangular factor into r, packed by rows.
 		for j := 0; j < n; j++ {
@@ -141,14 +139,9 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 				t := fnorm1 / fnorm
 				actred = 1 - float64(t*t)
 			}
-			l := 0
+			packedRowDots(n, r, wa1, wa3)
 			for i := 0; i < n; i++ {
-				sum := 0.0
-				for j := i; j < n; j++ {
-					sum += float64(r[l] * wa1[j])
-					l++
-				}
-				wa3[i] = qtf[i] + sum
+				wa3[i] += qtf[i]
 			}
 			temp := mpEnorm(wa3)
 			prered := 0.0
@@ -222,11 +215,23 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 				break
 			}
 			// Otherwise Broyden's rank-1 update of R and Q.
-			for j := 0; j < n; j++ {
-				sum := 0.0
-				for i := 0; i < n; i++ {
-					sum += float64(fjac[i+ldfjac*j] * wa4[i])
+			if n >= fuseMin {
+				cols = cols[:0]
+				for j := 0; j < n; j++ {
+					cols = append(cols, fjac[ldfjac*j:ldfjac*j+n])
 				}
+				dotCols(wa4[:n], cols, sums)
+			} else {
+				for j := 0; j < n; j++ {
+					sum := 0.0
+					for i := 0; i < n; i++ {
+						sum += float64(fjac[i+ldfjac*j] * wa4[i])
+					}
+					sums[j] = sum
+				}
+			}
+			for j := 0; j < n; j++ {
+				sum := sums[j]
 				wa2[j] = (sum - wa3[j]) / pnorm
 				wa1[j] = diag[j] * ((diag[j] * wa1[j]) / pnorm)
 				if ratio >= 0.0001 {

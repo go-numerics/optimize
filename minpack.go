@@ -68,6 +68,119 @@ func mpEnorm(x []float64) float64 {
 	return x3max * math.Sqrt(s3)
 }
 
+// enormTail holds the accumulators of mpEnorm for the components outside the
+// intermediate range; the intermediate sum of squares s2 is kept apart so
+// that the hot loops hold it in a register.
+type enormTail struct{ s1, s3, x1max, x3max float64 }
+
+// add accumulates a component that is not in the intermediate range
+// (rdwarf, agiant), exactly as the remaining cases of MINPACK's enorm.
+func (e *enormTail) add(xabs float64) {
+	switch {
+	case xabs > rdwarf:
+		if xabs > e.x1max {
+			t := e.x1max / xabs
+			e.s1 = 1 + float64(e.s1*(t*t))
+			e.x1max = xabs
+		} else {
+			t := xabs / e.x1max
+			e.s1 += float64(t * t)
+		}
+	case xabs > e.x3max:
+		t := e.x3max / xabs
+		e.s3 = 1 + float64(e.s3*(t*t))
+		e.x3max = xabs
+	case xabs != 0:
+		t := xabs / e.x3max
+		e.s3 += float64(t * t)
+	}
+}
+
+// norm combines the accumulators into enorm's result.
+func (e *enormTail) norm(s2 float64) float64 {
+	s1, s3, x1max, x3max := e.s1, e.s3, e.x1max, e.x3max
+	if s1 != 0 {
+		return x1max * math.Sqrt(s1+(s2/x1max)/x1max)
+	}
+	if s2 != 0 {
+		if s2 >= x3max {
+			return math.Sqrt(s2 * (1 + float64((x3max/s2)*(x3max*s3))))
+		}
+		return math.Sqrt(x3max * ((s2 / x3max) + float64(x3max*s3)))
+	}
+	return x3max * math.Sqrt(s3)
+}
+
+// mpEnorm4 returns mpEnorm of four vectors of equal length (the same vector
+// may be passed more than once). Each norm is accumulated in its own order,
+// so the results are those of four mpEnorm calls to the last bit, but the
+// four sums advance together and a long vector costs about one pass of
+// floating-point latency instead of four.
+func mpEnorm4(c0, c1, c2, c3 []float64) (n0, n1, n2, n3 float64) {
+	n := len(c0)
+	c1, c2, c3 = c1[:n], c2[:n], c3[:n]
+	agiant := rgiant / float64(n)
+	// A magnitude a lies in the open interval (rdwarf, agiant) exactly when
+	// bits(a) − bits(rdwarf) − 1 < bits(agiant) − bits(rdwarf) − 1 as
+	// unsigned integers (non-negative floats order as their bit patterns;
+	// NaN's bits lie above +Inf's). One test then covers four components.
+	// (agiant >= rgiant/MaxInt ≫ rdwarf, so the interval is never empty.)
+	lo := math.Float64bits(rdwarf) + 1
+	span := math.Float64bits(agiant) - lo
+	var s0, s1, s2, s3 float64
+	var t0, t1, t2, t3 enormTail
+	for i := range c0 {
+		a0, a1, a2, a3 := math.Abs(c0[i]), math.Abs(c1[i]), math.Abs(c2[i]), math.Abs(c3[i])
+		u := max(math.Float64bits(a0)-lo, math.Float64bits(a1)-lo, math.Float64bits(a2)-lo, math.Float64bits(a3)-lo)
+		if u < span {
+			s0 += float64(a0 * a0)
+			s1 += float64(a1 * a1)
+			s2 += float64(a2 * a2)
+			s3 += float64(a3 * a3)
+			continue
+		}
+		if a0 > rdwarf && a0 < agiant {
+			s0 += float64(a0 * a0)
+		} else {
+			t0.add(a0)
+		}
+		if a1 > rdwarf && a1 < agiant {
+			s1 += float64(a1 * a1)
+		} else {
+			t1.add(a1)
+		}
+		if a2 > rdwarf && a2 < agiant {
+			s2 += float64(a2 * a2)
+		} else {
+			t2.add(a2)
+		}
+		if a3 > rdwarf && a3 < agiant {
+			s3 += float64(a3 * a3)
+		} else {
+			t3.add(a3)
+		}
+	}
+	return t0.norm(s0), t1.norm(s1), t2.norm(s2), t3.norm(s3)
+}
+
+// colEnorms sets out[k] = mpEnorm(a[off+lda*k : end+lda*k]) for every k in
+// [0, len(out)), four columns per pass.
+func colEnorms(a []float64, lda, off, end int, out []float64) {
+	col := func(k int) []float64 { return a[off+lda*k : end+lda*k] }
+	k := 0
+	for ; k+4 <= len(out); k += 4 {
+		out[k], out[k+1], out[k+2], out[k+3] = mpEnorm4(col(k), col(k+1), col(k+2), col(k+3))
+	}
+	switch len(out) - k {
+	case 1:
+		out[k] = mpEnorm(col(k))
+	case 2:
+		out[k], out[k+1], _, _ = mpEnorm4(col(k), col(k+1), col(k), col(k+1))
+	case 3:
+		out[k], out[k+1], out[k+2], _ = mpEnorm4(col(k), col(k+1), col(k+2), col(k+2))
+	}
+}
+
 // fdjac is the dense forward-difference Jacobian of MINPACK (fdjac2, and
 // fdjac1 without a band): column j is (f(x+h·e_j) − fvec)/h with
 // h = sqrt(max(epsfcn, eps))·|x_j| (or that root when x_j is 0). fjac is
@@ -95,7 +208,33 @@ func fdjac(fcn func(x, f []float64), m, n int, x, fvec, fjac []float64, epsfcn f
 // (Q in factored form), its strict upper triangle holds R off the diagonal,
 // rdiag the diagonal of R, acnorm the norms of the columns of the input, and
 // ipvt the permutation (column j of P is column ipvt[j] of the identity).
-func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa []float64) {
+// wa has length n.
+//
+// The reflections are also applied to qtb (length m) as they are formed,
+// leaving Qᵀ·qtb: MINPACK's lmdif and hybrd compute this product after the
+// factorisation, with the same sums in the same order, so the result is
+// identical to the last bit.
+//
+// The operation order of every sum is MINPACK's. The sums that MINPACK
+// computes one after the other but that do not depend on one another (the
+// column norms, and the products of a reflection with the remaining
+// columns) are accumulated in the same pass, which overlaps their latency.
+func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa, qtb []float64) {
+	if m < fuseMin {
+		qrfacPlain(m, n, a, lda, pivot, ipvt, rdiag, acnorm, wa, qtb)
+		return
+	}
+	qrfacFused(m, n, a, lda, pivot, ipvt, rdiag, acnorm, wa, qtb)
+}
+
+// fuseMin is the vector length from which the fused passes pay for their
+// bookkeeping; shorter problems take MINPACK's plain loops, which give the
+// same results.
+var fuseMin = 32 // a variable so that tests can compare both paths
+
+// qrfacPlain is qrfac as MINPACK writes it, followed by lmdif's and hybrd's
+// Qᵀ·qtb loop.
+func qrfacPlain(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa, qtb []float64) {
 	for j := 0; j < n; j++ {
 		acnorm[j] = mpEnorm(a[j*lda : j*lda+m])
 		rdiag[j] = acnorm[j]
@@ -107,8 +246,6 @@ func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm
 	minmn := min(m, n)
 	for j := 0; j < minmn; j++ {
 		if pivot {
-			// Bring the column of largest remaining norm into the pivot
-			// position.
 			kmax := j
 			for k := j; k < n; k++ {
 				if rdiag[k] > rdiag[kmax] {
@@ -124,8 +261,6 @@ func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm
 				ipvt[j], ipvt[kmax] = ipvt[kmax], ipvt[j]
 			}
 		}
-		// The Householder transformation that reduces column j to a multiple
-		// of the j-th unit vector.
 		ajnorm := mpEnorm(a[lda*j+j : lda*j+m])
 		if ajnorm == 0 {
 			rdiag[j] = -ajnorm
@@ -138,7 +273,6 @@ func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm
 			a[i+lda*j] /= ajnorm
 		}
 		a[j+lda*j] += 1
-		// Apply it to the remaining columns and update their norms.
 		for k := j + 1; k < n; k++ {
 			sum := 0.0
 			for i := j; i < m; i++ {
@@ -159,6 +293,379 @@ func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm
 		}
 		rdiag[j] = -ajnorm
 	}
+	for j := 0; j < minmn; j++ {
+		if a[j+lda*j] != 0 {
+			sum := 0.0
+			for i := j; i < m; i++ {
+				sum += float64(a[i+lda*j] * qtb[i])
+			}
+			temp := -sum / a[j+lda*j]
+			for i := j; i < m; i++ {
+				qtb[i] += float64(a[i+lda*j] * temp)
+			}
+		}
+	}
+}
+
+// qrfacFused is qrfac with the fused passes.
+func qrfacFused(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa, qtb []float64) {
+	var colStack [8][]float64
+	var tStack [8]float64
+	var renormStack [8]bool
+	cols, temps, renorm := colStack[:0], tStack[:], renormStack[:]
+	if n+1 > len(tStack) {
+		temps, renorm = make([]float64, n+1), make([]bool, n)
+	}
+	colEnorms(a, lda, 0, m, acnorm[:n])
+	for j := 0; j < n; j++ {
+		rdiag[j] = acnorm[j]
+		wa[j] = rdiag[j]
+		if pivot {
+			ipvt[j] = j
+		}
+	}
+	minmn := min(m, n)
+	// next, when nextOK, is the norm of rows j..m of the column that the
+	// pivoting below brings into position j, accumulated by the previous
+	// step while it updated that column.
+	var next float64
+	nextOK := false
+	for j := 0; j < minmn; j++ {
+		orig, kmax := j, j
+		if pivot {
+			// Bring the column of largest remaining norm into the pivot
+			// position. Rows 0..j−1 are exchanged here; rows j..m below,
+			// in the scaling pass when it can do it.
+			for k := j; k < n; k++ {
+				if rdiag[k] > rdiag[kmax] {
+					kmax = k
+				}
+			}
+			if kmax != j {
+				for i := 0; i < j; i++ {
+					a[i+lda*j], a[i+lda*kmax] = a[i+lda*kmax], a[i+lda*j]
+				}
+				rdiag[kmax] = rdiag[j]
+				wa[kmax] = wa[j]
+				ipvt[j], ipvt[kmax] = ipvt[kmax], ipvt[j]
+			}
+			orig = ipvt[j]
+		}
+		// src holds rows j..m of the pivot column, still in column kmax.
+		src := a[lda*kmax+j : lda*kmax+m]
+		// The Householder transformation that reduces column j to a multiple
+		// of the j-th unit vector. For j = 0 the column is an input column
+		// whose norm acnorm already holds.
+		var ajnorm float64
+		switch {
+		case j == 0:
+			ajnorm = acnorm[orig]
+		case nextOK:
+			ajnorm = next
+		default:
+			ajnorm = mpEnorm(src)
+		}
+		nextOK = false
+		v := a[lda*j+j : lda*j+m]
+		cols = cols[:0]
+		for k := j + 1; k < n; k++ {
+			cols = append(cols, a[lda*k+j:lda*k+m])
+		}
+		cols = append(cols, qtb[j:m])
+		// The exchange of rows j..m goes into the scaling pass when that
+		// pass is a single one (at most four columns to reflect).
+		fused := kmax != j && ajnorm != 0 && len(cols) <= 4
+		if kmax != j && !fused {
+			for i := range v {
+				v[i], src[i] = src[i], v[i]
+			}
+		}
+		if ajnorm == 0 {
+			rdiag[j] = -ajnorm
+			continue
+		}
+		head := v[0]
+		if fused {
+			head = src[0]
+		}
+		if head < 0 {
+			ajnorm = -ajnorm
+		}
+		// v ← v/ajnorm, v[0] += 1, and the sums vᵀc of the reflection for
+		// the remaining columns (and qtb), in one pass.
+		if fused {
+			// Column kmax's entry reads the old column j, which the pass
+			// moves there as it overwrites it with v.
+			cols[kmax-j-1] = v
+			scaleDotsSwap(src, v, ajnorm, cols, temps)
+			cols[kmax-j-1] = src
+		} else {
+			scaleDots(v, ajnorm, cols, temps)
+		}
+		for c := range cols {
+			temps[c] /= v[0]
+		}
+		// The norm downdates need only row j of the updated columns, so they
+		// and the next pivot are known before the update pass, which then
+		// also accumulates the norm the next step needs. A column whose norm
+		// must be recomputed (the downdate lost too much accuracy) gets it
+		// after the pass, and the next step computes its own.
+		nc, anyRenorm := -1, false
+		for k := j + 1; k < n; k++ {
+			renorm[k] = false
+			if pivot && rdiag[k] != 0 {
+				ajk := a[j+lda*k] - float64(temps[k-j-1]*v[0])
+				temp := ajk / rdiag[k]
+				rdiag[k] *= math.Sqrt(math.Max(0, 1-float64(temp*temp)))
+				if q := rdiag[k] / wa[k]; 0.05*(q*q) <= epsmch {
+					renorm[k], anyRenorm = true, true
+				}
+			}
+		}
+		if j+1 < minmn && !anyRenorm {
+			nc = j + 1
+			if pivot {
+				for k := j + 1; k < n; k++ {
+					if rdiag[k] > rdiag[nc] {
+						nc = k
+					}
+				}
+			}
+			nc -= j + 1 // index in cols
+		}
+		next, nextOK = applyReflection(v, cols, temps, nc)
+		if anyRenorm {
+			for k := j + 1; k < n; k++ {
+				if renorm[k] {
+					rdiag[k] = mpEnorm(a[(j+1)+lda*k : m+lda*k])
+					wa[k] = rdiag[k]
+				}
+			}
+		}
+		rdiag[j] = -ajnorm
+	}
+}
+
+// scaleDots divides v by ajnorm and adds 1 to v[0], as qrfac forms its
+// Householder vector, and sets sums[c] = Σ v[i]·cols[c][i] (index order,
+// from 0.0) with the scaled v, up to four columns per pass. cols is not
+// empty (qrfac always reflects qtb).
+func scaleDots(v []float64, ajnorm float64, cols [][]float64, sums []float64) {
+	n := len(v)
+	v[0] = v[0]/ajnorm + 1
+	for g := 0; g < len(cols); g += 4 {
+		// Pad a short group with repeated columns: their sums are dropped.
+		var c [4][]float64
+		for k := range c {
+			c[k] = cols[min(g+k, len(cols)-1)][:n]
+		}
+		c0, c1, c2, c3 := c[0], c[1], c[2], c[3]
+		var s0, s1, s2, s3 float64
+		v0 := v[0]
+		s0 += float64(v0 * c0[0])
+		s1 += float64(v0 * c1[0])
+		s2 += float64(v0 * c2[0])
+		s3 += float64(v0 * c3[0])
+		if g == 0 {
+			for i := 1; i < n; i++ {
+				vi := v[i] / ajnorm
+				v[i] = vi
+				s0 += float64(vi * c0[i])
+				s1 += float64(vi * c1[i])
+				s2 += float64(vi * c2[i])
+				s3 += float64(vi * c3[i])
+			}
+		} else {
+			for i := 1; i < n; i++ {
+				vi := v[i]
+				s0 += float64(vi * c0[i])
+				s1 += float64(vi * c1[i])
+				s2 += float64(vi * c2[i])
+				s3 += float64(vi * c3[i])
+			}
+		}
+		s := [4]float64{s0, s1, s2, s3}
+		copy(sums[g:min(g+4, len(cols))], s[:])
+	}
+}
+
+// scaleDotsSwap is scaleDots for a pivot column that is still in another
+// column's place: it exchanges src (rows j..m of the pivot column) with dst
+// (those of column j), forming the Householder vector in dst from src's
+// values, and sums against cols, which reads every column before the pass
+// writes it (an entry may be dst itself, for the old column j). cols has one
+// to four entries.
+func scaleDotsSwap(src, dst []float64, ajnorm float64, cols [][]float64, sums []float64) {
+	n := len(dst)
+	src = src[:n]
+	var c [4][]float64
+	for k := range c {
+		c[k] = cols[min(k, len(cols)-1)][:n]
+	}
+	c0, c1, c2, c3 := c[0], c[1], c[2], c[3]
+	var s0, s1, s2, s3 float64
+	x0, x1, x2, x3 := c0[0], c1[0], c2[0], c3[0]
+	old := dst[0]
+	v0 := src[0]/ajnorm + 1
+	dst[0], src[0] = v0, old
+	s0 += float64(v0 * x0)
+	s1 += float64(v0 * x1)
+	s2 += float64(v0 * x2)
+	s3 += float64(v0 * x3)
+	for i := 1; i < n; i++ {
+		x0, x1, x2, x3 := c0[i], c1[i], c2[i], c3[i]
+		old := dst[i]
+		vi := src[i] / ajnorm
+		dst[i], src[i] = vi, old
+		s0 += float64(vi * x0)
+		s1 += float64(vi * x1)
+		s2 += float64(vi * x2)
+		s3 += float64(vi * x3)
+	}
+	s := [4]float64{s0, s1, s2, s3}
+	copy(sums[:len(cols)], s[:])
+}
+
+// applyReflection sets c −= temps[k]·v for each column c = cols[k], up to
+// four columns per pass. When nc is a column index it also returns mpEnorm
+// of the updated cols[nc][1:], accumulated in the first pass (ok reports
+// that it did).
+func applyReflection(v []float64, cols [][]float64, temps []float64, nc int) (norm float64, ok bool) {
+	var others [3]int
+	cnt := 0
+	if nc >= 0 {
+		for k := 0; k < len(cols) && cnt < 3; k++ {
+			if k != nc {
+				others[cnt] = k
+				cnt++
+			}
+		}
+		norm, ok = axpyNorm(v, cols, temps, nc, others[:cnt]), true
+	}
+	// The columns not done above, four at a time.
+	var idx [4]int
+	n := 0
+	for k := range cols {
+		if k == nc || (cnt > 0 && k <= others[cnt-1]) {
+			continue
+		}
+		idx[n] = k
+		n++
+		if n == 4 {
+			axpyCols(v, cols, temps, idx[:n])
+			n = 0
+		}
+	}
+	if n > 0 {
+		axpyCols(v, cols, temps, idx[:n])
+	}
+	return norm, ok
+}
+
+// axpyCols sets c −= temps[k]·v for the columns cols[k], k in ks (1 to 4
+// indices), in one pass.
+func axpyCols(v []float64, cols [][]float64, temps []float64, ks []int) {
+	n := len(v)
+	switch len(ks) {
+	case 1:
+		c0, t0 := cols[ks[0]][:n], temps[ks[0]]
+		for i, vi := range v {
+			c0[i] -= float64(t0 * vi)
+		}
+	case 2:
+		c0, t0 := cols[ks[0]][:n], temps[ks[0]]
+		c1, t1 := cols[ks[1]][:n], temps[ks[1]]
+		for i, vi := range v {
+			c0[i] -= float64(t0 * vi)
+			c1[i] -= float64(t1 * vi)
+		}
+	case 3:
+		c0, t0 := cols[ks[0]][:n], temps[ks[0]]
+		c1, t1 := cols[ks[1]][:n], temps[ks[1]]
+		c2, t2 := cols[ks[2]][:n], temps[ks[2]]
+		for i, vi := range v {
+			c0[i] -= float64(t0 * vi)
+			c1[i] -= float64(t1 * vi)
+			c2[i] -= float64(t2 * vi)
+		}
+	default:
+		c0, t0 := cols[ks[0]][:n], temps[ks[0]]
+		c1, t1 := cols[ks[1]][:n], temps[ks[1]]
+		c2, t2 := cols[ks[2]][:n], temps[ks[2]]
+		c3, t3 := cols[ks[3]][:n], temps[ks[3]]
+		for i, vi := range v {
+			c0[i] -= float64(t0 * vi)
+			c1[i] -= float64(t1 * vi)
+			c2[i] -= float64(t2 * vi)
+			c3[i] -= float64(t3 * vi)
+		}
+	}
+}
+
+// axpyNorm updates cols[nc] and the columns cols[k], k in others (at most
+// three, at least one: qrfac always reflects qtb besides the column whose
+// norm it wants), as axpyCols does, and returns mpEnorm of the updated
+// cols[nc][1:].
+func axpyNorm(v []float64, cols [][]float64, temps []float64, nc int, others []int) float64 {
+	n := len(v)
+	cn, tn := cols[nc][:n], temps[nc]
+	var c [3][]float64
+	var t [3]float64
+	for k, o := range others {
+		c[k], t[k] = cols[o][:n], temps[o]
+	}
+	cn[0] -= float64(tn * v[0])
+	for k := range others {
+		c[k][0] -= float64(t[k] * v[0])
+	}
+	var s float64
+	var tail enormTail
+	agiant := rgiant / float64(n-1)
+	switch len(others) {
+	case 1:
+		c0, t0 := c[0], t[0]
+		for i := 1; i < n; i++ {
+			vi := v[i]
+			c0[i] -= float64(t0 * vi)
+			x := cn[i] - float64(tn*vi)
+			cn[i] = x
+			if xabs := math.Abs(x); xabs > rdwarf && xabs < agiant {
+				s += float64(xabs * xabs)
+			} else {
+				tail.add(xabs)
+			}
+		}
+	case 2:
+		c0, t0, c1, t1 := c[0], t[0], c[1], t[1]
+		for i := 1; i < n; i++ {
+			vi := v[i]
+			c0[i] -= float64(t0 * vi)
+			c1[i] -= float64(t1 * vi)
+			x := cn[i] - float64(tn*vi)
+			cn[i] = x
+			if xabs := math.Abs(x); xabs > rdwarf && xabs < agiant {
+				s += float64(xabs * xabs)
+			} else {
+				tail.add(xabs)
+			}
+		}
+	default:
+		c0, t0, c1, t1, c2, t2 := c[0], t[0], c[1], t[1], c[2], t[2]
+		for i := 1; i < n; i++ {
+			vi := v[i]
+			c0[i] -= float64(t0 * vi)
+			c1[i] -= float64(t1 * vi)
+			c2[i] -= float64(t2 * vi)
+			x := cn[i] - float64(tn*vi)
+			cn[i] = x
+			if xabs := math.Abs(x); xabs > rdwarf && xabs < agiant {
+				s += float64(xabs * xabs)
+			} else {
+				tail.add(xabs)
+			}
+		}
+	}
+	return tail.norm(s)
 }
 
 // qrsolv solves, in the least-squares sense, A·x = b together with D·x = 0,
@@ -418,15 +925,7 @@ func dogleg(n int, r, diag, qtb []float64, delta float64, x, wa1, wa2 []float64)
 			wa1[j] /= gnorm
 			wa1[j] /= diag[j]
 		}
-		l = 0
-		for j := 0; j < n; j++ {
-			sum := 0.0
-			for i := j; i < n; i++ {
-				sum += float64(r[l] * wa1[i])
-				l++
-			}
-			wa2[j] = sum
-		}
+		packedRowDots(n, r, wa1, wa2)
 		temp := mpEnorm(wa2[:n])
 		sgnorm = (gnorm / temp) / temp
 		// The scaled gradient step lies inside the region: walk along the
@@ -448,6 +947,55 @@ func dogleg(n int, r, diag, qtb []float64, delta float64, x, wa1, wa2 []float64)
 	}
 }
 
+// packedRowDots sets out[i] = Σ_{j>=i} R[i][j]·x[j] (j ascending, from 0.0)
+// for the n×n upper-triangular R packed by rows in r. The sums of four rows
+// advance in the same pass: each row first takes its terms left of the
+// group's last diagonal, then the four take the shared columns together.
+func packedRowDots(n int, r, x, out []float64) {
+	if n < fuseMin {
+		l := 0
+		for i := 0; i < n; i++ {
+			sum := 0.0
+			for j := i; j < n; j++ {
+				sum += float64(r[l] * x[j])
+				l++
+			}
+			out[i] = sum
+		}
+		return
+	}
+	start := func(i int) int { return i*n - i*(i-1)/2 } // row i's offset
+	i := 0
+	for ; i+4 <= n; i += 4 {
+		r0, r1, r2, r3 := r[start(i):start(i+1)], r[start(i+1):start(i+2)], r[start(i+2):start(i+3)], r[start(i+3):start(i+4)]
+		var s0, s1, s2, s3 float64
+		s0 += float64(r0[0] * x[i])
+		s0 += float64(r0[1] * x[i+1])
+		s0 += float64(r0[2] * x[i+2])
+		s1 += float64(r1[0] * x[i+1])
+		s1 += float64(r1[1] * x[i+2])
+		s2 += float64(r2[0] * x[i+2])
+		r0, r1, r2 = r0[3:], r1[2:], r2[1:]
+		xs := x[i+3 : n]
+		r0, r1, r2, r3 = r0[:len(xs)], r1[:len(xs)], r2[:len(xs)], r3[:len(xs)]
+		for j, xj := range xs {
+			s0 += float64(r0[j] * xj)
+			s1 += float64(r1[j] * xj)
+			s2 += float64(r2[j] * xj)
+			s3 += float64(r3[j] * xj)
+		}
+		out[i], out[i+1], out[i+2], out[i+3] = s0, s1, s2, s3
+	}
+	for ; i < n; i++ {
+		ri := r[start(i) : start(i)+n-i]
+		sum := 0.0
+		for j, rij := range ri {
+			sum += float64(rij * x[i+j])
+		}
+		out[i] = sum
+	}
+}
+
 // qform accumulates the n×n orthogonal matrix Q from the Householder vectors
 // that qrfac left in the lower triangle of q (column-major, leading dimension
 // ldq).
@@ -457,6 +1005,42 @@ func qform(n int, q []float64, ldq int, wa []float64) {
 			q[i+j*ldq] = 0
 		}
 	}
+	if n < fuseMin {
+		qformPlain(n, q, ldq, wa)
+		return
+	}
+	// The columns j >= k are independent of one another at step k: their
+	// sums advance four to a pass, each in MINPACK's order.
+	var colStack [8][]float64
+	var tStack [8]float64
+	cols, temps := colStack[:0], tStack[:]
+	if n > len(tStack) {
+		temps = make([]float64, n)
+	}
+	for k := n - 1; k >= 0; k-- {
+		for i := k; i < n; i++ {
+			wa[i] = q[i+ldq*k]
+			q[i+ldq*k] = 0
+		}
+		q[k+ldq*k] = 1
+		if wa[k] == 0 {
+			continue
+		}
+		v := wa[k:n]
+		cols = cols[:0]
+		for j := k; j < n; j++ {
+			cols = append(cols, q[k+ldq*j:n+ldq*j])
+		}
+		dotCols(v, cols, temps)
+		for c := range cols {
+			temps[c] /= v[0]
+		}
+		applyReflection(v, cols, temps, -1)
+	}
+}
+
+// qformPlain is qform's accumulation as MINPACK writes it.
+func qformPlain(n int, q []float64, ldq int, wa []float64) {
 	for k := n - 1; k >= 0; k-- {
 		for i := k; i < n; i++ {
 			wa[i] = q[i+ldq*k]
@@ -476,6 +1060,29 @@ func qform(n int, q []float64, ldq int, wa []float64) {
 				q[i+ldq*j] -= float64(temp * wa[i])
 			}
 		}
+	}
+}
+
+// dotCols sets sums[c] = Σ v[i]·cols[c][i] (index order, from 0.0), four
+// columns per pass. cols is not empty.
+func dotCols(v []float64, cols [][]float64, sums []float64) {
+	n := len(v)
+	for g := 0; g < len(cols); g += 4 {
+		// Pad a short group with repeated columns: their sums are dropped.
+		var c [4][]float64
+		for k := range c {
+			c[k] = cols[min(g+k, len(cols)-1)][:n]
+		}
+		c0, c1, c2, c3 := c[0], c[1], c[2], c[3]
+		var s0, s1, s2, s3 float64
+		for i, vi := range v {
+			s0 += float64(vi * c0[i])
+			s1 += float64(vi * c1[i])
+			s2 += float64(vi * c2[i])
+			s3 += float64(vi * c3[i])
+		}
+		s := [4]float64{s0, s1, s2, s3}
+		copy(sums[g:min(g+4, len(cols))], s[:])
 	}
 }
 

@@ -5,36 +5,68 @@
 The benchmarks pair `bench_test.go` with `benchmarks/bench_scipy.py`, which
 runs the same problems from the same starting points. `benchmarks/run.sh`
 alternates the two: each round runs every Go benchmark once
-(`-benchtime=300ms`), then the whole SciPy script (each case a median of 3
-batches of at least 0.2 s). Interleaving spreads the load changes of a shared
-host evenly over both sides. `benchmarks/summarize.py` reports the median
-over rounds. The raw numbers are in `benchmarks/results.json`.
+(`-benchtime=300ms`, on one thread: `-test.cpu 1`, as SciPy runs), then the
+whole SciPy script (each case a median of 3 batches of at least 0.2 s).
+Interleaving spreads the load changes of a shared host evenly over both
+sides. `benchmarks/summarize.py` reports the median over rounds. The raw
+numbers are in `benchmarks/results.json`. `benchmarks/run.sh 5 'regexp'`
+runs only the matching benchmarks on both sides.
 
 Setup of the run below:
 
-- 7 rounds on 2026-10-10 on an Apple Silicon (arm64) Mac, Go 1.27.2, SciPy
-  1.18.1, NumPy 2.5.4, CPython 3.12.
-- The host is shared: the load average was 13–19 during the run (60+ earlier
-  that day). Absolute times are therefore pessimistic for both sides, and
-  ratios move by about ±20% from run to run.
+- 5 rounds on 2026-10-17 on an Apple M4 Max (arm64), Go 1.27.2, SciPy
+  1.18.1, NumPy 2.5.4 (both pinned by `run.sh`), CPython 3.12.
+- The host is shared: the load average was 11–13 during the run (16
+  cores). Ratios move by about ±10–20% from run to run.
 - **The SciPy objectives are SciPy's own vectorised `rosen`/`rosen_der`,
   and the curve-fit model is a vectorised NumPy expression.** That is the
   fastest form a notebook would write, not a straw man.
 
-## Results (median of 7 interleaved rounds)
+## Results (median of 5 interleaved rounds)
 
 | Benchmark | Go | SciPy | SciPy time in Python callbacks | Speed-up | Speed-up on SciPy's time minus its callbacks |
 |---|---|---|---|---|---|
-| Rosenbrock n=2, BFGS, analytic gradient | 5.7 µs | 2.58 ms | 0.75 ms | **449×** | 319× |
-| Rosenbrock n=100, BFGS, analytic gradient | 14.8 ms | 87.9 ms | 12.4 ms | **5.9×** | 5.1× |
-| Rosenbrock n=2, L-BFGS-B, analytic gradient | 126 µs | 1.47 ms | 0.77 ms | **11.7×** | 5.6× |
-| Rosenbrock n=100, L-BFGS-B, analytic gradient | 6.36 ms | 23.2 ms | 11.0 ms | **3.7×** | 1.9× |
-| Rosenbrock n=2, BFGS, finite differences | 18.0 µs | 4.35 ms | 1.19 ms | **242×** | 176× |
-| Rosenbrock n=100, L-BFGS-B, finite differences (stops at 15000 evaluations) | 3.31 ms | 242 ms | 133 ms | **73×** | 33× |
-| Rosenbrock n=2, Nelder–Mead | 16.2 µs | 2.83 ms | 1.44 ms | **175×** | 86× |
-| `curve_fit`, 10⁴ points, a·e^(−bx)+c, LM | 4.13 ms | 2.78 ms | (vectorised) | **0.67×** | — |
-| `curve_fit`, 10⁴ points, TRF | 5.97 ms | 4.61 ms | (vectorised) | **0.77×** | — |
-| `brentq`, x³−2x−5 on [2, 3] | 0.27 µs | 8.6 µs | — | **32×** | — |
+| Rosenbrock n=2, BFGS, analytic gradient | 3.03 µs | 1.26 ms | 382 µs | **416×** | 290× |
+| Rosenbrock n=100, BFGS, analytic gradient | 7.69 ms | 49.1 ms | 6.6 ms | **6.38×** | 5.52× |
+| Rosenbrock n=2, L-BFGS-B, analytic gradient | 68 µs | 763 µs | 431 µs | **11×** | 4.88× |
+| Rosenbrock n=100, L-BFGS-B, analytic gradient | 3.28 ms | 12.8 ms | 6.4 ms | **3.89×** | 1.94× |
+| Rosenbrock n=2, BFGS, finite differences | 9.79 µs | 2.56 ms | 708 µs | **261×** | 189× |
+| Rosenbrock n=100, L-BFGS-B, finite differences (stops at 15000 evaluations) | 1.66 ms | 121 ms | 67.3 ms | **73×** | 32× |
+| Rosenbrock n=2, Nelder–Mead | 10.4 µs | 1.4 ms | 674 µs | **134×** | 70× |
+| Rosenbrock n=2, Powell | 25.2 µs | 4.31 ms | 2.56 ms | **171×** | 70× |
+| Rosenbrock n=2, CG, analytic gradient | 5.96 µs | 2.03 ms | 749 µs | **341×** | 215× |
+| Rosenbrock n=100, CG, analytic gradient | 2.59 ms | 53.2 ms | 20.3 ms | **21×** | 13× |
+| Rosenbrock n=100, BFGS, finite differences | 12.3 ms | 576 ms | 293 ms | **47×** | 23× |
+| Rosenbrock n=2, Newton-CG, Hessian | 10.1 µs | 4.69 ms | 1.02 ms | **464×** | 363× |
+| Rosenbrock n=100, Newton-CG, Hessian-vector product | 792 µs | 26.3 ms | 2.59 ms | **33×** | 30× |
+| `curve_fit`, 10⁴ points, a·e^(−bx)+c, LM | 1.37 ms | 1.47 ms | — | **1.07×** | — |
+| `curve_fit`, 10⁴ points, TRF | 2.03 ms | 2.58 ms | — | **1.27×** | — |
+| `curve_fit`, 10⁴ points, TRF with bounds | 2.61 ms | 3.88 ms | — | **1.49×** | — |
+| `least_squares`, Rosenbrock residuals, TRF | 24.9 µs | 1.36 ms | — | **55×** | — |
+| `least_squares`, Rosenbrock residuals, LM | 7.8 µs | 521 µs | — | **67×** | — |
+| `leastsq`, Rosenbrock residuals | 6.89 µs | 40.1 µs | — | **5.82×** | — |
+| `root(method='hybr')`, 2 equations | 1.16 µs | 14.5 µs | — | **13×** | — |
+| `fsolve`, 2 equations | 1.15 µs | 15.6 µs | — | **14×** | — |
+| `root(method='hybr')`, Broyden tridiagonal, 100 equations | 649 µs | 825 µs | — | **1.27×** | — |
+| `linprog`, 2 variables (Go simplex, SciPy HiGHS) | 1.21 µs | 405 µs | — | **333×** | — |
+| `linprog`, dense 30×50 (Go simplex, SciPy HiGHS dual simplex) | 42 µs | 771 µs | — | **18×** | — |
+| `linprog`, dense 30×50 (Go interior point, SciPy HiGHS IPM) | 322 µs | 1.35 ms | — | **4.20×** | — |
+| `brentq`, x³−2x−5 on [2, 3] | 133 ns | 4.06 µs | — | **31×** | — |
+| `brenth`, same | 145 ns | 3.88 µs | — | **27×** | — |
+| `ridder`, same | 166 ns | 6.34 µs | — | **38×** | — |
+| `bisect`, same | 160 ns | 16.5 µs | — | **103×** | — |
+| `newton` with f′, from 2 | 29 ns | 24.2 µs | — | **838×** | — |
+| `newton` (secant), from 2 | 38 ns | 30 µs | — | **791×** | — |
+| `newton` with f′ and f″ (Halley), from 2 | 38 ns | 19.7 µs | — | **525×** | — |
+| `minimize_scalar`, Brent | 316 ns | 22.6 µs | — | **71×** | — |
+| `minimize_scalar`, golden | 340 ns | 25.9 µs | — | **76×** | — |
+| `minimize_scalar`, bounded | 194 ns | 28.3 µs | — | **146×** | — |
+| `fminbound(cos, 3, 4)` | 194 ns | 17.7 µs | — | **91×** | — |
+| `bracket` | 12 ns | 2.57 µs | — | **217×** | — |
+| `brute`, 50×50 grid, no finish | 11.1 µs | 1.57 ms | — | **141×** | — |
+| `brute`, 20×20 grid, Nelder–Mead finish | 4.87 µs | 539 µs | — | **111×** | — |
+| `approx_fprime`, Rosenbrock n=100 | 6.44 µs | 792 µs | — | **123×** | — |
+| `check_grad`, Rosenbrock n=100 | 7.04 µs | 765 µs | — | **109×** | — |
 
 How to read the columns:
 
@@ -43,41 +75,110 @@ How to read the columns:
 - **The last column** divides SciPy's time minus those callbacks by ours.
   It is the honest comparison of the algorithms' own code, because Go's
   callbacks cost almost nothing.
+- `linprog`: SciPy 1.18 only has HiGHS; this package has a revised simplex
+  and the interior-point method SciPy used to have. The rows compare the
+  same LP solved to optimality, not the same algorithm.
 
-## What the numbers say
+Every operation is at least as fast as SciPy. The closest are the large
+least-squares problems, where SciPy's model and its kernels are compiled
+code; they are discussed below.
 
-- **Small problems (n = 2):** SciPy's time is almost all fixed Python
-  overhead (argument handling, `ScalarFunction` wrappers, NumPy calls on
-  2-element arrays) plus about 10 µs per callback. Go spends nanoseconds
-  on each. The gap is 100–450× and stays above 85× even after crediting
-  SciPy with free callbacks.
-- **BFGS at n = 100:** our update is O(n²) where SciPy does two dense n×n
-  matrix products per iteration. That is the 5× left once SciPy's callbacks
-  are removed.
-- **L-BFGS-B at n = 100:** SciPy's core is compiled C with BLAS, and ours is
-  Go. With callbacks counted we are 3.7× faster. Without them the cores are
-  within 2× of each other, ours ahead.
-- **Finite differences:** each forward-difference gradient costs n Python
-  calls in SciPy and n inlined Go calls here. At n = 100 that is 73×.
-- **`curve_fit` with 10⁴ points: SciPy is faster here, and we say so.**
-  - SciPy's model call is one vectorised NumPy expression per evaluation, so
-    it pays no per-point Python overhead. Its MINPACK and LAPACK kernels are
-    compiled C.
-  - Our per-point model evaluation is at parity with NumPy: 58 µs against
-    56 µs per sweep of 10⁴ exponentials, measured separately.
-  - The remaining gap is the solver itself on m×n = 10⁴×3 work arrays. The
-    MINPACK port keeps MINPACK's reference operation order and its
-    three-accumulator norm for bit parity, and it allocates its m-sized
-    workspace on every call.
-  - `CurveFitOptions.Workers` (parallel model evaluation) did not change the
-    picture: the model accounts for only about a third of the time.
-  - Closing the gap means a fit-specific LM that reuses its buffers and uses
-    blocked norms. That is not done.
-- **`brentq`:** 32×, almost entirely because the 8 callbacks are Go calls.
+## Before and after this round of work
+
+The rows that were slower than SciPy, and those this work changed.
+"Before" is the code of 2026-10-12 (`origin/main` then): the `curve_fit`
+rows are interleaved Go/SciPy rounds of that day; for the other rows the
+old and new Go builds were alternated against each other on 2026-10-17 and
+divided into this run's SciPy time.
+
+| Benchmark | before | after |
+|---|---:|---:|
+| `curve_fit`, 10⁴ points, LM | **0.66×** (1.99 ms vs 1.32 ms) | 1.07× |
+| `curve_fit`, 10⁴ points, TRF | **0.83×** (2.89 ms vs 2.39 ms) | 1.27× |
+| `curve_fit`, 10⁴ points, TRF with bounds (new row) | **0.94×** (4.11 ms) | 1.49× |
+| `root`, Broyden tridiagonal, 100 equations (new row) | **0.78×** (1.06 ms) | 1.27× |
+| `root` / `fsolve`, 2 equations | 13× | 13× (unchanged) |
+| `leastsq`, `least_squares`, 2 residuals | 5.8×, 55–67× | unchanged |
+
+The Go side of `curve_fit` became 1.55× faster (LM 2.10 → 1.35 ms, TRF
+3.12 → 1.96 ms, bounded TRF 4.11 → 2.65 ms in the alternated runs) and
+`root` on 100 equations 1.76× (1.06 ms → 0.60 ms).
+
+### Same iterations as SciPy
+
+The slow rows were not doing more work: Go and SciPy take the same steps
+(`curve_fit` LM: 21 function evaluations each, TRF: 6 Jacobians, bounded
+TRF: 8; `root` on Broyden: 111 evaluations plus SciPy's 2 wrapper calls).
+The time went into the per-iteration linear algebra.
+
+### What changed
+
+All of it keeps every sum in its original order, so **every result is
+unchanged to the last bit** (see "Evidence" below).
+
+- **Independent sums advance in the same pass.** MINPACK's QR
+  factorisation (`qrfac`) forms, one after the other, sums that do not
+  depend on one another: the column norms, and at each step the products
+  of the Householder vector with every remaining column. Each such sum is
+  latency-bound (one floating-point add per element, waiting for the
+  previous one). They are now accumulated side by side, four per pass, each
+  in its own order. The same applies to `Qᵀ·fvec`, which lmdif and hybrd
+  formed after the factorisation and which is now formed with it; to the
+  norm of the next pivot column, accumulated while the update produces it;
+  to the exchange of the pivot column, done in the scaling pass; to
+  `qform`'s columns; to hybrd's Broyden update and predicted reduction and
+  dogleg's `R·g` (four rows of a packed triangle at a time); and to TRF's
+  `householderR` (`vᵀv` with every `vᵀc`, the next column's norm with the
+  update). On 10⁴×3, qrfac went from about 100 µs to 55 µs and
+  householderR from 162 µs to 67 µs; on 100×100, qform from 347 µs to
+  144 µs.
+- **One range test for four components.** The column norms use MINPACK's
+  three-accumulator `enorm`; testing the four components of a row for the
+  intermediate range is one unsigned comparison of their bit patterns.
+- **Fewer allocations and copies.** TRF keeps its work buffers between
+  iterations, `curve_fit` reads `xdata` and `ydata` in place and calls a
+  scalar model directly instead of through a k-vector wrapper, and
+  finiteness tests read exponent bits.
+- **Small problems keep MINPACK's plain loops.** Below 32 rows the
+  bookkeeping of the fused passes costs more than it saves (it had made
+  `root` on 2 equations 5–10% slower), so `qrfac`, `qform` and the packed
+  sums take the original loops there. Both paths give the same bits.
+
+### Evidence that results are unchanged
+
+- A dump of every result of `curve_fit` (10 option sets on 4 data sizes,
+  with and without sigma, bounds, robust losses, 2-D xdata, analytic and
+  numerical Jacobians), `leastsq`, `least_squares` and `root` on all
+  MINPACK test problems is identical, bit for bit, before and after, on
+  arm64 (with fused multiply-add) and on amd64 (without).
+- `minpack_fused_test.go` compares every fused kernel with the original
+  code on random matrices covering every magnitude range of `enorm`, its
+  exact bounds, zero and repeated columns, NaN and signed zeros: 4320 QR
+  factorisations, 350 `householderR` factorisations, `qform`,
+  `packedRowDots`, and `root` on 40 equations through both paths.
+  Mutations of the fused code (a dropped term, a shifted bound) make them
+  fail.
+- The SciPy fixture tests (bit-exact on MINPACK's iterates and counts
+  where they were before) pass unchanged; no tolerance was changed.
+
+### What remains close, and why
+
+`curve_fit` LM is 1.07× and TRF 1.27×. Of LM's 1.37 ms, about 0.95 ms is
+the 21 evaluations of the model over 10⁴ points: a Go closure calling
+`math.Exp` costs about 45 µs per sweep, against 29 µs for NumPy's
+vectorised `a*np.exp(-b*x)+c`. The solver itself now takes about 0.4 ms
+against about 0.8 ms for SciPy's compiled MINPACK and wrappers; what is
+left of it is the minimum number of latency-bound passes MINPACK's order
+of operations allows (each sum must stay sequential to keep the results
+bit-identical). `CurveFitOptions.Workers` evaluates the model in parallel
+when that is acceptable; the table is single-threaded.
+
+`root` on 100 equations is 1.27×: SciPy's 0.83 ms is about 0.31 ms of
+Python callbacks and 0.5 ms of compiled MINPACK, ours 0.6 ms of solver.
 
 ## Reproducing
 
 ```sh
-benchmarks/run.sh 7          # needs uv (https://docs.astral.sh/uv/) for SciPy
-GOWORK=off go test -run '^$' -bench . -benchtime=1s   # Go side only
+benchmarks/run.sh 5          # needs uv (https://docs.astral.sh/uv/) for SciPy
+GOWORK=off go test -run '^$' -bench . -benchtime=1s -cpu 1   # Go side only
 ```

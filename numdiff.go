@@ -23,6 +23,27 @@ type fdStep struct {
 	rel    float64
 	abs    float64
 	lb, ub []float64 // nil means unbounded
+	// buf, when set, keeps jacFD's residual buffers from one call to the
+	// next instead of allocating them every time.
+	buf *fdBuf
+}
+
+// fdBuf holds jacFD's m-sized work vectors.
+type fdBuf struct{ f1, f2 []float64 }
+
+// vectors returns jacFD's work vectors of length m (f2 only for 3-point).
+func (s fdStep) vectors(m int) (f1, f2 []float64) {
+	b := s.buf
+	if b == nil {
+		b = &fdBuf{}
+	}
+	if len(b.f1) != m {
+		b.f1 = make([]float64, m)
+	}
+	if s.method != FD2Point && len(b.f2) != m {
+		b.f2 = make([]float64, m)
+	}
+	return b.f1, b.f2
 }
 
 // steps computes the signed step for each variable at x0 and whether the
@@ -147,8 +168,7 @@ func (s fdStep) jacFD(f func(x, out []float64), x0, f0, jac []float64) int {
 	n, m := len(x0), len(f0)
 	h, one := s.steps(x0)
 	x := clone(x0)
-	f1 := make([]float64, m)
-	f2 := make([]float64, m)
+	f1, f2 := s.vectors(m)
 	nfev := 0
 	for j := range x0 {
 		xj := x0[j]
