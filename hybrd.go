@@ -55,7 +55,15 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 	wa2 := make([]float64, n)
 	wa3 := make([]float64, n)
 	wa4 := make([]float64, n)
-	cols, sums := make([][]float64, 0, n), make([]float64, n)
+	var cols [][]float64
+	var sumStack [32]float64
+	sums := sumStack[:min(n, len(sumStack))]
+	if n > len(sumStack) {
+		sums = make([]float64, n)
+	}
+	if n >= fuseMin {
+		cols = make([][]float64, 0, n)
+	}
 
 	fcn(x, fvec)
 	o.nfev = 1
@@ -207,11 +215,21 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 				break
 			}
 			// Otherwise Broyden's rank-1 update of R and Q.
-			cols = cols[:0]
-			for j := 0; j < n; j++ {
-				cols = append(cols, fjac[ldfjac*j:ldfjac*j+n])
+			if n >= fuseMin {
+				cols = cols[:0]
+				for j := 0; j < n; j++ {
+					cols = append(cols, fjac[ldfjac*j:ldfjac*j+n])
+				}
+				dotCols(wa4[:n], cols, sums)
+			} else {
+				for j := 0; j < n; j++ {
+					sum := 0.0
+					for i := 0; i < n; i++ {
+						sum += float64(fjac[i+ldfjac*j] * wa4[i])
+					}
+					sums[j] = sum
+				}
 			}
-			dotCols(wa4[:n], cols, sums)
 			for j := 0; j < n; j++ {
 				sum := sums[j]
 				wa2[j] = (sum - wa3[j]) / pnorm

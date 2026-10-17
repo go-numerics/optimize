@@ -31,18 +31,41 @@ var (
 // sum of squares, which is what makes the iterates match the reference to the
 // last bit; the package's enorm (a scaled sum) rounds differently.
 func mpEnorm(x []float64) float64 {
-	var s2 float64
-	var t enormTail
+	var s1, s2, s3, x1max, x3max float64
 	agiant := rgiant / float64(len(x))
 	for _, xi := range x {
 		xabs := math.Abs(xi)
-		if xabs > rdwarf && xabs < agiant {
+		switch {
+		case xabs > rdwarf && xabs < agiant:
 			s2 += float64(xabs * xabs)
-		} else {
-			t.add(xabs)
+		case xabs > rdwarf:
+			if xabs > x1max {
+				t := x1max / xabs
+				s1 = 1 + float64(s1*(t*t))
+				x1max = xabs
+			} else {
+				t := xabs / x1max
+				s1 += float64(t * t)
+			}
+		case xabs > x3max:
+			t := x3max / xabs
+			s3 = 1 + float64(s3*(t*t))
+			x3max = xabs
+		case xabs != 0:
+			t := xabs / x3max
+			s3 += float64(t * t)
 		}
 	}
-	return t.norm(s2)
+	if s1 != 0 {
+		return x1max * math.Sqrt(s1+(s2/x1max)/x1max)
+	}
+	if s2 != 0 {
+		if s2 >= x3max {
+			return math.Sqrt(s2 * (1 + float64((x3max/s2)*(x3max*s3))))
+		}
+		return math.Sqrt(x3max * ((s2 / x3max) + float64(x3max*s3)))
+	}
+	return x3max * math.Sqrt(s3)
 }
 
 // enormTail holds the accumulators of mpEnorm for the components outside the
@@ -197,6 +220,95 @@ func fdjac(fcn func(x, f []float64), m, n int, x, fvec, fjac []float64, epsfcn f
 // column norms, and the products of a reflection with the remaining
 // columns) are accumulated in the same pass, which overlaps their latency.
 func qrfac(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa, qtb []float64) {
+	if m < fuseMin {
+		qrfacPlain(m, n, a, lda, pivot, ipvt, rdiag, acnorm, wa, qtb)
+		return
+	}
+	qrfacFused(m, n, a, lda, pivot, ipvt, rdiag, acnorm, wa, qtb)
+}
+
+// fuseMin is the vector length from which the fused passes pay for their
+// bookkeeping; shorter problems take MINPACK's plain loops, which give the
+// same results.
+var fuseMin = 32 // a variable so that tests can compare both paths
+
+// qrfacPlain is qrfac as MINPACK writes it, followed by lmdif's and hybrd's
+// Qᵀ·qtb loop.
+func qrfacPlain(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa, qtb []float64) {
+	for j := 0; j < n; j++ {
+		acnorm[j] = mpEnorm(a[j*lda : j*lda+m])
+		rdiag[j] = acnorm[j]
+		wa[j] = rdiag[j]
+		if pivot {
+			ipvt[j] = j
+		}
+	}
+	minmn := min(m, n)
+	for j := 0; j < minmn; j++ {
+		if pivot {
+			kmax := j
+			for k := j; k < n; k++ {
+				if rdiag[k] > rdiag[kmax] {
+					kmax = k
+				}
+			}
+			if kmax != j {
+				for i := 0; i < m; i++ {
+					a[i+lda*j], a[i+lda*kmax] = a[i+lda*kmax], a[i+lda*j]
+				}
+				rdiag[kmax] = rdiag[j]
+				wa[kmax] = wa[j]
+				ipvt[j], ipvt[kmax] = ipvt[kmax], ipvt[j]
+			}
+		}
+		ajnorm := mpEnorm(a[lda*j+j : lda*j+m])
+		if ajnorm == 0 {
+			rdiag[j] = -ajnorm
+			continue
+		}
+		if a[lda*j+j] < 0 {
+			ajnorm = -ajnorm
+		}
+		for i := j; i < m; i++ {
+			a[i+lda*j] /= ajnorm
+		}
+		a[j+lda*j] += 1
+		for k := j + 1; k < n; k++ {
+			sum := 0.0
+			for i := j; i < m; i++ {
+				sum += float64(a[i+lda*j] * a[i+lda*k])
+			}
+			temp := sum / a[j+lda*j]
+			for i := j; i < m; i++ {
+				a[i+lda*k] -= float64(temp * a[i+lda*j])
+			}
+			if pivot && rdiag[k] != 0 {
+				temp = a[j+lda*k] / rdiag[k]
+				rdiag[k] *= math.Sqrt(math.Max(0, 1-float64(temp*temp)))
+				if q := rdiag[k] / wa[k]; 0.05*(q*q) <= epsmch {
+					rdiag[k] = mpEnorm(a[(j+1)+lda*k : m+lda*k])
+					wa[k] = rdiag[k]
+				}
+			}
+		}
+		rdiag[j] = -ajnorm
+	}
+	for j := 0; j < minmn; j++ {
+		if a[j+lda*j] != 0 {
+			sum := 0.0
+			for i := j; i < m; i++ {
+				sum += float64(a[i+lda*j] * qtb[i])
+			}
+			temp := -sum / a[j+lda*j]
+			for i := j; i < m; i++ {
+				qtb[i] += float64(a[i+lda*j] * temp)
+			}
+		}
+	}
+}
+
+// qrfacFused is qrfac with the fused passes.
+func qrfacFused(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa, qtb []float64) {
 	var colStack [8][]float64
 	var tStack [8]float64
 	var renormStack [8]bool
@@ -840,6 +952,18 @@ func dogleg(n int, r, diag, qtb []float64, delta float64, x, wa1, wa2 []float64)
 // advance in the same pass: each row first takes its terms left of the
 // group's last diagonal, then the four take the shared columns together.
 func packedRowDots(n int, r, x, out []float64) {
+	if n < fuseMin {
+		l := 0
+		for i := 0; i < n; i++ {
+			sum := 0.0
+			for j := i; j < n; j++ {
+				sum += float64(r[l] * x[j])
+				l++
+			}
+			out[i] = sum
+		}
+		return
+	}
 	start := func(i int) int { return i*n - i*(i-1)/2 } // row i's offset
 	i := 0
 	for ; i+4 <= n; i += 4 {
@@ -881,6 +1005,10 @@ func qform(n int, q []float64, ldq int, wa []float64) {
 			q[i+j*ldq] = 0
 		}
 	}
+	if n < fuseMin {
+		qformPlain(n, q, ldq, wa)
+		return
+	}
 	// The columns j >= k are independent of one another at step k: their
 	// sums advance four to a pass, each in MINPACK's order.
 	var colStack [8][]float64
@@ -908,6 +1036,30 @@ func qform(n int, q []float64, ldq int, wa []float64) {
 			temps[c] /= v[0]
 		}
 		applyReflection(v, cols, temps, -1)
+	}
+}
+
+// qformPlain is qform's accumulation as MINPACK writes it.
+func qformPlain(n int, q []float64, ldq int, wa []float64) {
+	for k := n - 1; k >= 0; k-- {
+		for i := k; i < n; i++ {
+			wa[i] = q[i+ldq*k]
+			q[i+ldq*k] = 0
+		}
+		q[k+ldq*k] = 1
+		if wa[k] == 0 {
+			continue
+		}
+		for j := k; j < n; j++ {
+			sum := 0.0
+			for i := k; i < n; i++ {
+				sum += float64(q[i+ldq*j] * wa[i])
+			}
+			temp := sum / wa[k]
+			for i := k; i < n; i++ {
+				q[i+ldq*j] -= float64(temp * wa[i])
+			}
+		}
 	}
 }
 

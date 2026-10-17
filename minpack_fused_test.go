@@ -189,23 +189,26 @@ func TestQrfacMatchesReference(t *testing.T) {
 					b[i] = fusedEntry(r, m)
 				}
 				for _, pivot := range []bool{false, true} {
-					a1, a2 := clone(a), clone(a)
-					b1, b2 := clone(b), clone(b)
+					a1, b1 := clone(a), clone(b)
 					p1, p2 := make([]int, n), make([]int, n)
 					d1, d2 := make([]float64, n), make([]float64, n)
 					c1, c2 := make([]float64, n), make([]float64, n)
 					w1, w2 := make([]float64, n), make([]float64, n)
 					qrfacRef(m, n, a1, lda, pivot, p1, d1, c1, w1, b1)
-					qrfac(m, n, a2, lda, pivot, p2, d2, c2, w2, b2)
-					if !sameBits(a1, a2) || !sameBits(b1, b2) || !sameBits(d1, d2) || !sameBits(c1, c2) || !sameBits(w1, w2) {
-						t.Fatalf("m=%d n=%d trial=%d pivot=%v: fused qrfac differs from the reference", m, n, trial, pivot)
-					}
-					for j := range p1 {
-						if p1[j] != p2[j] {
-							t.Fatalf("m=%d n=%d trial=%d: ipvt %v, reference %v", m, n, trial, p2, p1)
+					// Both the size dispatch and the fused passes at every size.
+					for _, f := range []func(int, int, []float64, int, bool, []int, []float64, []float64, []float64, []float64){qrfac, qrfacFused} {
+						a2, b2 := clone(a), clone(b)
+						f(m, n, a2, lda, pivot, p2, d2, c2, w2, b2)
+						if !sameBits(a1, a2) || !sameBits(b1, b2) || !sameBits(d1, d2) || !sameBits(c1, c2) || !sameBits(w1, w2) {
+							t.Fatalf("m=%d n=%d trial=%d pivot=%v: qrfac differs from the reference", m, n, trial, pivot)
 						}
+						for j := range p1 {
+							if p1[j] != p2[j] {
+								t.Fatalf("m=%d n=%d trial=%d: ipvt %v, reference %v", m, n, trial, p2, p1)
+							}
+						}
+						cases++
 					}
-					cases++
 				}
 			}
 		}
@@ -411,7 +414,7 @@ func qformRef(n int, q []float64, ldq int, wa []float64) {
 
 func TestQformMatchesReference(t *testing.T) {
 	r := rand.New(rand.NewPCG(9, 10))
-	for n := 1; n <= 13; n++ {
+	for _, n := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, fuseMin, fuseMin + 1, fuseMin + 5} {
 		for trial := range 8 {
 			ld := n + trial%2
 			a := make([]float64, ld*n)
@@ -441,7 +444,7 @@ func TestQformMatchesReference(t *testing.T) {
 
 func TestPackedRowDotsMatchesReference(t *testing.T) {
 	r := rand.New(rand.NewPCG(11, 12))
-	for n := 1; n <= 14; n++ {
+	for _, n := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, fuseMin, fuseMin + 1, fuseMin + 2, fuseMin + 3, fuseMin + 6} {
 		p := make([]float64, n*(n+1)/2)
 		for i := range p {
 			p[i] = fusedEntry(r, n)
@@ -465,5 +468,37 @@ func TestPackedRowDotsMatchesReference(t *testing.T) {
 		if !sameBits(got, want) {
 			t.Fatalf("n=%d: %v, reference %v", n, got, want)
 		}
+	}
+}
+
+// Root on a system large enough for the fused passes returns, bit for bit,
+// what MINPACK's plain loops return.
+func TestHybrdFusedMatchesPlain(t *testing.T) {
+	broyden := func(x, f []float64) {
+		n := len(x)
+		for i := range n {
+			v := float64((3-2*x[i])*x[i]) + 1
+			if i > 0 {
+				v -= x[i-1]
+			}
+			if i < n-1 {
+				v -= 2 * x[i+1]
+			}
+			f[i] = v
+		}
+	}
+	x0 := make([]float64, 40)
+	for i := range x0 {
+		x0[i] = -1
+	}
+	fused, err := Root(SystemProblem{Func: broyden}, x0, nil)
+	if err != nil || !fused.Success {
+		t.Fatal(err, fused)
+	}
+	defer func(v int) { fuseMin = v }(fuseMin)
+	fuseMin = 1 << 30
+	plain, _ := Root(SystemProblem{Func: broyden}, x0, nil)
+	if !sameBits(fused.X, plain.X) || !sameBits(fused.Fjac, plain.Fjac) || !sameBits(fused.R, plain.R) || fused.Nfev != plain.Nfev {
+		t.Errorf("fused and plain hybrd differ: nfev %d / %d", fused.Nfev, plain.Nfev)
 	}
 }
