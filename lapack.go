@@ -42,6 +42,24 @@ func nrm2(n int, x []float64, inc int) float64 {
 	return float64(scale * math.Sqrt(ssq))
 }
 
+// dlapy2 is sqrt(x²+y²) as LAPACK's DLAPY2 computes it. math.Hypot is not
+// used: its internal 1+q*q may be fused on some architectures.
+func dlapy2(x, y float64) float64 {
+	if math.IsNaN(x) {
+		return x
+	}
+	if math.IsNaN(y) {
+		return y
+	}
+	w := math.Max(math.Abs(x), math.Abs(y))
+	z := math.Min(math.Abs(x), math.Abs(y))
+	if z == 0 || w > math.MaxFloat64 {
+		return w
+	}
+	q := z / w
+	return float64(w * math.Sqrt(1+float64(q*q)))
+}
+
 // dlarfg generates an elementary reflector H with H*(alpha;x) = (beta;0),
 // overwriting alpha with beta and x with v(2:n); it returns tau.
 func dlarfg(n int, alpha *float64, x []float64, incx int) float64 {
@@ -52,7 +70,7 @@ func dlarfg(n int, alpha *float64, x []float64, incx int) float64 {
 	if xnorm == 0 {
 		return 0
 	}
-	beta := -math.Copysign(math.Hypot(*alpha, xnorm), *alpha)
+	beta := -math.Copysign(dlapy2(*alpha, xnorm), *alpha)
 	knt := 0
 	if math.Abs(beta) < lapackSmlnum {
 		rsafmn := 1 / lapackSmlnum
@@ -66,7 +84,7 @@ func dlarfg(n int, alpha *float64, x []float64, incx int) float64 {
 			}
 		}
 		xnorm = nrm2(n-1, x, incx)
-		beta = -math.Copysign(math.Hypot(*alpha, xnorm), *alpha)
+		beta = -math.Copysign(dlapy2(*alpha, xnorm), *alpha)
 	}
 	tau := (beta - *alpha) / beta
 	scal(n-1, 1/(*alpha-beta), x, incx)
@@ -93,7 +111,7 @@ func dlarfgp(n int, alpha *float64, x []float64, incx int) float64 {
 		*alpha = -*alpha
 		return 2
 	}
-	beta := math.Copysign(math.Hypot(*alpha, xnorm), *alpha)
+	beta := math.Copysign(dlapy2(*alpha, xnorm), *alpha)
 	knt := 0
 	if math.Abs(beta) < lapackSmlnum {
 		bignum := 1 / lapackSmlnum
@@ -107,7 +125,7 @@ func dlarfgp(n int, alpha *float64, x []float64, incx int) float64 {
 			}
 		}
 		xnorm = nrm2(n-1, x, incx)
-		beta = math.Copysign(math.Hypot(*alpha, xnorm), *alpha)
+		beta = math.Copysign(dlapy2(*alpha, xnorm), *alpha)
 	}
 	savealpha := *alpha
 	*alpha += beta
@@ -480,7 +498,9 @@ func lstsqPivoted(m, n int, a []float64, b []float64, rcond float64, work []floa
 		tau[i] = dlarfg(m-i, &a[i+i*m], a[min(i+1, m-1)+i*m:], 1)
 		aii := a[i+i*m]
 		a[i+i*m] = 1
-		dlarfLeft(m-i, n-i-1, a[i+i*m:], 1, tau[i], a[i+(i+1)*m:], m)
+		if i < n-1 {
+			dlarfLeft(m-i, n-i-1, a[i+i*m:], 1, tau[i], a[i+(i+1)*m:], m)
+		}
 		dlarfLeft(m-i, 1, a[i+i*m:], 1, tau[i], b[i:], m)
 		a[i+i*m] = aii
 		for j := i + 1; j < n; j++ {

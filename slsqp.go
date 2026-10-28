@@ -86,7 +86,7 @@ func (S *slsqpState) body(funx float64, gradx, c []float64, ldc int, d, sol, mul
 
 	// MODE0: start.
 	S.acc = math.Abs(S.acc)
-	S.tol = 10 * S.acc
+	S.tol = float64(10 * S.acc)
 	S.iter = 0
 	S.reset = 0
 	for i := 0; i < n; i++ {
@@ -185,7 +185,7 @@ ITERSTART:
 
 LINESEARCH:
 	S.line++
-	S.h3 = S.alpha * S.h3
+	S.h3 = float64(S.alpha * S.h3)
 	scal(n, S.alpha, s, 1)
 	for i := 0; i < n; i++ {
 		sol[i] = x0[i] + s[i]
@@ -234,7 +234,7 @@ MODEM1:
 	tpmvLNU(n, bfgs, v)
 	S.h1 = dot(s[:n], u[:n])
 	S.h2 = dot(s[:n], v[:n])
-	S.h3 = 0.2 * S.h2
+	S.h3 = float64(0.2 * S.h2)
 	if S.h1 < S.h3 {
 		S.h4 = (S.h2 - S.h3) / (S.h2 - S.h1)
 		S.h1 = S.h3
