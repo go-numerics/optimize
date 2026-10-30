@@ -224,6 +224,18 @@ prob("Infeasible", [0.0], lambda x: x[0] ** 2, lambda x: A([2 * x[0]]),
      [ineq(lambda x: A([x[0] - 2, 1 - x[0]]), lambda x: A([[1.0], [-1.0]]))])
 prob("Overdetermined", [0.5], lambda x: x[0] ** 2, lambda x: A([2 * x[0]]),
      [eq(lambda x: A([x[0] - 1, x[0] + 1]), lambda x: A([[1.0], [1.0]]))])
+prob("SingularEq", [0, 0], lambda x: x[0] ** 2 + x[1] ** 2, lambda x: A([2 * x[0], 2 * x[1]]),
+     [eq(lambda x: A([x[0] + x[1] - 1, x[0] + x[1] - 2]), lambda x: A([[1.0, 1.0], [1.0, 1.0]]))])
+prob("SingularEq3", [0, 0, 0], lambda x: x[0] ** 2 + x[1] ** 2 + x[2] ** 2,
+     lambda x: A([2 * x[0], 2 * x[1], 2 * x[2]]),
+     [eq(lambda x: A([x[0] + x[1] - 1, x[0] + x[1] - 2]), lambda x: A([[1.0, 1.0, 0.0], [1.0, 1.0, 0.0]]))])
+prob("DuplicateEq", [0, 0], lambda x: x[0] ** 2 + x[1] ** 2, lambda x: A([2 * x[0], 2 * x[1]]),
+     [eq(lambda x: A([x[0] + x[1] - 1, x[0] + x[1] - 1]), lambda x: A([[1.0, 1.0], [1.0, 1.0]]))])
+# A start 8e-7 from the equality x = 1 with f = x: the QP step is an ascent
+# direction balanced by the L1 penalty, so SLSQP resets its BFGS matrix five
+# times and accepts the point by the relaxed test (tol = 10*acc).
+prob("Stationary", [1 - 8e-7], lambda x: x[0], lambda x: A([1.0]),
+     [eq(lambda x: A([x[0] - 1]), lambda x: A([[1.0]]))], fstar=1)
 prob("FixedAll", [1, 2], rosen, rosen_g,
      [ineq(lambda x: A([x[0] + x[1]]), lambda x: A([[1.0, 1.0]]))], bounds=[(1, 1), (2, 2)])
 prob("FixedAllViolated", [1, 2], rosen, rosen_g,

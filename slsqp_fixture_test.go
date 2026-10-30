@@ -126,6 +126,14 @@ var slsqpPathExceptions = map[string]bool{
 	"HS13/jac": true, "HS13/fd": true, "HS23/jac": true,
 	"HS29/jac": true, "HS29/fd": true, "HS38/jac": true, "HS38/fd": true,
 	"HS38/eps": true, "Infeasible/jac": true, "Infeasible/fd": true,
+	// Two parallel equality constraints: the rank test |R(i,i)| >= eps of
+	// lsei sees a pivot that is exactly zero in exact arithmetic, so the
+	// last bit of a Householder update decides between "singular" and a
+	// 1e17 multiplier. SciPy's BLAS and ours round it differently; the
+	// status (8, positive directional derivative; 9, iteration limit)
+	// still agrees.
+	"SingularEq/jac": true, "SingularEq/fd": true,
+	"SingularEq3/jac": true, "SingularEq3/fd": true,
 }
 
 // slsqpLibm are the problems that call sin, cos, log or pow. Go's math

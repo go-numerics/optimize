@@ -127,7 +127,6 @@ func dlarfgp(n int, alpha *float64, x []float64, incx int) float64 {
 		xnorm = nrm2(n-1, x, incx)
 		beta = math.Copysign(dlapy2(*alpha, xnorm), *alpha)
 	}
-	savealpha := *alpha
 	*alpha += beta
 	var tau float64
 	if beta < 0 {
@@ -138,19 +137,10 @@ func dlarfgp(n int, alpha *float64, x []float64, incx int) float64 {
 		tau = *alpha / beta
 		*alpha = -*alpha
 	}
-	if math.Abs(tau) <= lapackSmlnum {
-		if savealpha >= 0 {
-			tau = 0
-		} else {
-			tau = 2
-			for j := 0; j < n-1; j++ {
-				x[j*incx] = 0
-			}
-			beta = -savealpha
-		}
-	} else {
-		scal(n-1, 1 / *alpha, x, incx)
-	}
+	// LAPACK flushes a subnormal tau to zero here. It cannot happen after
+	// the xnorm <= eps*|alpha| exit above: tau is in [1, 2] when beta < 0
+	// and above eps²/2 otherwise (or NaN), so that branch is omitted.
+	scal(n-1, 1 / *alpha, x, incx)
 	for j := 0; j < knt; j++ {
 		beta *= lapackSmlnum
 	}
@@ -209,9 +199,7 @@ func dlartgp(f, g float64) (cs, sn, r float64) {
 		r = math.Sqrt(float64(f1*f1) + float64(g1*g1))
 		cs, sn = f1/r, g1/r
 	}
-	if r < 0 {
-		cs, sn, r = -cs, -sn, -r
-	}
+	// LAPACK's final sign flip for r < 0 is omitted: r is a square root.
 	return cs, sn, r
 }
 
@@ -337,13 +325,10 @@ func gemvN(m, n int, alpha float64, a []float64, lda int, x []float64, beta floa
 	if m == 0 || n == 0 {
 		return
 	}
+	// SLSQP only calls it with beta = 1 or -1.
 	if beta != 1 {
 		for i := 0; i < m; i++ {
-			if beta == 0 {
-				y[i] = 0
-			} else {
-				y[i] *= beta
-			}
+			y[i] *= beta
 		}
 	}
 	for j := 0; j < n; j++ {
@@ -360,13 +345,10 @@ func gemvT(m, n int, alpha float64, a []float64, lda int, x []float64, beta floa
 	if m == 0 || n == 0 {
 		return
 	}
+	// SLSQP only calls it with beta = 0 or 1.
 	for j := 0; j < n; j++ {
-		switch beta {
-		case 1:
-		case 0:
+		if beta == 0 {
 			y[j] = 0
-		default:
-			y[j] *= beta
 		}
 		t := 0.0
 		col := a[j*lda:]

@@ -123,14 +123,19 @@ func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64,
 			y[m+i] = math.NaN()
 		}
 	}
-	for i := 0; i < n; i++ {
+	clampNaNBounds(x[:n], xl, xu)
+	return mode
+}
+
+// clampNaNBounds clips x into [xl, xu], where a NaN bound is absent.
+func clampNaNBounds(x, xl, xu []float64) {
+	for i := range x {
 		if !math.IsNaN(xl[i]) && x[i] < xl[i] {
 			x[i] = xl[i]
 		} else if !math.IsNaN(xu[i]) && x[i] > xu[i] {
 			x[i] = xu[i]
 		}
 	}
-	return mode
 }
 
 // lsei solves min |A*x - b| s.t. E*x = f, G*x >= h for A ma×n, E me×n and G
@@ -226,6 +231,10 @@ func lsi(ma, mg, n int, a, b, g, h, x []float64) (mode int, mults []float64) {
 	return 1, mults
 }
 
+// ldpMaxIter*m bounds the NNLS inner iterations of ldp (3m in SciPy); tests
+// lower it to reach the iteration-limit exit.
+var ldpMaxIter = 3
+
 // ldp solves the least-distance problem min |x| s.t. G*x >= h through the
 // NNLS dual of Lawson and Hanson. It returns the mode and, when it is 1, the
 // multipliers.
@@ -246,7 +255,7 @@ func ldp(m, n int, g, h, x []float64) (mode int, mults []float64) {
 	b := make([]float64, n1)
 	b[n] = 1
 	y := make([]float64, m)
-	rnorm, info := nnls(n1, m, a, b, y, 3*m)
+	rnorm, info := nnls(n1, m, a, b, y, ldpMaxIter*m)
 	if info != 1 {
 		return info, nil
 	}
@@ -433,9 +442,8 @@ func nnlsSolve(m, indz int, a []float64, indices []int, zz []float64) {
 // sigma*z*z' (Fletcher and Powell's composite-t method, as in Kraft's code);
 // w is workspace used when sigma < 0. z is overwritten.
 func ldlUpdate(n int, a, z []float64, sigma float64, w []float64) {
-	if sigma == 0 {
-		return
-	}
+	// The C code returns early for sigma == 0; SLSQP never passes it (it
+	// resets the matrix when h1 or h2 is zero), so that test is omitted.
 	ij := 0
 	t := 1 / sigma
 	if sigma < 0 {

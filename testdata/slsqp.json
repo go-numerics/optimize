@@ -1862,6 +1862,196 @@
    "fstar": null
   },
   {
+   "name": "SingularEq/jac",
+   "problem": "SingularEq",
+   "jac": true,
+   "options": {},
+   "tol": null,
+   "x": [
+    0.0,
+    0.0
+   ],
+   "fun": 0.0,
+   "nit": 5,
+   "nfev": 1,
+   "njev": 1,
+   "status": 8,
+   "success": false,
+   "message": "Positive directional derivative for linesearch",
+   "multipliers": [
+    -10000.0,
+    10000.000000000002
+   ],
+   "maxcv": 2.0,
+   "fstar": null
+  },
+  {
+   "name": "SingularEq/fd",
+   "problem": "SingularEq",
+   "jac": false,
+   "options": {},
+   "tol": null,
+   "x": [
+    -2.710505431213761e-19,
+    0.0
+   ],
+   "fun": 7.346839692639297e-38,
+   "nit": 10,
+   "nfev": 68,
+   "njev": 6,
+   "status": 8,
+   "success": false,
+   "message": "Positive directional derivative for linesearch",
+   "multipliers": [
+    -9999.999999970198,
+    9999.999999985099
+   ],
+   "maxcv": 2.0,
+   "fstar": null
+  },
+  {
+   "name": "SingularEq3/jac",
+   "problem": "SingularEq3",
+   "jac": true,
+   "options": {},
+   "tol": null,
+   "x": [
+    5.833391200841908,
+    -4.5833945955695565,
+    3184733552244438.5
+   ],
+   "fun": 1.014252779879148e+31,
+   "nit": 100,
+   "nfev": 1091,
+   "njev": 101,
+   "status": 9,
+   "success": false,
+   "message": "Iteration limit reached",
+   "multipliers": [
+    -4.056613161726942e+31,
+    4.056613161726941e+31
+   ],
+   "maxcv": 0.7500033947276483,
+   "fstar": null
+  },
+  {
+   "name": "SingularEq3/fd",
+   "problem": "SingularEq3",
+   "jac": false,
+   "options": {},
+   "tol": null,
+   "x": [
+    0.25054279419262804,
+    0.9994550519528786,
+    3184744355577107.0
+   ],
+   "fun": 1.0142596610380242e+31,
+   "nit": 100,
+   "nfev": 1394,
+   "njev": 101,
+   "status": 9,
+   "success": false,
+   "message": "Iteration limit reached",
+   "multipliers": [
+    -4.068946810970332e+31,
+    4.068946810970332e+31
+   ],
+   "maxcv": 0.7500021538544934,
+   "fstar": null
+  },
+  {
+   "name": "DuplicateEq/jac",
+   "problem": "DuplicateEq",
+   "jac": true,
+   "options": {},
+   "tol": null,
+   "x": [
+    0.0,
+    0.0
+   ],
+   "fun": 0.0,
+   "nit": 1,
+   "nfev": 1,
+   "njev": 1,
+   "status": 6,
+   "success": false,
+   "message": "Singular matrix C in LSQ subproblem",
+   "multipliers": [
+    0.0,
+    0.0
+   ],
+   "maxcv": 1.0,
+   "fstar": null
+  },
+  {
+   "name": "DuplicateEq/fd",
+   "problem": "DuplicateEq",
+   "jac": false,
+   "options": {},
+   "tol": null,
+   "x": [
+    0.0,
+    0.0
+   ],
+   "fun": 0.0,
+   "nit": 1,
+   "nfev": 3,
+   "njev": 1,
+   "status": 6,
+   "success": false,
+   "message": "Singular matrix C in LSQ subproblem",
+   "multipliers": [
+    0.0,
+    0.0
+   ],
+   "maxcv": 1.0,
+   "fstar": null
+  },
+  {
+   "name": "Stationary/jac",
+   "problem": "Stationary",
+   "jac": true,
+   "options": {},
+   "tol": null,
+   "x": [
+    1.0
+   ],
+   "fun": 1.0,
+   "nit": 1,
+   "nfev": 2,
+   "njev": 1,
+   "status": 0,
+   "success": true,
+   "message": "Optimization terminated successfully",
+   "multipliers": [
+    1.0000008
+   ],
+   "maxcv": 0.0,
+   "fstar": 1
+  },
+  {
+   "name": "Stationary/fd",
+   "problem": "Stationary",
+   "jac": false,
+   "options": {},
+   "tol": null,
+   "x": [
+    1.0
+   ],
+   "fun": 1.0,
+   "nit": 1,
+   "nfev": 3,
+   "njev": 1,
+   "status": 0,
+   "success": true,
+   "message": "Optimization terminated successfully",
+   "multipliers": [
+    1.0000008
+   ],
+   "maxcv": 0.0,
+   "fstar": 1
+  },
+  {
    "name": "FixedAll/jac",
    "problem": "FixedAll",
    "jac": true,

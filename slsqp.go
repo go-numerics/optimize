@@ -318,7 +318,7 @@ func (sc *slsqpCons) jac(x, cm []float64, ldc int) {
 
 // minimizeSLSQP is _minimize_slsqp. lb and ub are nil without bounds; x0 is
 // already clipped into them.
-func minimizeSLSQP(p Problem, x0 []float64, o *Options, lb, ub []float64, cons []stdConstraint) (*Result, error) {
+func minimizeSLSQP(p Problem, x0 []float64, o *Options, lb, ub []float64, cons []stdConstraint) *Result {
 	n := len(x0)
 	acc := o.Ftol
 	if acc == 0 {
@@ -367,13 +367,9 @@ func minimizeSLSQP(p Problem, x0 []float64, o *Options, lb, ub []float64, cons [
 	for {
 		st.body(fx, g, cm, ldc, d, x, mult, xl, xu)
 		if st.mode == 1 || st.mode == -1 {
-			for i := range x {
-				if !math.IsNaN(xl[i]) && x[i] < xl[i] {
-					x[i] = xl[i]
-				} else if !math.IsNaN(xu[i]) && x[i] > xu[i] {
-					x[i] = xu[i]
-				}
-			}
+			// _slsqpmodule.c: remove the few-ulp bound violations of the
+			// line-search point before evaluating there.
+			clampNaNBounds(x, xl, xu)
 		}
 		if st.mode == 1 {
 			fx = sf.fun(x)
@@ -396,7 +392,7 @@ func minimizeSLSQP(p Problem, x0 []float64, o *Options, lb, ub []float64, cons [
 		Message: slsqpMessages[st.mode], Success: st.mode == 0,
 		Multipliers: clone(mult[:m]),
 	}
-	return sf.result(r), nil
+	return sf.result(r)
 }
 
 // minimizeSLSQPFixed handles variables fixed by equal bounds as SciPy's
@@ -407,7 +403,7 @@ func minimizeSLSQP(p Problem, x0 []float64, o *Options, lb, ub []float64, cons [
 func minimizeSLSQPFixed(p Problem, x0 []float64, o *Options, lb, ub []float64, cons []stdConstraint) (*Result, error) {
 	n := len(x0)
 	if lb == nil {
-		return minimizeSLSQP(p, x0, o, lb, ub, cons)
+		return minimizeSLSQP(p, x0, o, lb, ub, cons), nil
 	}
 	var free []int
 	for i := range n {
@@ -423,7 +419,7 @@ func minimizeSLSQPFixed(p Problem, x0 []float64, o *Options, lb, ub []float64, c
 		fdNeeded = fdNeeded || c.jac == nil
 	}
 	if len(free) == n || !fdNeeded {
-		return minimizeSLSQP(p, x0, o, lb, ub, cons)
+		return minimizeSLSQP(p, x0, o, lb, ub, cons), nil
 	}
 	nr := len(free)
 	full := clone(lb)
@@ -482,10 +478,7 @@ func minimizeSLSQPFixed(p Problem, x0 []float64, o *Options, lb, ub []float64, c
 	if cb := o.Callback; cb != nil {
 		ro.Callback = func(x []float64, f float64) bool { return cb(clone(expand(x)), f) }
 	}
-	r, err := minimizeSLSQP(rp, xr, &ro, lr, ur, rcons)
-	if err != nil {
-		return nil, err
-	}
+	r := minimizeSLSQP(rp, xr, &ro, lr, ur, rcons)
 	x := clone(lb)
 	jac := make([]float64, n)
 	for i := range jac {
