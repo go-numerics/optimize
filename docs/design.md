@@ -142,6 +142,10 @@ path is decided by last-bit rounding (HS13 is degenerate; HS23, HS29, HS38
 run near-singular updates; Infeasible, SingularEq, SingularEq3 hinge on a
 pivot that is zero in exact arithmetic). Go results are bit-identical on
 amd64 and arm64 (checked by running the amd64 test binary in a container).
+`slsqporacle diff a.json b.json` lists the cases on which two fixtures
+disagree (exit status 1 if any), which is how the wheels were compared; the
+harness and `tools/slsqpbench` have their own tests, run in CI, which need
+neither Python, Docker nor a quiet machine.
 
 ## MinimizeScalar, Bracket, Fminbound
 
