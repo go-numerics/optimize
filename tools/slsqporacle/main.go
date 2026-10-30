@@ -1,19 +1,23 @@
 // slsqporacle runs SciPy's SLSQP on the Hock–Schittkowski problems of hs.py
-// and writes the results to the fixture file the optimize tests replay.
+// and writes the results to the fixture file the optimize tests replay; its
+// diff subcommand compares two such fixtures (for instance SciPy's arm64 and
+// x86_64 wheels, or a regenerated fixture against the committed one).
 //
-// Usage (from the repository root):
+// Usage (from tools/slsqporacle):
 //
-//	cd tools/slsqporacle && GOWORK=off go run . -o ../../testdata/slsqp.json
+//	GOWORK=off go run . --platform linux/amd64 -o ../../testdata/slsqp.json
+//	GOWORK=off go run . diff a.json b.json
 //
-// It needs uv on PATH; SciPy and NumPy are pinned below. The Python script is
-// fed on standard input to an isolated interpreter (python -I), so nothing in
-// the working directory is imported.
+// Generating needs uv on PATH (and Docker with --platform); SciPy and NumPy
+// are pinned below. The Python script is fed on standard input to an
+// isolated interpreter (python -I), so nothing in the working directory is
+// imported.
 package main
 
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,12 +33,6 @@ const (
 	scipyPin = "scipy==1.18.1"
 	numpyPin = "numpy==2.5.4"
 )
-
-// fixture is the part of the output the harness validates before writing.
-type fixture struct {
-	Scipy string            `json:"scipy"`
-	Cases []json.RawMessage `json:"cases"`
-}
 
 // osExit is replaced by tests.
 var osExit = os.Exit
@@ -59,6 +57,54 @@ var runner = func(argv []string, stdin io.Reader, stdout, stderr io.Writer) erro
 	return cmd.Run()
 }
 
+// ErrDisagree is returned by diff when the fixtures differ.
+var ErrDisagree = errors.New("fixtures disagree")
+
+func readFixture(path string) (*Fixture, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	fx, err := Decode(f)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return fx, nil
+}
+
+func diffCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:          "diff first.json second.json",
+		Short:        "Report the cases on which two fixtures disagree (exit 1 if any)",
+		SilenceUsage: true,
+		Args:         cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			a, err := readFixture(args[0])
+			if err != nil {
+				return err
+			}
+			b, err := readFixture(args[1])
+			if err != nil {
+				return err
+			}
+			w := cmd.OutOrStdout()
+			d := Diff(a, b)
+			names := map[string]bool{}
+			for _, x := range d {
+				fmt.Fprintln(w, x)
+				names[x.Case] = true
+			}
+			fmt.Fprintf(w, "%d cases (%s, %s) against %d (%s, %s): %d disagree\n",
+				len(a.Cases), a.Scipy, a.Machine, len(b.Cases), b.Scipy, b.Machine, len(names))
+			if len(d) > 0 {
+				return ErrDisagree
+			}
+			return nil
+		},
+	}
+}
+
 // RootCmd returns the command line of the harness.
 func RootCmd() *cobra.Command {
 	var out, platform string
@@ -72,28 +118,25 @@ func RootCmd() *cobra.Command {
 			if err := runner(command(platform), bytes.NewReader(script), &buf, cmd.ErrOrStderr()); err != nil {
 				return fmt.Errorf("oracle: %w", err)
 			}
-			var f fixture
-			if err := json.Unmarshal(buf.Bytes(), &f); err != nil {
-				return fmt.Errorf("oracle output is not JSON: %w", err)
+			f, err := Decode(&buf)
+			if err != nil {
+				return fmt.Errorf("oracle output: %w", err)
 			}
-			if len(f.Cases) == 0 {
-				return fmt.Errorf("oracle produced no cases")
-			}
-			var pretty bytes.Buffer
-			if err := json.Indent(&pretty, buf.Bytes(), "", " "); err != nil {
+			var enc bytes.Buffer
+			if err := Encode(&enc, f); err != nil {
 				return err
 			}
-			pretty.WriteByte('\n')
-			if err := os.WriteFile(out, pretty.Bytes(), 0o644); err != nil {
+			if err := os.WriteFile(out, enc.Bytes(), 0o644); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s) to %s\n", len(f.Cases), f.Scipy, out)
+			fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases), f.Scipy, f.Machine, out)
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&out, "output", "o", "testdata/slsqp.json", "fixture file to write")
 	cmd.Flags().StringVar(&platform, "platform", "",
 		"run SciPy in a container of this platform (e.g. linux/amd64) instead of on the host")
+	cmd.AddCommand(diffCmd())
 	return cmd
 }
 

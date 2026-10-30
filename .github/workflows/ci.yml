@@ -139,6 +139,32 @@ jobs:
             GOOS=${t%/*} GOARCH=${t#*/} go test -c -o /dev/null ./...
           done
 
+  # The Go tools under tools/ are separate modules (they must not add
+  # dependencies to the library), so `go test ./...` above does not see
+  # them. Their tests need neither Python, Docker nor a quiet machine.
+  tools:
+    name: tools (vet + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Vet and test every module under tools/
+        env:
+          GOWORK: "off"
+        run: |
+          set -e
+          n=0
+          for mod in tools/*/go.mod; do
+            dir=$(dirname "$mod")
+            echo "== $dir"
+            (cd "$dir" && go vet ./... && go test -count=1 -cover ./...)
+            n=$((n+1))
+          done
+          # A lane that found nothing to test must not pass.
+          test "$n" -ge 3 || { echo "::error::only $n tool modules found"; exit 1; }
+
   govulncheck:
     runs-on: ubuntu-latest
     steps:

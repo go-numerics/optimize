@@ -34,6 +34,10 @@ var benchNames = []string{"SLSQPHS71", "SLSQPHS71FD", "SLSQPHS38", "SLSQPHS43", 
 
 var osExit = os.Exit
 
+// execRun runs an external command (go, the test binary, uv); tests replace
+// it to simulate them.
+var execRun = func(c *exec.Cmd) error { return c.Run() }
+
 // loadAvg returns the 1-minute load average.
 var loadAvg = func() (float64, error) {
 	var raw []byte
@@ -129,7 +133,7 @@ func RootCmd() *cobra.Command {
 			build := exec.Command("go", "test", "-c", "-o", bin, ".")
 			build.Dir, build.Env = repo, append(os.Environ(), "GOWORK=off")
 			build.Stdout, build.Stderr = cmd.ErrOrStderr(), cmd.ErrOrStderr()
-			if err := build.Run(); err != nil {
+			if err := execRun(build); err != nil {
 				return fmt.Errorf("build: %w", err)
 			}
 			goT, pyT := map[string][]float64{}, map[string][]float64{}
@@ -138,7 +142,7 @@ func RootCmd() *cobra.Command {
 				g := exec.Command(bin, "-test.run", "^$", "-test.bench", "^BenchmarkSLSQP",
 					"-test.benchtime", "300ms", "-test.count", "1", "-test.cpu", "1")
 				g.Dir, g.Stdout, g.Stderr = repo, &gb, cmd.ErrOrStderr()
-				if err := g.Run(); err != nil {
+				if err := execRun(g); err != nil {
 					return fmt.Errorf("go bench: %w", err)
 				}
 				for k, v := range parseGoBench(&gb) {
@@ -149,7 +153,7 @@ func RootCmd() *cobra.Command {
 					"--with", "numpy==2.5.4", "python", "-I", "-")
 				p.Stdin, p.Stdout, p.Stderr = bytes.NewReader(script), &pb, cmd.ErrOrStderr()
 				p.Env = append(os.Environ(), "OPENBLAS_NUM_THREADS=1", "VECLIB_MAXIMUM_THREADS=1", "OMP_NUM_THREADS=1")
-				if err := p.Run(); err != nil {
+				if err := execRun(p); err != nil {
 					return fmt.Errorf("scipy bench: %w", err)
 				}
 				var py map[string]float64
