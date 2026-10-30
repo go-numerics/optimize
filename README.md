@@ -162,8 +162,8 @@ Medians of 7 rounds, with Go and SciPy interleaved on a loaded host.
 | `curve_fit`, 10⁴ points, LM | 4.13 ms | 2.78 ms | **0.67× (SciPy faster)** |
 | `curve_fit`, 10⁴ points, TRF | 5.97 ms | 4.61 ms | **0.77× (SciPy faster)** |
 | `brentq` | 0.27 µs | 8.6 µs | 32× |
-| SLSQP, HS71 (analytic / finite differences) | 5.8 / 6.9 µs | 114 / 650 µs | 20× / 94× |
-| SLSQP, n = 50 with 100 bounds | 4.66 ms | 4.65 ms | 1.0× |
+| SLSQP, HS71 (analytic / finite differences) | 5.6 / 6.9 µs | 114 / 648 µs | 20× / 94× |
+| SLSQP, n = 50 with 100 bounds | 3.35 ms | 4.59 ms | 1.4× |
 
 Most of SciPy's time on small problems is Python overhead around the
 callbacks. Even after subtracting SciPy's time spent in its own callbacks, the

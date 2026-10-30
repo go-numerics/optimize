@@ -184,24 +184,25 @@ on the same problems with one BLAS thread, in interleaved rounds, and
 refuses to start when the 1-minute load average is above 8. Apple M4 Max,
 SciPy 1.18.1 (arm64 wheel), 2026-10-30.
 
-Medians of 7 interleaved rounds; load 5.5 before, 6.2 after.
+Medians of 7 interleaved rounds; load 4.6 before, 5.4 after.
 
 | Benchmark | Go | SciPy 1.18.1 | Speed-up |
 |---|---|---|---|
-| HS71, analytic derivatives | 5.79 µs | 114 µs | 19.7× |
-| HS71, finite differences | 6.94 µs | 650 µs | 93.7× |
-| HS38 (bounds, 76 iterations) | 37.3 µs | 943 µs | 25.2× |
-| HS43 (3 nonlinear inequalities) | 6.75 µs | 165 µs | 24.4× |
-| Quad50 (n = 50, 100 bounds, 1 linear) | 4.66 ms | 4.65 ms | 1.0× |
+| HS71, analytic derivatives | 5.59 µs | 114 µs | 20.4× |
+| HS71, finite differences | 6.90 µs | 648 µs | 93.9× |
+| HS38 (bounds, 76 iterations) | 37.0 µs | 936 µs | 25.3× |
+| HS43 (3 nonlinear inequalities) | 6.83 µs | 163 µs | 23.8× |
+| Quad50 (n = 50, 100 bounds, 1 linear) | 3.35 ms | 4.59 ms | 1.4× |
 
 On the Hock–Schittkowski problems SciPy's time is mostly Python around the
 callbacks and the per-iteration call into C. At n = 50 both run the same
 O(m·n²) subproblem per iteration in compiled code; there `trsm` (X·R = G
-for the 101×50 constraint block) dominates the Go profile. Since this table
-was taken, `trsmRUN` applies four columns per pass over the block
-(bit-identical to the reference loop, `TestTrsmMatchesReference`), which
-halves its time in `BenchmarkTrsm`; the Quad50 row will be re-measured on a
-quiet host.
+for the 101×50 constraint block) dominated the Go profile and the row was at
+parity (4.66 ms against 4.65 ms, same host and method, load 5.5). `trsmRUN`
+now applies four columns per pass over the block, bit-identical to the
+reference loop (`TestTrsmMatchesReference`), which halves its time in
+`BenchmarkTrsm` and gives the 1.4× above. The subproblem scratch is reused
+across iterations (0.7 MB allocated per Quad50 solve instead of 11 MB).
 
 ## Reproducing
 
