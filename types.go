@@ -68,6 +68,10 @@ type Result struct {
 	// HessInv is the final inverse-Hessian approximation as an n*n row-major
 	// matrix (BFGS only, nil otherwise).
 	HessInv []float64
+	// Multipliers are the Lagrange multipliers of the constraints at X
+	// (SLSQP only), equalities first and then inequalities, in the order of
+	// the standardised constraint blocks — SciPy's result.multipliers.
+	Multipliers []float64
 	// Nit, Nfev, Njev and Nhev count iterations and evaluations of the
 	// objective, the gradient and the Hessian. Function evaluations spent on
 	// finite-difference gradients are counted in Nfev, and each such gradient

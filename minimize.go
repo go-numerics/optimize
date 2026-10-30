@@ -38,21 +38,29 @@ const (
 	BFGS       Method = "BFGS"
 	NewtonCG   Method = "Newton-CG"
 	LBFGSB     Method = "L-BFGS-B"
+	// SLSQP is sequential least-squares quadratic programming; it is the
+	// method that accepts Options.Constraints.
+	SLSQP Method = "SLSQP"
 )
 
 // Options configures Minimize. Zero values select the SciPy defaults of the
 // chosen method, listed with each field.
 type Options struct {
-	// Bounds constrains the variables (L-BFGS-B, Nelder-Mead and Powell, as in
-	// SciPy). nil means unbounded.
+	// Bounds constrains the variables (L-BFGS-B, SLSQP, Nelder-Mead and
+	// Powell, as in SciPy). nil means unbounded.
 	Bounds []Bound
+	// Constraints are general equality and inequality constraints
+	// (SLSQP only): Constraint, NonlinearConstraint or LinearConstraint
+	// values, SciPy's constraints argument. Other methods return an error
+	// when it is set, where SciPy only warns.
+	Constraints []ConstraintSpec
 	// Tol is minimize's tol argument: it sets the method's main tolerance
 	// the way SciPy does (Nelder-Mead: Xatol and Fatol; Powell: Xtol and
-	// Ftol; CG and BFGS: Gtol; Newton-CG: Xtol; L-BFGS-B: Ftol and Gtol)
-	// when those fields are zero.
+	// Ftol; CG and BFGS: Gtol; Newton-CG: Xtol; L-BFGS-B: Ftol and Gtol;
+	// SLSQP: Ftol) when those fields are zero.
 	Tol float64
 	// MaxIter bounds the iterations (Nelder-Mead 200·n, Powell 1000·n,
-	// CG, BFGS and Newton-CG 200·n, L-BFGS-B 15000). For Nelder-Mead and
+	// CG, BFGS and Newton-CG 200·n, L-BFGS-B 15000, SLSQP 100). For Nelder-Mead and
 	// Powell, setting only one of MaxIter and MaxFev leaves the other
 	// unlimited, as in SciPy.
 	MaxIter int
@@ -64,7 +72,8 @@ type Options struct {
 	// of the projected gradient is below it (SciPy pgtol, 1e-5).
 	Gtol float64
 	// Ftol is the relative reduction tolerance: Powell (1e-4),
-	// L-BFGS-B ((f_k - f_{k+1})/max(|f_k|,|f_{k+1}|,1) <= Ftol, 2.22e-9).
+	// L-BFGS-B ((f_k - f_{k+1})/max(|f_k|,|f_{k+1}|,1) <= Ftol, 2.22e-9);
+	// for SLSQP it is the accuracy goal of the stopping tests (1e-6).
 	Ftol float64
 	// Xtol is the step tolerance: Powell (1e-4), Newton-CG (1e-5).
 	Xtol float64
@@ -134,8 +143,11 @@ func Minimize(p Problem, x0 []float64, method Method, opts *Options) (*Result, e
 		lb, ub = nil, nil
 	}
 	x0 = clone(x0)
+	if o.Constraints != nil && method != SLSQP {
+		return nil, fmt.Errorf("%w: method %s cannot handle constraints", ErrMethod, method)
+	}
 	switch method {
-	case NelderMead, Powell, LBFGSB:
+	case NelderMead, Powell, LBFGSB, SLSQP:
 		if lb != nil {
 			// SciPy clips x0 into the bounds for these methods.
 			for i := range x0 {
@@ -160,7 +172,12 @@ func Minimize(p Problem, x0 []float64, method Method, opts *Options) (*Result, e
 		}
 	}
 	var r *Result
-	if method == LBFGSB && lb != nil {
+	if method == SLSQP {
+		var cons []stdConstraint
+		if cons, err = standardizeConstraints(o.Constraints, n); err == nil {
+			r, err = minimizeSLSQPFixed(p, x0, &o, lb, ub, cons)
+		}
+	} else if method == LBFGSB && lb != nil {
 		r, err = minimizeLBFGSBFixed(p, x0, &o, lb, ub)
 	} else {
 		r, err = dispatch(p, x0, method, &o, lb, ub)

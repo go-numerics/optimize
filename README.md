@@ -35,6 +35,7 @@ have `…Array()` accessors.
 | `Minimize(…, BFGS, …)` | `minimize(method='BFGS')` | inverse-Hessian BFGS, O(n²) update |
 | `Minimize(…, NewtonCG, …)` | `minimize(method='Newton-CG')` | truncated Newton (Hess, HessP or FD) |
 | `Minimize(…, LBFGSB, …)` | `minimize(method='L-BFGS-B')` | L-BFGS-B 3.0 with bounds |
+| `Minimize(…, SLSQP, …)` with `Options.Constraints` | `minimize(method='SLSQP', constraints=…)`, MATLAB `fmincon` `'sqp'` | Kraft's SLSQP: bounds, equality and inequality constraints as `Constraint`, `NonlinearConstraint` or `LinearConstraint`; Lagrange multipliers in `Result.Multipliers` |
 | `MinimizeScalar`, `Fminbound`, `Bracket` | `minimize_scalar` (brent, golden, bounded), `fminbound`, `bracket` | Brent, golden section, FMIN |
 | `Brentq`, `Brenth`, `Ridder`, `Bisect`, `Newton`, `RootScalar` | `brentq`, `brenth`, `ridder`, `bisect`, `newton` (Newton/secant/Halley), `root_scalar` | |
 | `Root`, `Fsolve` | `root(method='hybr')`, `fsolve` | MINPACK hybrd/hybrj (Powell hybrid) |
@@ -64,6 +65,15 @@ r, err := optimize.Minimize(optimize.Problem{Func: rosen, Grad: rosenDer},
 // scipy.optimize.minimize(f, x0, method='L-BFGS-B', bounds=[(-2, 0.5), (None, None)])
 r, _ = optimize.Minimize(optimize.Problem{Func: f}, []float64{0, 0}, optimize.LBFGSB,
 	&optimize.Options{Bounds: []optimize.Bound{{Lo: -2, Hi: 0.5}, optimize.Unbounded()}})
+
+// scipy.optimize.minimize(f, x0, method='SLSQP', bounds=[(1, 5)]*4,
+//     constraints=[{'type': 'ineq', 'fun': g}, {'type': 'eq', 'fun': h}])     (Hock–Schittkowski 71)
+r, _ = optimize.Minimize(optimize.Problem{Func: f}, []float64{1, 5, 5, 1}, optimize.SLSQP,
+	&optimize.Options{Bounds: bounds, Constraints: []optimize.ConstraintSpec{
+		optimize.Constraint{Kind: optimize.Ineq, M: 1, Func: g},  // x1·x2·x3·x4 − 25 ≥ 0
+		optimize.Constraint{Kind: optimize.Eq, M: 1, Func: h},    // Σ xᵢ² − 40 = 0
+	}})
+// r.Fun = 17.0140172, r.Nit = 5 (SciPy: 5), r.Multipliers
 
 // popt, pcov = scipy.optimize.curve_fit(lambda x, a, b, c: a*np.exp(-b*x) + c, x, y)
 fit, err := optimize.CurveFit(func(x float64, p []float64) float64 {
@@ -104,6 +114,7 @@ noted.
 |---|---|---|
 | `Minimize` (NM, Powell, CG, BFGS, Newton-CG, L-BFGS-B) | 79 runs on Rosenbrock n=2/10/100, Beale, Himmelblau, Powell singular, Wood, with and without gradients, bounds, iteration limits | every converged SciPy run is matched with an objective at least as good, within the method's own tolerance; on the arithmetic-only problems, **36/38 runs take SciPy's exact path** (identical nit, nfev, njev); the 2 exceptions are explained in docs/design.md |
 | L-BFGS-B | 44 runs, including 8 problems that reach rare branches (Cholesky failures, the 3.0 backtrack, Cauchy breakpoints) | identical nit/nfev/njev/status/message on every analytic-gradient run except Rosenbrock n=100 (513 vs 514 iterations, SciPy's Accelerate BLAS rounding); bit-identical to SciPy's C code built with sequential BLAS |
+| `Minimize(SLSQP)` | 100 runs: 36 Hock–Schittkowski problems and 10 stress cases (infeasible, inconsistent and singular linearisations, fixed variables), with and without derivatives, `NonlinearConstraint`/`LinearConstraint` and option variants; SciPy's x86_64 wheel (`tools/slsqporacle`) | 100/100 statuses; **88/100 on SciPy's exact path** (nit/nfev/njev, x to 1e-7, multipliers to 1e-6); the other 12 are runs on which SciPy's own arm64 and x86_64 wheels also disagree (docs/design.md) |
 | `Root`/`Fsolve` | 23 runs (MGH problems with and without Jacobian, failure and option cases) | 23/23 identical counts, status and message; x bit-identical |
 | `LeastSquares(LM)` / `Leastsq` | 39 / 44 runs on the MGH least-squares set | 36/39 and 41/44 identical counts; the mismatches are on problems that call exp/sin/cos, where Go's libm and the C library differ in the last ulp |
 | `LeastSquares(TRF)` | 89 runs: MGH problems, bounds, all robust losses, `x_scale`, 2-/3-point differences | 86/89 identical nfev/njev/status (84/89 on amd64); every cost and active mask matches |
@@ -151,6 +162,8 @@ Medians of 7 rounds, with Go and SciPy interleaved on a loaded host.
 | `curve_fit`, 10⁴ points, LM | 4.13 ms | 2.78 ms | **0.67× (SciPy faster)** |
 | `curve_fit`, 10⁴ points, TRF | 5.97 ms | 4.61 ms | **0.77× (SciPy faster)** |
 | `brentq` | 0.27 µs | 8.6 µs | 32× |
+| SLSQP, HS71 (analytic / finite differences) | 5.6 / 6.9 µs | 114 / 648 µs | 20× / 94× |
+| SLSQP, n = 50 with 100 bounds | 3.35 ms | 4.59 ms | 1.4× |
 
 Most of SciPy's time on small problems is Python overhead around the
 callbacks. Even after subtracting SciPy's time spent in its own callbacks, the
@@ -162,8 +175,10 @@ evaluation is at parity; the gap is in the solver's workspace handling.
 
 ## Not done
 
-- **`minimize`:** trust-constr, SLSQP, COBYLA/COBYQA, TNC, dogleg/trust-ncg
-  and the other trust-region methods, and constraints other than bounds. For
+- **`minimize`:** trust-constr, COBYLA/COBYQA, TNC, dogleg/trust-ncg and the
+  other trust-region methods; an interior-point NLP method and QP solvers
+  (active set, ADMM) are planned next and will share SLSQP's constraint
+  types. For
   L-BFGS-B, the `hess_inv` operator is not provided.
 - **`root` / `least_squares`:** `root` methods other than `hybr`; the
   `band`/`col_deriv` options; dogbox; the lsmr trust-region solver and sparse

@@ -86,6 +86,63 @@ Shared machinery:
   variables fixed by equal bounds for L-BFGS-B with finite differences, and
   status 99 when the callback stops the run.
 
+## SLSQP (constrained minimisation)
+
+`Minimize(…, SLSQP, …)` is Dieter Kraft's sequential least-squares quadratic
+programming method (DFVLR-FB 88-28, 1988), as rewritten in C by SciPy. Sources
+opened for the port, all BSD-3-Clause or BSD-style:
+
+- SciPy **v1.18.1** `scipy/optimize/src/slsqp.c` (`__slsqp_body`, `lsq`,
+  `lsei`, `lsi`, `ldp`, `ldl_update`) and `src/nnls.c` (Lawson–Hanson NNLS),
+  followed statement by statement, including the reverse-communication state
+  machine (modes 0/1/−1), the augmented problem for inconsistent
+  linearisations (weight 100, ×10 up to five times), the five BFGS resets and
+  the relaxed test with `tol = 10·acc`;
+- SciPy v1.18.1 `_slsqp_py.py`, `_slsqpmodule.c`, `_minimize.py` and
+  `_constraints.py` for the driver: evaluation order and counting, clipping
+  the line-search point into the bounds, the removal of fixed variables, the
+  all-fixed shortcut and `new_constraint_to_old` for `NonlinearConstraint`
+  and `LinearConstraint`;
+- Reference-LAPACK **v3.12.1** `dlarfg`, `dlarfgp`, `dlartgp`, `dlapy2`,
+  `dgerq2`, `dormr2` (and the reference BLAS loop orders) for the dense
+  kernels in `lapack.go`.
+
+Kraft's 1988 report itself was not available to us; the method is cited
+through SciPy's code, which references its §2.2.3.
+
+**Deviations.** `dgelsy` (least squares with only equality constraints) is
+replaced by Householder QR with column pivoting and the rank test
+|R(k,k)| > √ε·|R(0,0)|; SLSQP only reads the rank, and on these
+problems the matrix is a factor of the positive-definite BFGS matrix. Three
+LAPACK branches that cannot be reached here are omitted and documented in
+the code (the subnormal-τ flush of `dlarfgp`, the sign flip of `dlartgp`,
+`ldl_update` with σ = 0). Where SciPy's NNLS would index out of range on an
+empty passive set, the loop stops. The go-simd/floats kernels are not used:
+they reduce in a lane-blocked FMA order that would change the path both
+against SciPy and between architectures, on vectors of a few dozen entries.
+
+**Constraint types.** `Options.Constraints` takes `Constraint` (SciPy's
+dictionary form), `NonlinearConstraint` (lb ≤ f(x) ≤ ub) and
+`LinearConstraint` (lb ≤ A·x ≤ ub). All three reduce to equality and
+inequality blocks (`stdConstraint`), the form later constrained methods will
+share. Unlike SciPy, which warns, other methods return `ErrMethod` when
+constraints are given.
+
+**Fidelity.** Fixtures come from SciPy's **x86_64** wheel run in a
+`linux/amd64` container (`tools/slsqporacle --platform linux/amd64`), because
+SciPy's macOS arm64 wheel contracts `a*b + c` into fused multiply-adds. On
+100 runs (36 Hock–Schittkowski problems and 10 stress cases, each with and
+without derivatives, plus option and new-style-constraint variants): every
+status agrees, **88 take SciPy's exact path** (identical nit, nfev, njev,
+with x to 1e-7 and f to 1e-9 relative), and 96 reach the same objective to
+1e-6. The 12 others are among the runs listed in `slsqp_fixture_test.go`
+(which asserts the path on all remaining ones); on each of them
+SciPy's own arm64 and x86_64 wheels also disagree with each other, so the
+path is decided by last-bit rounding (HS13 is degenerate; HS23, HS29, HS38
+run near-singular updates; Infeasible, SingularEq, SingularEq3 hinge on a
+pivot that is zero in exact arithmetic). Go results are bit-identical on
+amd64 and arm64 (checked by running the amd64 test binary in a container).
+
 ## MinimizeScalar, Bracket, Fminbound
 
 These are Brent's (1973) parabolic/golden method, the golden-section search,
