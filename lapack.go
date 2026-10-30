@@ -215,6 +215,21 @@ func dlarfLeft(m, n int, v []float64, incv int, tau float64, c []float64, ldc in
 	if tau == 0 {
 		return
 	}
+	if incv == 1 {
+		vv := v[:m]
+		for j := 0; j < n; j++ {
+			col := c[j*ldc : j*ldc+m]
+			w := 0.0
+			for i, x := range vv {
+				w += float64(col[i] * x)
+			}
+			t := float64(-tau * w)
+			for i, x := range vv {
+				col[i] += float64(x * t)
+			}
+		}
+		return
+	}
 	for j := 0; j < n; j++ {
 		col := c[j*ldc:]
 		w := 0.0
@@ -331,11 +346,12 @@ func gemvN(m, n int, alpha float64, a []float64, lda int, x []float64, beta floa
 			y[i] *= beta
 		}
 	}
+	y = y[:m]
 	for j := 0; j < n; j++ {
 		t := float64(alpha * x[j])
-		col := a[j*lda:]
-		for i := 0; i < m; i++ {
-			y[i] += float64(t * col[i])
+		col := a[j*lda : j*lda+m]
+		for i, v := range col {
+			y[i] += float64(t * v)
 		}
 	}
 }
@@ -385,17 +401,44 @@ func trsvUT(n int, a []float64, lda int, x []float64) {
 
 // trsmRUN solves X*U = B in place for the m×n matrix B, U upper n×n.
 func trsmRUN(m, n int, a []float64, lda int, b []float64, ldb int) {
+	if m == 0 {
+		return
+	}
 	for j := 0; j < n; j++ {
-		for k := 0; k < j; k++ {
-			if akj := a[k+j*lda]; akj != 0 {
-				for i := 0; i < m; i++ {
-					b[i+j*ldb] -= float64(akj * b[i+k*ldb])
+		bj := b[j*ldb : j*ldb+m]
+		k := 0
+		for k < j {
+			// Four non-zero coefficients in a row are applied in one pass
+			// over bj; each element still receives the four updates in
+			// the reference order k, k+1, k+2, k+3.
+			if k+3 < j {
+				a0, a1, a2, a3 := a[k+j*lda], a[k+1+j*lda], a[k+2+j*lda], a[k+3+j*lda]
+				if a0 != 0 && a1 != 0 && a2 != 0 && a3 != 0 {
+					b0 := b[k*ldb : k*ldb+m]
+					b1 := b[(k+1)*ldb : (k+1)*ldb+m]
+					b2 := b[(k+2)*ldb : (k+2)*ldb+m]
+					b3 := b[(k+3)*ldb : (k+3)*ldb+m]
+					for i := range bj {
+						v := bj[i] - float64(a0*b0[i])
+						v -= float64(a1 * b1[i])
+						v -= float64(a2 * b2[i])
+						bj[i] = v - float64(a3*b3[i])
+					}
+					k += 4
+					continue
 				}
 			}
+			if akj := a[k+j*lda]; akj != 0 {
+				bk := b[k*ldb : k*ldb+m]
+				for i, v := range bk {
+					bj[i] -= float64(akj * v)
+				}
+			}
+			k++
 		}
 		t := 1 / a[j+j*lda]
-		for i := 0; i < m; i++ {
-			b[i+j*ldb] = float64(t * b[i+j*ldb])
+		for i := range bj {
+			bj[i] = float64(t * bj[i])
 		}
 	}
 }

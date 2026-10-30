@@ -20,8 +20,9 @@ import "math"
 // linearisations, weighted by augWeight; xl, xu and x must then have n+1
 // entries. x receives the step and y the multipliers (m + 2(n+1) entries).
 // It returns SLSQP's mode.
-func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64, ldc int,
+func lsq(ws *arena, m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64, ldc int,
 	d, xl, xu, x, y []float64) int {
+	ws.off = 0
 	orign := n
 	mineq := m - meq
 	ld := n
@@ -31,8 +32,8 @@ func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64,
 		xl[n] = 0
 		xu[n] = 1
 	}
-	wA := make([]float64, ld*ld)
-	wb := make([]float64, ld)
+	wA := ws.take(ld * ld)
+	wb := ws.take(ld)
 	cursor := 0
 	for j := 0; j < n; j++ {
 		diag := math.Sqrt(lf[cursor])
@@ -55,8 +56,8 @@ func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64,
 		n++
 	}
 
-	wE := make([]float64, n*meq)
-	wf := make([]float64, meq)
+	wE := ws.take(n * meq)
+	wf := ws.take(meq)
 	for j := 0; j < orign; j++ {
 		for i := 0; i < meq; i++ {
 			wE[i+j*meq] = c[i+j*ldc]
@@ -71,7 +72,7 @@ func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64,
 		wf[i] = -d[i]
 	}
 
-	wh := make([]float64, mineq+2*n)
+	wh := ws.take(mineq + 2*n)
 	nrow := mineq
 	for i := 0; i < mineq; i++ {
 		wh[i] = -d[meq+i]
@@ -90,7 +91,7 @@ func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64,
 	}
 	nG := nrow
 	wh = wh[:nG]
-	wG := make([]float64, nG*n)
+	wG := ws.take(nG * n)
 	for j := 0; j < orign; j++ {
 		for i := 0; i < mineq; i++ {
 			wG[i+j*nG] = c[meq+i+j*ldc]
@@ -115,7 +116,7 @@ func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64,
 		}
 	}
 
-	mode, emults, gmults := lsei(ld, meq, nG, n, wA, wb, wE, wf, wG, wh, x)
+	mode, emults, gmults := lsei(ws, ld, meq, nG, n, wA, wb, wE, wf, wG, wh, x)
 	if mode == 1 {
 		copy(y[:meq], emults)
 		copy(y[meq:meq+mineq], gmults[:mineq])
@@ -125,6 +126,25 @@ func lsq(m, meq, n int, augment bool, augWeight float64, lf, gradx, c []float64,
 	}
 	clampNaNBounds(x[:n], xl, xu)
 	return mode
+}
+
+// arena hands out zeroed scratch vectors from one reusable buffer, so that
+// the subproblem solvers allocate nothing once it has grown; lsq resets it.
+// Growing replaces the buffer, which leaves earlier slices valid.
+type arena struct {
+	buf []float64
+	off int
+}
+
+func (a *arena) take(n int) []float64 {
+	if a.off+n > len(a.buf) {
+		a.buf = make([]float64, max(2*len(a.buf), a.off+n, 64))
+		a.off = 0
+	}
+	s := a.buf[a.off : a.off+n : a.off+n]
+	a.off += n
+	clear(s)
+	return s
 }
 
 // clampNaNBounds clips x into [xl, xu], where a NaN bound is absent.
@@ -141,7 +161,7 @@ func clampNaNBounds(x, xl, xu []float64) {
 // lsei solves min |A*x - b| s.t. E*x = f, G*x >= h for A ma×n, E me×n and G
 // mg×n (all column-major, overwritten, as are b, f and h). It returns the
 // mode and, when the mode is 1, the multipliers of E and of G.
-func lsei(ma, me, mg, n int, a, b, e, f, g, h, x []float64) (mode int, emults, gmults []float64) {
+func lsei(ws *arena, ma, me, mg, n int, a, b, e, f, g, h, x []float64) (mode int, emults, gmults []float64) {
 	for i := 0; i < n; i++ {
 		x[i] = 0
 	}
@@ -150,8 +170,8 @@ func lsei(ma, me, mg, n int, a, b, e, f, g, h, x []float64) (mode int, emults, g
 	}
 	nvars := n - me
 	lde, ldg := max(me, 1), max(mg, 1)
-	tau := make([]float64, me)
-	work := make([]float64, max(ma, mg, me, 1))
+	tau := ws.take(me)
+	work := ws.take(max(ma, mg, me, 1))
 	dgerq2(me, n, e, lde, tau, work)
 	dormr2RT(ma, n, me, e, lde, tau, a, ma, work)
 	dormr2RT(mg, n, me, e, lde, tau, g, ldg, work)
@@ -165,27 +185,27 @@ func lsei(ma, me, mg, n int, a, b, e, f, g, h, x []float64) (mode int, emults, g
 		trsvUN(me, e[nvars*me:], lde, x[nvars:])
 	}
 	mode = 1
-	gmults = make([]float64, mg)
+	gmults = ws.take(mg)
 	if me != n {
-		wb := make([]float64, ma)
+		wb := ws.take(ma)
 		copy(wb, b[:ma])
 		gemvN(ma, me, -1, a[ma*nvars:], ma, x[nvars:], 1, wb)
-		a2 := make([]float64, ma*nvars)
+		a2 := ws.take(ma * nvars)
 		copy(a2, a[:ma*nvars])
 		if mg == 0 {
 			// SciPy calls dgelsy here and also computes the residual norm,
 			// which SLSQP never reads; only the rank decides the mode.
-			rank := lstsqPivoted(ma, nvars, a2, wb, math.Sqrt(epsmch), make([]float64, 2*nvars))
+			rank := lstsqPivoted(ma, nvars, a2, wb, math.Sqrt(epsmch), ws.take(2*nvars))
 			copy(x[:nvars], wb[:nvars])
 			if rank < nvars {
 				return 7, nil, nil
 			}
 		} else {
-			g2 := make([]float64, mg*nvars)
+			g2 := ws.take(mg * nvars)
 			copy(g2, g[:mg*nvars])
 			gemvN(mg, me, -1, g[mg*nvars:], ldg, x[nvars:], 1, h)
 			var lm []float64
-			mode, lm = lsi(ma, mg, nvars, a2, wb, g2, h, x)
+			mode, lm = lsi(ws, ma, mg, nvars, a2, wb, g2, h, x)
 			if mode != 1 {
 				return mode, nil, nil
 			}
@@ -200,7 +220,7 @@ func lsei(ma, me, mg, n int, a, b, e, f, g, h, x []float64) (mode int, emults, g
 	gemvT(ma, me, 1, a[nvars*ma:], ma, b, 0, f)
 	gemvT(mg, me, -1, g[nvars*mg:], ldg, gmults, 1, f)
 	dormr2LTvec(n, me, e, lde, tau, x)
-	emults = make([]float64, me)
+	emults = ws.take(me)
 	copy(emults, f[:me])
 	trsvUT(me, e[(n-me)*me:], lde, emults)
 	return 1, emults, gmults
@@ -208,9 +228,9 @@ func lsei(ma, me, mg, n int, a, b, e, f, g, h, x []float64) (mode int, emults, g
 
 // lsi solves min |A*x - b| s.t. G*x >= h for A ma×n and G mg×n, returning the
 // mode and, when it is 1, the multipliers of G.
-func lsi(ma, mg, n int, a, b, g, h, x []float64) (mode int, mults []float64) {
+func lsi(ws *arena, ma, mg, n int, a, b, g, h, x []float64) (mode int, mults []float64) {
 	k := min(ma, n)
-	tau := make([]float64, k)
+	tau := ws.take(k)
 	dgeqr2(ma, n, a, ma, tau)
 	dorm2rLT(ma, 1, k, a, ma, tau, b, ma)
 	for i := 0; i < k; i++ {
@@ -220,7 +240,7 @@ func lsi(ma, mg, n int, a, b, g, h, x []float64) (mode int, mults []float64) {
 	}
 	trsmRUN(mg, n, a, ma, g, mg)
 	gemvN(mg, n, -1, g, mg, b, 1, h)
-	mode, mults = ldp(mg, n, g, h, x)
+	mode, mults = ldp(ws, mg, n, g, h, x)
 	if mode != 1 {
 		return mode, nil
 	}
@@ -238,24 +258,24 @@ var ldpMaxIter = 3
 // ldp solves the least-distance problem min |x| s.t. G*x >= h through the
 // NNLS dual of Lawson and Hanson. It returns the mode and, when it is 1, the
 // multipliers.
-func ldp(m, n int, g, h, x []float64) (mode int, mults []float64) {
+func ldp(ws *arena, m, n int, g, h, x []float64) (mode int, mults []float64) {
 	// lsei only reaches ldp with m >= 1 (m == 0 takes its least-squares
 	// branch), so SciPy's m == 0 and n <= 0 early returns are not needed.
 	for i := 0; i < n; i++ {
 		x[i] = 0
 	}
 	n1 := n + 1
-	a := make([]float64, n1*m)
+	a := ws.take(n1 * m)
 	for j := 0; j < m; j++ {
 		for i := 0; i < n; i++ {
 			a[i+j*n1] = g[j+i*m]
 		}
 		a[n+j*n1] = h[j]
 	}
-	b := make([]float64, n1)
+	b := ws.take(n1)
 	b[n] = 1
-	y := make([]float64, m)
-	rnorm, info := nnls(n1, m, a, b, y, ldpMaxIter*m)
+	y := ws.take(m)
+	rnorm, info := nnls(ws, n1, m, a, b, y, ldpMaxIter*m)
 	if info != 1 {
 		return info, nil
 	}
@@ -268,7 +288,7 @@ func ldp(m, n int, g, h, x []float64) (mode int, mults []float64) {
 	}
 	fac = 1 / fac
 	gemvT(m, n, fac, g, m, y, 0, x)
-	mults = make([]float64, m)
+	mults = ws.take(m)
 	for i := range mults {
 		mults[i] = float64(fac * y[i])
 	}
@@ -279,10 +299,10 @@ func ldp(m, n int, g, h, x []float64) (mode int, mults []float64) {
 // as is b) by the Lawson–Hanson active-set method, SciPy's __nnls. It
 // returns the residual norm and info: 1 on success, 3 when maxiter inner
 // iterations were exceeded.
-func nnls(m, n int, a, b, x []float64, maxiter int) (rnorm float64, info int) {
+func nnls(ws *arena, m, n int, a, b, x []float64, maxiter int) (rnorm float64, info int) {
 	info = 1
-	w := make([]float64, n)
-	zz := make([]float64, m)
+	w := ws.take(n)
+	zz := ws.take(m)
 	indices := make([]int, n)
 	for i := 0; i < n; i++ {
 		indices[i] = i

@@ -32,6 +32,7 @@ type slsqpState struct {
 	inconsistent, reset, iter, itermax, line, mode int
 	m, meq, n                                      int
 	bfgs, x0, mu, s, u, v                          []float64
+	ws                                             arena // scratch of the subproblem solvers
 }
 
 func newSLSQPState(n, m, meq int, acc float64, itermax int) *slsqpState {
@@ -121,7 +122,7 @@ ITERSTART:
 		v[i] = -sol[i] + xu[i]
 	}
 	S.h4 = 1
-	S.mode = lsq(m, S.meq, n, false, 0, bfgs, gradx, c, ldc, d, u, v, s, mult)
+	S.mode = lsq(&S.ws, m, S.meq, n, false, 0, bfgs, gradx, c, ldc, d, u, v, s, mult)
 	badlin = false
 	if S.mode == 6 && n == S.meq {
 		S.mode = 4
@@ -135,7 +136,7 @@ ITERSTART:
 		rho = 100
 		S.inconsistent = 0
 		for {
-			S.mode = lsq(m, S.meq, n, true, rho, bfgs, gradx, c, ldc, d, u, v, s, mult)
+			S.mode = lsq(&S.ws, m, S.meq, n, true, rho, bfgs, gradx, c, ldc, d, u, v, s, mult)
 			S.h4 = 1 - s[n]
 			if S.mode == 4 {
 				rho *= 10

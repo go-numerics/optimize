@@ -97,6 +97,71 @@ func TestDlartgp(t *testing.T) {
 	}
 }
 
+// trsmRUNRef is the reference BLAS loop that trsmRUN unrolls.
+func trsmRUNRef(m, n int, a []float64, lda int, b []float64, ldb int) {
+	for j := 0; j < n; j++ {
+		for k := 0; k < j; k++ {
+			if akj := a[k+j*lda]; akj != 0 {
+				for i := 0; i < m; i++ {
+					b[i+j*ldb] -= float64(akj * b[i+k*ldb])
+				}
+			}
+		}
+		t := 1 / a[j+j*lda]
+		for i := 0; i < m; i++ {
+			b[i+j*ldb] = float64(t * b[i+j*ldb])
+		}
+	}
+}
+
+func trsmInput(m, n int, zeros bool) (a, b []float64) {
+	rng := rand.New(rand.NewPCG(3, 4))
+	a, b = make([]float64, n*n), make([]float64, m*n)
+	for j := 0; j < n; j++ {
+		for k := 0; k <= j; k++ {
+			if !zeros || rng.IntN(3) != 0 || k == j {
+				a[k+j*n] = rng.NormFloat64()
+			}
+		}
+		a[j+j*n] += 4
+	}
+	for i := range b {
+		b[i] = rng.NormFloat64()
+	}
+	return a, b
+}
+
+func TestTrsmMatchesReference(t *testing.T) {
+	for _, zeros := range []bool{false, true} {
+		a, b := trsmInput(13, 11, zeros)
+		want := clone(b)
+		trsmRUNRef(13, 11, a, 11, want, 13)
+		trsmRUN(13, 11, a, 11, b, 13)
+		for i := range b {
+			if math.Float64bits(b[i]) != math.Float64bits(want[i]) {
+				t.Fatalf("zeros=%v: b[%d] = %v, reference %v", zeros, i, b[i], want[i])
+			}
+		}
+	}
+	trsmRUN(0, 3, nil, 3, nil, 1)
+}
+
+func BenchmarkTrsm(b *testing.B) {
+	a, g := trsmInput(101, 50, false)
+	work := make([]float64, len(g))
+	for _, impl := range []struct {
+		name string
+		f    func(m, n int, a []float64, lda int, b []float64, ldb int)
+	}{{"unrolled", trsmRUN}, {"reference", trsmRUNRef}} {
+		b.Run(impl.name, func(b *testing.B) {
+			for b.Loop() {
+				copy(work, g)
+				impl.f(101, 50, a, 50, work, 101)
+			}
+		})
+	}
+}
+
 func TestLstsqPivotedRankDeficient(t *testing.T) {
 	// Two equal columns: rank 1.
 	a := []float64{1, 2, 3, 1, 2, 3}
@@ -111,7 +176,7 @@ func TestLstsqPivotedRankDeficient(t *testing.T) {
 
 func TestLsiRankDeficient(t *testing.T) {
 	a := []float64{1, 0, 0, 0} // 2×2 column-major, second column zero
-	mode, _ := lsi(2, 1, 2, a, []float64{1, 1}, []float64{1, 1}, []float64{0}, make([]float64, 2))
+	mode, _ := lsi(&arena{}, 2, 1, 2, a, []float64{1, 1}, []float64{1, 1}, []float64{0}, make([]float64, 2))
 	if mode != 5 {
 		t.Errorf("mode %d, want 5", mode)
 	}
@@ -119,20 +184,21 @@ func TestLsiRankDeficient(t *testing.T) {
 
 func TestLdpIncompatible(t *testing.T) {
 	// x >= 1 and -x >= 0: incompatible.
-	mode, _ := ldp(2, 1, []float64{1, -1}, []float64{1, 0}, make([]float64, 1))
+	ws := &arena{}
+	mode, _ := ldp(ws, 2, 1, []float64{1, -1}, []float64{1, 0}, make([]float64, 1))
 	if mode != 4 {
 		t.Errorf("mode %d, want 4", mode)
 	}
 	// The NNLS iteration limit surfaces as mode 3.
 	ldpMaxIter = 0
-	mode, _ = ldp(1, 1, []float64{1}, []float64{1}, make([]float64, 1))
+	mode, _ = ldp(ws, 1, 1, []float64{1}, []float64{1}, make([]float64, 1))
 	ldpMaxIter = 3
 	if mode != 3 {
 		t.Errorf("mode %d, want 3", mode)
 	}
 	// x >= 1 alone: x = 1 with multiplier 1.
 	x := make([]float64, 1)
-	mode, mults := ldp(1, 1, []float64{1}, []float64{1}, x)
+	mode, mults := ldp(ws, 1, 1, []float64{1}, []float64{1}, x)
 	if mode != 1 || math.Abs(x[0]-1) > 1e-15 || math.Abs(mults[0]-1) > 1e-15 {
 		t.Errorf("mode %d x %v mults %v", mode, x, mults)
 	}
@@ -154,7 +220,7 @@ func TestNNLSRandom(t *testing.T) {
 		}
 		a0, b0 := clone(a), clone(b)
 		x := make([]float64, n)
-		_, info := nnls(m, n, a, b, x, 3*n)
+		_, info := nnls(&arena{}, m, n, a, b, x, 3*n)
 		if info != 1 {
 			continue
 		}
@@ -179,12 +245,12 @@ func TestNNLSRandom(t *testing.T) {
 	// the unconstrained fit once column 3 enters): both leave the set.
 	a := []float64{1, 0, 0, 0, 1, 0, 0.1, 0.1, 0.1}
 	x := make([]float64, 3)
-	if _, info := nnls(3, 3, a, []float64{1, 1, 5}, x, 9); info != 1 || x[0] != 0 || x[1] != 0 || math.Abs(x[2]-(7.0/0.03)/10) > 1e-9 {
+	if _, info := nnls(&arena{}, 3, 3, a, []float64{1, 1, 5}, x, 9); info != 1 || x[0] != 0 || x[1] != 0 || math.Abs(x[2]-(7.0/0.03)/10) > 1e-9 {
 		t.Errorf("info %d x %v", info, x)
 	}
 	// One inner iteration allowed: info 3.
 	a = []float64{1, 0, 1, 1, 0, 1}
-	if _, info := nnls(2, 3, a, []float64{1, -1}, make([]float64, 3), 1); info != 3 {
+	if _, info := nnls(&arena{}, 2, 3, a, []float64{1, -1}, make([]float64, 3), 1); info != 3 {
 		t.Errorf("info %d, want 3", info)
 	}
 }
