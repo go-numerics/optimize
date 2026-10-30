@@ -176,6 +176,33 @@ when that is acceptable; the table is single-threaded.
 `root` on 100 equations is 1.27×: SciPy's 0.83 ms is about 0.31 ms of
 Python callbacks and 0.5 ms of compiled MINPACK, ours 0.6 ms of solver.
 
+## SLSQP
+
+Measured with `tools/slsqpbench` (Go), which builds the test binary, runs
+`BenchmarkSLSQP*` with `-test.cpu 1` and SciPy's `minimize(method='SLSQP')`
+on the same problems with one BLAS thread, in interleaved rounds, and
+refuses to start when the 1-minute load average is above 8. Apple M4 Max,
+SciPy 1.18.1 (arm64 wheel), 2026-10-30.
+
+Medians of 7 interleaved rounds; load 5.5 before, 6.2 after.
+
+| Benchmark | Go | SciPy 1.18.1 | Speed-up |
+|---|---|---|---|
+| HS71, analytic derivatives | 5.79 µs | 114 µs | 19.7× |
+| HS71, finite differences | 6.94 µs | 650 µs | 93.7× |
+| HS38 (bounds, 76 iterations) | 37.3 µs | 943 µs | 25.2× |
+| HS43 (3 nonlinear inequalities) | 6.75 µs | 165 µs | 24.4× |
+| Quad50 (n = 50, 100 bounds, 1 linear) | 4.66 ms | 4.65 ms | 1.0× |
+
+On the Hock–Schittkowski problems SciPy's time is mostly Python around the
+callbacks and the per-iteration call into C. At n = 50 both run the same
+O(m·n²) subproblem per iteration in compiled code; there `trsm` (X·R = G
+for the 101×50 constraint block) dominates the Go profile. Since this table
+was taken, `trsmRUN` applies four columns per pass over the block
+(bit-identical to the reference loop, `TestTrsmMatchesReference`), which
+halves its time in `BenchmarkTrsm`; the Quad50 row will be re-measured on a
+quiet host.
+
 ## Reproducing
 
 ```sh
