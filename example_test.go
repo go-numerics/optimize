@@ -58,6 +58,28 @@ func ExampleMinimize_slsqp() {
 	// Output: f = 17.0140172, x = [1.0000 4.7430 3.8212 1.3794], nit = 5, Optimization terminated successfully
 }
 
+// Hock–Schittkowski problem 71 by the interior-point method:
+// scipy.optimize.minimize(f, [1, 5, 5, 1], method='trust-constr', bounds=..., constraints=...)
+func ExampleMinimize_trustConstr() {
+	f := func(x []float64) float64 { return x[0]*x[3]*(x[0]+x[1]+x[2]) + x[2] }
+	g := func(x, c []float64) { c[0] = x[0]*x[1]*x[2]*x[3] - 25 }
+	h := func(x, c []float64) { c[0] = x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3] - 40 }
+	bound := optimize.Bound{Lo: 1, Hi: 5}
+	r, err := optimize.Minimize(optimize.Problem{Func: f}, []float64{1, 5, 5, 1}, optimize.TrustConstr,
+		&optimize.Options{
+			Bounds: []optimize.Bound{bound, bound, bound, bound},
+			Constraints: []optimize.ConstraintSpec{
+				optimize.Constraint{Kind: optimize.Ineq, M: 1, Func: g},
+				optimize.Constraint{Kind: optimize.Eq, M: 1, Func: h},
+			}})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("f = %.5f, x = [%.3f %.3f %.3f %.3f], success = %v\n",
+		r.Fun, r.X[0], r.X[1], r.X[2], r.X[3], r.Success)
+	// Output: f = 17.01402, x = [1.000 4.743 3.821 1.379], success = true
+}
+
 // popt, pcov = scipy.optimize.curve_fit(lambda x, a, b, c: a*np.exp(-b*x) + c, x, y)
 func ExampleCurveFit() {
 	x, _ := ndarray.Linspace(0, 4, 50)

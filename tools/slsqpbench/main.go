@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -30,13 +31,20 @@ import (
 //go:embed bench.py
 var script []byte
 
-var benchNames = []string{"SLSQPHS71", "SLSQPHS71FD", "SLSQPHS38", "SLSQPHS43", "SLSQPQuad50"}
+var benchNames = []string{"SLSQPHS71", "SLSQPHS71FD", "SLSQPHS38", "SLSQPHS43", "SLSQPQuad50",
+	"TrustConstrHS71", "TrustConstrHS71FD", "TrustConstrHS38", "TrustConstrHS43", "TrustConstrQuad50"}
 
 var osExit = os.Exit
 
 // execRun runs an external command (go, the test binary, uv); tests replace
 // it to simulate them.
 var execRun = func(c *exec.Cmd) error { return c.Run() }
+
+// now and sleep are replaced by tests of --wait.
+var (
+	now   = time.Now
+	sleep = time.Sleep
+)
 
 // loadAvg returns the 1-minute load average.
 var loadAvg = func() (float64, error) {
@@ -110,9 +118,10 @@ func RootCmd() *cobra.Command {
 	var repo string
 	var rounds int
 	var maxLoad float64
+	var wait time.Duration
 	cmd := &cobra.Command{
 		Use:          "slsqpbench",
-		Short:        "Interleaved SLSQP benchmark rounds against SciPy",
+		Short:        "Interleaved SLSQP and trust-constr benchmark rounds against SciPy",
 		SilenceUsage: true,
 		Args:         cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -120,6 +129,14 @@ func RootCmd() *cobra.Command {
 			load0, err := loadAvg()
 			if err != nil {
 				return err
+			}
+			// --wait polls the load until it drops below --max-load.
+			deadline := now().Add(wait)
+			for load0 > maxLoad && now().Before(deadline) {
+				sleep(30 * time.Second)
+				if load0, err = loadAvg(); err != nil {
+					return err
+				}
 			}
 			if load0 > maxLoad {
 				return fmt.Errorf("1-minute load %.1f > %.1f: measurement deferred", load0, maxLoad)
@@ -139,7 +156,7 @@ func RootCmd() *cobra.Command {
 			goT, pyT := map[string][]float64{}, map[string][]float64{}
 			for r := 1; r <= rounds; r++ {
 				var gb bytes.Buffer
-				g := exec.Command(bin, "-test.run", "^$", "-test.bench", "^BenchmarkSLSQP",
+				g := exec.Command(bin, "-test.run", "^$", "-test.bench", "^Benchmark(SLSQP|TrustConstr)",
 					"-test.benchtime", "300ms", "-test.count", "1", "-test.cpu", "1")
 				g.Dir, g.Stdout, g.Stderr = repo, &gb, cmd.ErrOrStderr()
 				if err := execRun(g); err != nil {
@@ -184,6 +201,7 @@ func RootCmd() *cobra.Command {
 	cmd.Flags().StringVar(&repo, "repo", "../..", "path of the optimize repository")
 	cmd.Flags().IntVar(&rounds, "rounds", 7, "interleaved rounds")
 	cmd.Flags().Float64Var(&maxLoad, "max-load", 8, "refuse to measure above this 1-minute load average")
+	cmd.Flags().DurationVar(&wait, "wait", 0, "wait up to this long for the load to drop below --max-load")
 	return cmd
 }
 

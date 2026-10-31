@@ -29,6 +29,10 @@ type slsqpCase struct {
 	Multipliers []float64          `json:"multipliers"`
 	Maxcv       float64            `json:"maxcv"`
 	Fstar       *float64           `json:"fstar"`
+	Error       string             `json:"error"`
+	// trust-constr only.
+	Optimality      float64 `json:"optimality"`
+	ConstrViolation float64 `json:"constr_violation"`
 }
 
 type slsqpFixture struct {
@@ -43,6 +47,11 @@ func loadSLSQPFixture(t *testing.T) slsqpFixture {
 	if p := os.Getenv("SLSQP_FIXTURE"); p != "" {
 		path = p // e.g. a fixture generated with slsqporacle --platform
 	}
+	return loadFixture(t, path)
+}
+
+func loadFixture(t *testing.T, path string) slsqpFixture {
+	t.Helper()
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -56,6 +65,16 @@ func loadSLSQPFixture(t *testing.T) slsqpFixture {
 
 // runSLSQPCase replays one fixture case in Go.
 func runSLSQPCase(t *testing.T, c slsqpCase) *Result {
+	t.Helper()
+	r, err := replayCase(t, c, SLSQP)
+	if err != nil {
+		t.Fatalf("%s: %v", c.Name, err)
+	}
+	return r
+}
+
+// replayCase runs one fixture case with the given method.
+func replayCase(t *testing.T, c slsqpCase, method Method) (*Result, error) {
 	t.Helper()
 	p, ok := hsProblems[c.Problem]
 	if !ok {
@@ -84,14 +103,16 @@ func runSLSQPCase(t *testing.T, c slsqpCase) *Result {
 	if v, ok := c.Options["eps"]; ok {
 		o.Eps = v
 	}
+	if v, ok := c.Options["gtol"]; ok {
+		o.Gtol = v
+	}
+	if v, ok := c.Options["xtol"]; ok {
+		o.Xtol = v
+	}
 	if c.Tol != nil {
 		o.Tol = *c.Tol
 	}
-	r, err := Minimize(prob, p.x0, SLSQP, o)
-	if err != nil {
-		t.Fatalf("%s: %v", c.Name, err)
-	}
-	return r
+	return Minimize(prob, p.x0, method, o)
 }
 
 // hsViolation is hs.py's maxcv.

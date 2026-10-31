@@ -1,2 +1,6 @@
 github.com/go-ndarray/ndarray v0.28.0 h1:9RWfw01uRUH1YqsVUpNllm01XEohqdSfsk4Kw0x18VA=
 github.com/go-ndarray/ndarray v0.28.0/go.mod h1:bDbGWswQLmTMh6V3LwvKUbpfHzeG4sZDcvuGnA0GC+s=
+github.com/go-simd/floats v0.4.0 h1:3PgwUDC03BEApEz6hZLQOmtmkuJ+3Ga62Vnw6IIJC/s=
+github.com/go-simd/floats v0.4.0/go.mod h1:Aq5a6oY5pUqm9Hpi+iV2nrNmaaUb0rwHvUHIerXWSvA=
+golang.org/x/sys v0.49.0 h1:XbzkgYJHdqh/8m2Uu0W/dQv8nktxx4BFHp1M0gROTXA=
+golang.org/x/sys v0.49.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=

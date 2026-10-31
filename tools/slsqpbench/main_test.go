@@ -9,7 +9,46 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+// TestWaitForLoad: --wait polls until the load drops, then measures; a load
+// that stays high past the deadline is still refused, and so is a reading
+// error while waiting.
+func TestWaitForLoad(t *testing.T) {
+	oldNow, oldSleep, oldLoad := now, sleep, loadAvg
+	defer func() { now, sleep, loadAvg = oldNow, oldSleep, oldLoad }()
+	clock := time.Unix(0, 0)
+	now = func() time.Time { return clock }
+	sleep = func(d time.Duration) { clock = clock.Add(d) }
+	readings := []float64{20, 15, 3}
+	loadAvg = func() (float64, error) {
+		v := readings[0]
+		if len(readings) > 1 {
+			readings = readings[1:]
+		}
+		return v, nil
+	}
+	fakeExec(t, "", scipyJSON(""))
+	if _, _, err := runCmd(t, "--rounds", "1", "--wait", "10m", "--repo", t.TempDir()); err != nil {
+		t.Errorf("waited for a quiet host: %v", err)
+	}
+	readings = []float64{20}
+	if _, _, err := runCmd(t, "--wait", "1m"); err == nil || !strings.Contains(err.Error(), "deferred") {
+		t.Errorf("load never dropped: %v", err)
+	}
+	n := 0
+	loadAvg = func() (float64, error) {
+		n++
+		if n > 1 {
+			return 0, errors.New("gone")
+		}
+		return 20, nil
+	}
+	if _, _, err := runCmd(t, "--wait", "1m"); err == nil || !strings.Contains(err.Error(), "gone") {
+		t.Errorf("reading error while waiting: %v", err)
+	}
+}
 
 func TestParseLoad(t *testing.T) {
 	for in, want := range map[string]float64{

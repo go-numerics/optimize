@@ -299,24 +299,38 @@ VARIANTS = {
 }
 
 
+# METHOD is prepended by the Go harness (--method); SLSQP when absent.
+METHOD = globals().get("METHOD", "SLSQP")
+
+
 def run(case, pname, jac, cons, opts, tol=None):
     p = P[pname]
-    kw = dict(method="SLSQP", constraints=cons, options=opts)
+    kw = dict(method=METHOD, constraints=cons, options=opts)
     if p["bounds"] is not None:
         kw["bounds"] = p["bounds"]
     if tol is not None:
         kw["tol"] = tol
     if jac:
         kw["jac"] = p["g"]
-    r = minimize(p["f"], np.array(p["x0"], float), **kw)
-    mult = getattr(r, "multipliers", None)
+    base = dict(name=case, problem=pname, jac=jac, options=opts, tol=tol, fstar=p["fstar"])
+    try:
+        r = minimize(p["f"], np.array(p["x0"], float), **kw)
+    except Exception as e:  # e.g. trust-constr with more equalities than variables
+        return dict(base, error=f"{type(e).__name__}: {e}")
+    if METHOD == "trust-constr":
+        mult = [float(v) for vs in r.v[:len(cons)] for v in np.atleast_1d(vs)]
+        extra = dict(optimality=float(r.optimality), constr_violation=float(r.constr_violation),
+                     cg_niter=int(r.cg_niter), nhev=int(r.nhev))
+    else:
+        m = getattr(r, "multipliers", None)
+        mult = None if m is None else [float(v) for v in m]
+        extra = {}
     return dict(
-        name=case, problem=pname, jac=jac, options=opts, tol=tol,
+        base,
         x=[float(v) for v in r.x], fun=float(r.fun),
         nit=int(r.get("nit", 0)), nfev=int(r.nfev), njev=int(r.get("njev", 0)),
         status=int(r.get("status", 0)), success=bool(r.success), message=str(r.message),
-        multipliers=None if mult is None else [float(v) for v in mult],
-        maxcv=maxcv(p, r.x), fstar=p["fstar"],
+        multipliers=mult, maxcv=maxcv(p, r.x), **extra,
     )
 
 
@@ -328,8 +342,12 @@ for vname, (pname, mk) in VARIANTS.items():
     cases.append(run(vname, pname, not vname.endswith("-fd"), mk(), {}))
 cases.append(run("HS7/maxiter3", "HS7", True, old_cons(P["HS7"], True), {"maxiter": 3}))
 cases.append(run("HS28/tol", "HS28", True, old_cons(P["HS28"], True), {}, tol=1e-10))
-cases.append(run("HS71/ftol", "HS71", True, old_cons(P["HS71"], True), {"ftol": 1e-10}))
-cases.append(run("HS38/eps", "HS38", False, old_cons(P["HS38"], False), {"eps": 1e-6}))
+if METHOD == "SLSQP":
+    cases.append(run("HS71/ftol", "HS71", True, old_cons(P["HS71"], True), {"ftol": 1e-10}))
+    cases.append(run("HS38/eps", "HS38", False, old_cons(P["HS38"], False), {"eps": 1e-6}))
+else:
+    cases.append(run("HS71/gtol", "HS71", True, old_cons(P["HS71"], True), {"gtol": 1e-10}))
+    cases.append(run("HS38/xtol", "HS38", True, old_cons(P["HS38"], True), {"xtol": 1e-4}))
 
-json.dump(dict(scipy=scipy.__version__, numpy=np.__version__, python=platform.python_version(),
+json.dump(dict(method=METHOD, scipy=scipy.__version__, numpy=np.__version__, python=platform.python_version(),
                machine=platform.machine(), system=platform.system(), cases=cases), sys.stdout)

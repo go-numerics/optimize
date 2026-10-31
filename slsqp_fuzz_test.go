@@ -13,6 +13,8 @@ import (
 func FuzzSLSQP(f *testing.F) {
 	f.Add([]byte{2, 1, 1, 0}, []byte("\x00\x00\x00\x00\x00\x00\xf0\x3f"))
 	f.Add([]byte{3, 2, 0, 1}, []byte("\x00\x00\x00\x00\x00\x00\xf8\x7f\x00\x00\x00\x00\x00\x00\xf0\x7f"))
+	f.Add([]byte{2, 1, 1, 8 | 1}, []byte("\x00\x00\x00\x00\x00\x00\xf0\x3f"))
+	f.Add([]byte{3, 0, 2, 8 | 2}, []byte("\x00\x00\x00\x00\x00\x00\xf8\x7f\x00\x00\x00\x00\x00\x00\xf0\x7f"))
 	f.Add([]byte{1, 3, 2, 3}, []byte("\xff\xff\xff\xff\xff\xff\xef\x7f\x01\x00\x00\x00\x00\x00\x00\x00"))
 	f.Fuzz(func(t *testing.T, shape, raw []byte) {
 		if len(shape) < 4 {
@@ -87,13 +89,22 @@ func FuzzSLSQP(f *testing.F) {
 		evals := 0
 		inner := p.Func
 		p.Func = func(x []float64) float64 { evals++; return inner(x) }
-		r, err := Minimize(p, x0, SLSQP, o)
+		method := SLSQP
+		// 30 iterations, at most 11 line-search points each, and n+1
+		// evaluations per finite-difference gradient.
+		limit := 1 + 30*(11+n+1)
+		if flags&8 != 0 {
+			// trust-constr: at most a trial point and a second-order
+			// correction per iteration, each with an FD gradient (BFGS
+			// updates happen at every new point), plus the start.
+			method = TrustConstr
+			limit = 1 + n + 30*2*(n+1)
+		}
+		r, err := Minimize(p, x0, method, o)
 		if err != nil {
 			return
 		}
-		// 30 iterations, at most 11 line-search points each, and n+1
-		// evaluations per finite-difference gradient.
-		if limit := 1 + 30*(11+n+1); evals > limit {
+		if evals > limit {
 			t.Fatalf("%d evaluations > %d", evals, limit)
 		}
 		// All variables fixed by bounds: no multipliers, as in SciPy.
