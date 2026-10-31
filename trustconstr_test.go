@@ -82,6 +82,28 @@ func TestProjectorSVDFailure(t *testing.T) {
 	}
 }
 
+// TestBFGSIndefiniteReset: a matrix that rounding made indefinite (sᵀBs <= 0)
+// is reset to a scaled identity before the update, as in SciPy. Which
+// fixtures reach this depends on the architecture, hence a direct test.
+func TestBFGSIndefiniteReset(t *testing.T) {
+	h := newBFGSHess(2)
+	h.first = false
+	h.b = []float64{-1, 0, 0, -1}
+	h.update([]float64{1, 0}, []float64{2, 0})
+	if !(h.b[0] > 0) || !(h.b[3] > 0) {
+		t.Errorf("B = %v, want positive definite", h.b)
+	}
+}
+
+// TestProjectorZeroRow: a zero row keeps a zero partial norm (no downdate)
+// and makes the Jacobian singular (SVD fallback).
+func TestProjectorZeroRow(t *testing.T) {
+	p, ok := newProjector(2, 3, []float64{1, 2, 0, 0, 0, 0})
+	if !ok || !p.svd || p.k != 1 {
+		t.Fatalf("ok %v svd %v k %d", ok, p.svd, p.k)
+	}
+}
+
 func TestBFGSAutoScaleDegenerate(t *testing.T) {
 	if s := bfgsAutoScale([]float64{1, 0}, []float64{0, 1}); s != 1 {
 		t.Errorf("orthogonal s, y: scale %v", s)
