@@ -341,6 +341,13 @@ instead, with documented limits.
 - **Not done:** singleton-row presolve, crossover, scaling, warm start,
   sparse matrices.
 
+## Quadprog (planned)
+
+Quadratic programming is designed but not implemented yet: a Goldfarb–Idnani
+dual active-set solver, then an OSQP-style ADMM solver for large and sparse
+problems. The design, its sources and the task list are in
+[`design-qp.md`](design-qp.md).
+
 ## Brute, CheckGrad, ApproxFprime
 
 - **`Brute`** evaluates `numpy.mgrid`'s grid with the same point formula,
