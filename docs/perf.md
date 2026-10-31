@@ -210,24 +210,32 @@ across iterations (0.7 MB allocated per Quad50 solve instead of 11 MB).
 `minimize(method='trust-constr')` on the same five problems, in the same
 interleaved rounds as SLSQP.
 
-Apple M4 Max, 2026-10-31, medians of 7 interleaved rounds, one thread each.
-The 1-minute load was 7.4 at the start and rose to 10–11 during the rounds;
-the ratios are large enough that this does not change their reading.
+Apple M4 Max, 2026-10-31 (v0.4.1), medians of 7 interleaved rounds, one
+thread each, `slsqpbench --wait 150m`. The 1-minute load was 7.1 before the
+first round and 7.3 after the last, and 6.4–7.7 after each round in between:
+below the tool's limit of 8 throughout, though not an idle machine (another
+session's work). An earlier run of the same day, which began at 7.3 and ended
+at 21.9, was discarded: its Go times were 2.5 times too slow (HS71 SLSQP 14 µs
+instead of 5.6 µs), and the tool now discards such a run itself (it reads the
+load after every round and stops when it exceeds the limit).
 
 | Benchmark | Go | SciPy 1.18.1 | Speed-up |
 |---|---|---|---|
-| HS71, analytic derivatives | 523 µs | 33.9 ms | 64.7× |
-| HS71, finite differences | 460 µs | 35.2 ms | 76.6× |
-| HS38 (bounds) | 262 µs | 34.1 ms | 130× |
-| HS43 (3 nonlinear inequalities) | 65.1 µs | 7.53 ms | 116× |
-| Quad50 (n = 50, 100 bounds, 1 linear) | 27.7 ms | 75.2 ms | 2.7× |
+| HS71, analytic derivatives | 496 µs | 32.7 ms | 66.0× |
+| HS71, finite differences | 438 µs | 34.1 ms | 77.8× |
+| HS38 (bounds) | 277 µs | 32.1 ms | 116× |
+| HS43 (3 nonlinear inequalities) | 62.4 µs | 7.15 ms | 115× |
+| Quad50 (n = 50, 100 bounds, 1 linear) | 27.8 ms | 69.9 ms | 2.5× |
 
-SciPy's trust-constr is pure Python around NumPy/LAPACK calls, so on small
-problems its time is interpreter overhead. At n = 50 each iteration factorises
-the 101×151 barrier Jacobian; the pivoted QR (dlaqp2's norm downdating,
-go-simd reflectors) cut Go's time from about 130 ms to 28 ms before this
-table was taken. The SLSQP rows measured in the same rounds agree with the
-table above (20.1×, 91.4×, 24.9×, 24.2×, 1.4×).
+This replaces the table taken on the same day while the load rose from 7.4 to
+10–11 (64.7×, 76.6×, 130×, 116×, 2.7×): the ratios moved by 2–11%, the
+reading did not change. SciPy's trust-constr is pure Python around
+NumPy/LAPACK calls, so on small problems its time is interpreter overhead. At
+n = 50 each iteration factorises the 101×151 barrier Jacobian; the pivoted QR
+(dlaqp2's norm downdating, go-simd reflectors) cut Go's time from about 130 ms
+to 28 ms. The SLSQP rows measured in the same rounds agree with the table above
+(5.57 µs, 6.78 µs, 36.2 µs, 6.53 µs and 3.31 ms against 113 µs, 640 µs,
+936 µs, 163 µs and 4.58 ms: 20.4×, 94.4×, 25.8×, 25.0×, 1.4×).
 
 ## Reproducing
 

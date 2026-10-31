@@ -188,6 +188,39 @@ func TestFullRunSimulated(t *testing.T) {
 	}
 }
 
+// TestDiscardsWhenTheHostFillsUp: the load is read after every round; one
+// above --max-load discards the whole measurement (the 2026-10-31 run started
+// at 7.3 and ended at 21.9, and its Go times were 2.5 times too slow), and a
+// failing read is an error rather than a missing number.
+func TestDiscardsWhenTheHostFillsUp(t *testing.T) {
+	oldLoad := loadAvg
+	t.Cleanup(func() { loadAvg = oldLoad })
+	fakeExec(t, "", scipyJSON(""))
+	calls := 0
+	loadAvg = func() (float64, error) {
+		calls++
+		if calls == 1 {
+			return 3, nil // at the start
+		}
+		return 11, nil // after round 1
+	}
+	out, _, err := runCmd(t, "--rounds", "3", "--repo", t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "rose to 11.0") || !strings.Contains(err.Error(), "round 1") || out != "" {
+		t.Errorf("out %q err %v", out, err)
+	}
+	calls = 0
+	loadAvg = func() (float64, error) {
+		calls++
+		if calls == 1 {
+			return 3, nil
+		}
+		return 0, errors.New("sysctl gone")
+	}
+	if _, _, err := runCmd(t, "--rounds", "1", "--repo", t.TempDir()); err == nil || !strings.Contains(err.Error(), "gone") {
+		t.Errorf("read error after a round: %v", err)
+	}
+}
+
 func TestMainExitsOnError(t *testing.T) {
 	withLoad(t, 99, nil)
 	code := -1

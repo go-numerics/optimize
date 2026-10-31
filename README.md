@@ -171,8 +171,8 @@ Medians of 7 rounds, with Go and SciPy interleaved on a loaded host.
 | `brentq` | 0.27 µs | 8.6 µs | 32× |
 | SLSQP, HS71 (analytic / finite differences) | 5.6 / 6.9 µs | 114 / 648 µs | 20× / 94× |
 | SLSQP, n = 50 with 100 bounds | 3.35 ms | 4.59 ms | 1.4× |
-| trust-constr, HS71 (analytic / finite differences) | 523 / 460 µs | 33.9 / 35.2 ms | 65× / 77× |
-| trust-constr, n = 50 with 100 bounds | 27.7 ms | 75.2 ms | 2.7× |
+| trust-constr, HS71 (analytic / finite differences) | 496 / 438 µs | 32.7 / 34.1 ms | 66× / 78× |
+| trust-constr, n = 50 with 100 bounds | 27.8 ms | 69.9 ms | 2.5× |
 
 Most of SciPy's time on small problems is Python overhead around the
 callbacks. Even after subtracting SciPy's time spent in its own callbacks, the

@@ -180,8 +180,16 @@ func RootCmd() *cobra.Command {
 				for k, v := range py {
 					pyT[k] = append(pyT[k], v)
 				}
-				l, _ := loadAvg()
+				l, err := loadAvg()
+				if err != nil {
+					return err
+				}
 				fmt.Fprintf(cmd.ErrOrStderr(), "round %d/%d done (load %.1f)\n", r, rounds, l)
+				// The host was quiet at the start; a measurement taken while
+				// it filled up is not a measurement.
+				if l > maxLoad {
+					return fmt.Errorf("1-minute load rose to %.1f > %.1f during round %d: measurement discarded", l, maxLoad, r)
+				}
 			}
 			load1, _ := loadAvg()
 			fmt.Fprintf(w, "Medians of %d interleaved rounds, one thread each; 1-minute load %.1f before, %.1f after.\n\n",
