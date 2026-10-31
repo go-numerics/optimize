@@ -118,7 +118,26 @@ func FuzzQPSolverUpdate(f *testing.F) {
 			return
 		}
 		for _, op := range ops {
-			switch op % 4 {
+			switch op % 5 {
+			case 4: // UpdateBounds: the same sides must succeed, garbage must not panic
+				l, u := make([]float64, len(s.m.rows)), make([]float64, len(s.m.rows))
+				for i, r := range s.m.rows {
+					l[i], u[i] = r.l, r.u
+				}
+				if op&8 != 0 && len(l) > 0 {
+					l[int(op)%len(l)] = math.NaN()
+					if s.UpdateBounds(l, u) == nil {
+						t.Fatal("NaN side accepted")
+					}
+				} else if err := s.UpdateBounds(l, u); err != nil {
+					t.Fatal(err)
+				}
+				if s.UpdateBounds(l[:len(l)/2], u) == nil && len(l) > 0 {
+					t.Fatal("wrong length accepted")
+				}
+				if _, err := s.Solve(); err != nil {
+					t.Fatal(err)
+				}
 			case 0: // wrong length
 				if s.UpdateQ(make([]float64, n+int(op%3)+1)) == nil {
 					t.Fatal("wrong length accepted")

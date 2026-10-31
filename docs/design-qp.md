@@ -1,6 +1,17 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **tasks 4, 5, 6 and a simplified 7 implemented**. Task 6
+Status: **tasks 4, 5, 6 and 7 implemented**. Task 7 (`qp_solver.go`, `qp_gi.go`):
+`QPSolver` keeps J, R, the working set and the multipliers between solves;
+`UpdateQ`, `UpdateBounds` (same row kinds only) and `WorkingSet` recover x and u
+from the factors by (35) and repair by dropping the most negative inequality
+multiplier until none is negative (Prop. 8.1–8.2, read from arXiv:2608.30933
+pp. 18–19); `UpdateMatrixValues` rebuilds the factors seeded with the previous
+active set (ASparse values: `ErrMethod`); `WarmStart` validates and keeps x, y
+for ADMM. Measured on 300 random box+row problems, pivots warm / cold:
+14/493 = 0.03 (σ = 0.05 perturbation of q), 150/503 = 0.30 (σ = 0.5),
+520/647 = 0.80 (σ = 2), each answer equal to the cold one to 1e-7 (this
+supersedes the 506/480 of the first version below). The text that follows
+describes the earlier state; the simplified-7 sentences are obsolete. Task 6
 (`qp_gi.go`): the Goldfarb–Idnani walk of §3 for a positive definite dense P,
 with equalities first, Householder insertion and 2×2-reflection deletion,
 infeasibility certificates, the set-aside rule and the objective drift check;

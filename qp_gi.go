@@ -55,6 +55,12 @@ const (
 // solveGI runs the method on a model whose P is positive definite
 // (md.chol is set).
 func (md *qpModel) solveGI(maxIter int, feasTol float64, hint []int) *QPResult {
+	return md.newGI().solve(maxIter, feasTol, hint, false)
+}
+
+// newGI builds the columns of the dual method from the canonical rows
+// (equalities first); the factors are set by start.
+func (md *qpModel) newGI() *giState {
 	n := md.n
 	g := &giState{md: md, n: n, j: make([]float64, n*n), r: make([]float64, n*n)}
 	for pass := 0; pass < 2; pass++ { // equalities first, then the inequality sides
@@ -81,17 +87,28 @@ func (md *qpModel) solveGI(maxIter int, feasTol float64, hint []int) *QPResult {
 			}
 		}
 	}
-	g.start()
+	return g
+}
+
+// solve runs the walk. With resume the state of the previous solve (factors,
+// working set) is repaired for the changed data (Prop. 8.1–8.2); otherwise it
+// starts from the unconstrained minimiser, entering the hinted rows first.
+func (g *giState) solve(maxIter int, feasTol float64, hint []int, resume bool) *QPResult {
+	md, n := g.md, g.n
 	if maxIter == 0 {
 		maxIter = 10 * (n + len(md.rows))
 	}
 	warmNote := ""
-	if len(hint) > 0 {
-		if g.warmStart(hint, maxIter, feasTol) {
-			warmNote = fmt.Sprintf(" Warm start from a working set of %d rows accepted.", len(hint))
-		} else {
-			g.start()
-			warmNote = fmt.Sprintf(" Warm start from a working set of %d rows rejected (cold start).", len(hint))
+	switch {
+	case resume:
+		g.nit = 0
+		kept := g.k
+		dropped := g.repair()
+		warmNote = fmt.Sprintf(" Warm start: working set of %d rows recovered, %d dropped.", kept, dropped)
+	default:
+		g.start()
+		if len(hint) > 0 {
+			warmNote = fmt.Sprintf(" Warm start: %d of %d hinted rows entered, %d dropped.", g.enterHint(hint), len(hint), g.repair())
 		}
 	}
 	status, msg, cert := g.walk(maxIter, feasTol)
@@ -142,67 +159,106 @@ func (g *giState) start() {
 	g.f = -0.5 * dot(mq, g.x)
 }
 
-// warmStart enters the equalities and the hinted rows (canonical row
-// indices, e.g. the previous solve's active set) one at a time as if they
-// were equalities. The state is then the minimiser over that working set; it
-// is a valid start for the dual method only if every hinted inequality has a
-// non-negative multiplier, which is checked: false means start cold.
-func (g *giState) warmStart(hint []int, maxIter int, feasTol float64) bool {
-	want := map[int]bool{}
-	for _, r := range hint {
-		want[r] = true
-	}
-	inWS := make([]bool, len(g.cols))
-	var forced []int
-	for i, c := range g.cols { // equalities first (they sort first), then the hinted side of each row
-		if c.eq {
-			forced = append(forced, i)
-		}
-	}
-	for row := range g.md.rows {
-		if !want[row] || g.md.rows[row].l == g.md.rows[row].u {
-			continue
-		}
+// enterHint inserts the hinted canonical rows (e.g. the previous solve's
+// active set) into the working set in order, one Householder insertion each
+// (O(n²) apiece, no step taken): for a two-sided row the side nearer to the
+// unconstrained minimiser, and a row whose normal depends on those already held
+// is skipped. It returns the number entered; repair then recovers x and u.
+func (g *giState) enterHint(hint []int) int {
+	entered := 0
+	for _, row := range hint {
 		best, bs := -1, math.Inf(1)
 		for i, c := range g.cols {
-			if c.row == row {
+			if c.row == row && !c.eq {
 				if s := math.Abs(dot(g.vec(c, 1), g.x) - c.b); s < bs {
 					best, bs = i, s
 				}
 			}
 		}
-		forced = append(forced, best)
-	}
-	// Every forced column is an equality for the whole phase (none may leave
-	// through a partial step); the flags are restored before the check.
-	was := make([]bool, len(g.cols))
-	for _, ci := range forced {
-		was[ci], g.cols[ci].eq = g.cols[ci].eq, true
-	}
-	defer func() {
-		for _, ci := range forced {
-			g.cols[ci].eq = was[ci]
-		}
-	}()
-	for _, ci := range forced {
-		c := g.cols[ci]
-		s := dot(g.vec(c, 1), g.x) - c.b
-		if math.Abs(s) <= feasTol*(1+math.Abs(c.b)) {
+		if best < 0 { // an equality: the walk enters it
 			continue
 		}
-		if how, _, _ := g.enter(ci, s, maxIter, feasTol, inWS); how != giInserted {
-			return false
+		d := g.dvec(g.vec(g.cols[best], 1))
+		if g.k >= g.n || vnorm(d[g.k:]) <= 1e3*0x1p-52*vnorm(d) {
+			continue
+		}
+		g.insert(d, best, 1, 0)
+		entered++
+	}
+	return entered
+}
+
+// dvec returns Jᵀv.
+func (g *giState) dvec(v []float64) []float64 {
+	d := make([]float64, g.n)
+	for r := 0; r < g.n; r++ {
+		if v[r] != 0 {
+			floats.Axpy(v[r], g.j[r*g.n:(r+1)*g.n], d)
 		}
 	}
-	for _, ci := range forced {
-		g.cols[ci].eq = was[ci]
+	return d
+}
+
+// recover computes the minimiser x and the multipliers u of the working-set
+// subproblem from the factors alone (Schmelzer & Stoll, Prop. 8.1, (35)):
+// x_u = J(Jᵀa), ρ = b_𝒜 − Aᵀx_u, Rᵀy = ρ, x = x_u + J₁y, Ru = y, with a = −q.
+// O(n² + nk + k²); no constraint outside the working set is looked at.
+func (g *giState) recover() {
+	n, k, md := g.n, g.k, g.md
+	mq := make([]float64, n)
+	for i := range mq {
+		mq[i] = -md.q[i]
 	}
-	for w, ci := range g.ws {
-		if !g.cols[ci].eq && g.u[w]*g.wsSign[w] < -feasTol {
-			return false
+	d := g.dvec(mq) // Jᵀa
+	xu := make([]float64, n)
+	for r := 0; r < n; r++ {
+		xu[r] = dot(g.j[r*n:(r+1)*n], d)
+	}
+	y := make([]float64, k) // Rᵀy = ρ, forward
+	for i := 0; i < k; i++ {
+		c := g.cols[g.ws[i]]
+		t := g.wsSign[i]*c.b - dot(g.vec(c, g.wsSign[i]), xu)
+		for l := 0; l < i; l++ {
+			t -= float64(g.r[l*n+i] * y[l])
 		}
+		y[i] = t / g.r[i*n+i]
 	}
-	return true
+	g.x = xu
+	for r := 0; r < n; r++ {
+		g.x[r] += dot(g.j[r*n:r*n+k], y)
+	}
+	g.u = make([]float64, k)
+	for i := k - 1; i >= 0; i-- { // Ru = y, backward
+		t := y[i]
+		for l := i + 1; l < k; l++ {
+			t -= float64(g.r[i*n+l] * g.u[l])
+		}
+		g.u[i] = t / g.r[i*n+i]
+	}
+	g.f = 0.5*dot(md.px(g.x), g.x) + dot(md.q, g.x)
+}
+
+// repair is Proposition 8.2: recover (x, u) from the cached factors, and while
+// an inequality of the working set has a negative multiplier drop the most
+// negative one (downdating J and R) and recover again. It stops after at most
+// k drops in a state satisfying the dual method's invariant (u ≥ 0). It returns
+// the number of drops (each one counts in nit).
+func (g *giState) repair() int {
+	dropped := 0
+	for {
+		g.recover()
+		p, worst := -1, 0.0
+		for w, ci := range g.ws {
+			if !g.cols[ci].eq && g.u[w] < worst {
+				p, worst = w, g.u[w]
+			}
+		}
+		if p < 0 {
+			return dropped
+		}
+		g.remove(p)
+		dropped++
+	}
 }
 
 // walk runs the outer loop and reports how it ended.

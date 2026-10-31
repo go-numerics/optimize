@@ -199,14 +199,15 @@ type qpModel struct {
 	nEq, nUb, nLin, nSp int
 }
 
-// QPSolver holds a validated problem. It is not safe for concurrent use. The
-// vector and matrix updates and warm starts of design-qp.md §5 arrive with
-// the solvers that need them.
+// QPSolver holds a validated problem and the factors of the last solve. It is
+// not safe for concurrent use. The updates and warm starts are in qp_solver.go.
 type QPSolver struct {
-	m    *qpModel
-	opts QPOptions
-	meth QPMethod
-	last []int // active set of the previous Solve
+	m      *qpModel
+	opts   QPOptions
+	meth   QPMethod
+	last   []int    // active set of the previous Solve
+	gi     *giState // active-set factors kept between solves; nil when stale
+	x0, y0 []float64
 }
 
 // Quadprog solves p once: NewQPSolver followed by Solve.
@@ -253,30 +254,21 @@ func (s *QPSolver) Solve() (*QPResult, error) {
 	if feasTol == 0 {
 		feasTol = 1e-9
 	}
+	// The factors and working set of the previous solve are kept (qp_solver.go)
+	// and repaired for whatever was updated since; the first solve starts from
+	// QPOptions.WorkingSet, or cold. After an update that invalidates the
+	// factors the previous active set is the hint.
 	hint := s.opts.WorkingSet
 	if hint == nil {
 		hint = s.last
 	}
-	res := m.solveGI(s.opts.MaxIter, feasTol, hint)
+	resume := s.gi != nil
+	if !resume {
+		s.gi = m.newGI()
+	}
+	res := s.gi.solve(s.opts.MaxIter, feasTol, hint, resume)
 	s.last = res.ActiveSet
 	return res, nil
-}
-
-// UpdateQ replaces the linear term. The next Solve warm-starts from the
-// active set of the previous one (or QPOptions.WorkingSet): the rows are
-// entered as equalities, and the start is used only if it is dual feasible,
-// otherwise the solve is cold. Either way the answer is the one a cold solve
-// gives; the warm start only saves pivots (design-qp.md §5, simplified: the
-// factors are rebuilt, not repaired by Prop. 8.1–8.2).
-func (s *QPSolver) UpdateQ(q []float64) error {
-	if len(q) != s.m.n {
-		return fmt.Errorf("%w: q has %d entries, want %d", ErrDimension, len(q), s.m.n)
-	}
-	if !allFinite(q) {
-		return fmt.Errorf("%w: q contains NaN or Inf", ErrInput)
-	}
-	copy(s.m.q, q)
-	return nil
 }
 
 // validate checks the options against n variables and mRows canonical rows.
