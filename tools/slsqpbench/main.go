@@ -30,7 +30,8 @@ import (
 //go:embed bench.py
 var script []byte
 
-var benchNames = []string{"SLSQPHS71", "SLSQPHS71FD", "SLSQPHS38", "SLSQPHS43", "SLSQPQuad50"}
+var benchNames = []string{"SLSQPHS71", "SLSQPHS71FD", "SLSQPHS38", "SLSQPHS43", "SLSQPQuad50",
+	"TrustConstrHS71", "TrustConstrHS71FD", "TrustConstrHS38", "TrustConstrHS43", "TrustConstrQuad50"}
 
 var osExit = os.Exit
 
@@ -139,7 +140,7 @@ func RootCmd() *cobra.Command {
 			goT, pyT := map[string][]float64{}, map[string][]float64{}
 			for r := 1; r <= rounds; r++ {
 				var gb bytes.Buffer
-				g := exec.Command(bin, "-test.run", "^$", "-test.bench", "^BenchmarkSLSQP",
+				g := exec.Command(bin, "-test.run", "^$", "-test.bench", "^Benchmark(SLSQP|TrustConstr)",
 					"-test.benchtime", "300ms", "-test.count", "1", "-test.cpu", "1")
 				g.Dir, g.Stdout, g.Stderr = repo, &gb, cmd.ErrOrStderr()
 				if err := execRun(g); err != nil {

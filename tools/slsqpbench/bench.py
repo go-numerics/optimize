@@ -72,19 +72,19 @@ def timed(fn, min_time=0.2, reps=5):
     return float(np.median(meds))
 
 
-def case(mk, jac):
+def case(mk, jac, method="SLSQP"):
     f, g, cons, bounds, x0 = mk()
     if not jac:
         cons = [{k: v for k, v in c.items() if k != "jac"} for c in cons]
-    kw = dict(method="SLSQP", constraints=cons, bounds=bounds, jac=g if jac else None)
+    kw = dict(method=method, constraints=cons, bounds=bounds, jac=g if jac else None)
     return lambda: minimize(f, x0, **kw)
 
 
-out = {
-    "SLSQPHS71": timed(case(hs71, True)),
-    "SLSQPHS71FD": timed(case(hs71, False)),
-    "SLSQPHS38": timed(case(hs38, True)),
-    "SLSQPHS43": timed(case(hs43, True)),
-    "SLSQPQuad50": timed(case(quad50, True)),
-}
+out = {}
+for method, prefix in (("SLSQP", "SLSQP"), ("trust-constr", "TrustConstr")):
+    out[prefix + "HS71"] = timed(case(hs71, True, method))
+    out[prefix + "HS71FD"] = timed(case(hs71, False, method))
+    out[prefix + "HS38"] = timed(case(hs38, True, method))
+    out[prefix + "HS43"] = timed(case(hs43, True, method))
+    out[prefix + "Quad50"] = timed(case(quad50, True, method))
 print(json.dumps(out))
