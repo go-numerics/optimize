@@ -210,7 +210,24 @@ across iterations (0.7 MB allocated per Quad50 solve instead of 11 MB).
 `minimize(method='trust-constr')` on the same five problems, in the same
 interleaved rounds as SLSQP.
 
-TRUSTCONSTR_TABLE
+Apple M4 Max, 2026-10-31, medians of 7 interleaved rounds, one thread each.
+The 1-minute load was 7.4 at the start and rose to 10–11 during the rounds;
+the ratios are large enough that this does not change their reading.
+
+| Benchmark | Go | SciPy 1.18.1 | Speed-up |
+|---|---|---|---|
+| HS71, analytic derivatives | 523 µs | 33.9 ms | 64.7× |
+| HS71, finite differences | 460 µs | 35.2 ms | 76.6× |
+| HS38 (bounds) | 262 µs | 34.1 ms | 130× |
+| HS43 (3 nonlinear inequalities) | 65.1 µs | 7.53 ms | 116× |
+| Quad50 (n = 50, 100 bounds, 1 linear) | 27.7 ms | 75.2 ms | 2.7× |
+
+SciPy's trust-constr is pure Python around NumPy/LAPACK calls, so on small
+problems its time is interpreter overhead. At n = 50 each iteration factorises
+the 101×151 barrier Jacobian; the pivoted QR (dlaqp2's norm downdating,
+go-simd reflectors) cut Go's time from about 130 ms to 28 ms before this
+table was taken. The SLSQP rows measured in the same rounds agree with the
+table above (20.1×, 91.4×, 24.9×, 24.2×, 1.4×).
 
 ## Reproducing
 
