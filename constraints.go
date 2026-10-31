@@ -10,10 +10,74 @@ import (
 // ConstraintSpec is a general constraint accepted by the constrained
 // minimisers (Options.Constraints): a Constraint, a NonlinearConstraint or a
 // LinearConstraint, the three forms scipy.optimize.minimize accepts. The
-// interface is sealed; every form is reduced to equality blocks c(x) = 0 and
-// inequality blocks c(x) >= 0 before a method sees it.
+// interface is sealed. SLSQP reduces every form to equality blocks c(x) = 0
+// and inequality blocks c(x) >= 0; trust-constr keeps SciPy's general form
+// lb <= f(x) <= ub.
 type ConstraintSpec interface {
 	standardize(n int) ([]stdConstraint, error)
+	general(n int) (genConstraint, error)
+}
+
+// genConstraint is a constraint in SciPy's general form lb <= f(x) <= ub
+// (NonlinearConstraint), the form trust-constr works with. jac nil means
+// finite differences; linear constraints carry their m×n matrix in a.
+type genConstraint struct {
+	m      int
+	fun    func(x, c []float64)
+	jac    func(x, j []float64)
+	lb, ub []float64
+	linear bool
+	a      []float64
+}
+
+func (c Constraint) general(n int) (genConstraint, error) {
+	if _, err := c.standardize(n); err != nil {
+		return genConstraint{}, err
+	}
+	ub := 0.0
+	if c.Kind == Ineq {
+		ub = math.Inf(1)
+	}
+	lb, _ := boundVector([]float64{0}, c.M, 0)
+	ubv, _ := boundVector([]float64{ub}, c.M, 0)
+	return genConstraint{m: c.M, fun: c.Func, jac: c.Jac, lb: lb, ub: ubv}, nil
+}
+
+func (c NonlinearConstraint) general(n int) (genConstraint, error) {
+	if _, err := c.standardize(n); err != nil {
+		return genConstraint{}, err
+	}
+	lb, _ := boundVector(c.Lb, c.M, math.Inf(-1))
+	ub, _ := boundVector(c.Ub, c.M, math.Inf(1))
+	return genConstraint{m: c.M, fun: c.Func, jac: c.Jac, lb: lb, ub: ub}, nil
+}
+
+func (c LinearConstraint) general(n int) (genConstraint, error) {
+	if _, err := c.standardize(n); err != nil {
+		return genConstraint{}, err
+	}
+	a := arrayData(c.A)
+	m := len(a) / n
+	lb, _ := boundVector(c.Lb, m, math.Inf(-1))
+	ub, _ := boundVector(c.Ub, m, math.Inf(1))
+	return genConstraint{m: m, lb: lb, ub: ub, linear: true, a: a,
+		fun: func(x, out []float64) { matvec(m, n, a, x, out) }}, nil
+}
+
+// generalConstraints converts specs to the general form.
+func generalConstraints(specs []ConstraintSpec, n int) ([]genConstraint, error) {
+	var out []genConstraint
+	for i, s := range specs {
+		if s == nil {
+			return nil, fmt.Errorf("%w: constraint %d is nil", ErrInput, i)
+		}
+		g, err := s.general(n)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, g)
+	}
+	return out, nil
 }
 
 // ConstraintKind tells whether a Constraint is an equality or an inequality.
