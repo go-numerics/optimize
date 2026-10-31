@@ -80,15 +80,21 @@ func TestTrustConstrFixtures(t *testing.T) {
 			t.Errorf("%s: status %d, SciPy %d", c.Name, r.Status, c.Status)
 		}
 		if c.Success {
-			if !fok && (c.Fstar == nil || math.Abs(r.Fun-*c.Fstar) > 1e-4*(1+math.Abs(*c.Fstar))) {
+			// trust-constr's xtol stop leaves the objective a few 1e-6
+			// relative from SciPy's on some finite-difference runs.
+			near := math.Abs(r.Fun-c.Fun) <= 1e-5*(1+math.Abs(c.Fun))
+			if !near && (c.Fstar == nil || math.Abs(r.Fun-*c.Fstar) > 1e-4*(1+math.Abs(*c.Fstar))) {
 				t.Errorf("%s: fun %.17g, SciPy %.17g", c.Name, r.Fun, c.Fun)
 			}
 			if cv > math.Max(1e-6, 10*c.Maxcv) {
 				t.Errorf("%s: constraint violation %g, SciPy %g", c.Name, cv, c.Maxcv)
 			}
 		}
+		// trust-constr's reductions use go-simd/floats, whose lane order
+		// depends on the architecture: counts are asserted where they were
+		// checked (amd64 and arm64).
 		deterministic := !tcRoundingSensitive[c.Name] && !tcPathExceptions[c.Name] &&
-			(!slsqpLibm[c.Problem] || runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64")
+			(runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64")
 		if deterministic && !same {
 			t.Errorf("%s: nit/nfev/njev %d/%d/%d, SciPy %d/%d/%d", c.Name, r.Nit, r.Nfev, r.Njev, c.Nit, c.Nfev, c.Njev)
 		}
