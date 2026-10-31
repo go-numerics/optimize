@@ -44,6 +44,7 @@ have `…Array()` accessors.
 | `LeastSquares(…, LM, …)`, `Leastsq` | `least_squares(method='lm')`, `leastsq` (with `cov_x`) | MINPACK lmder/lmdif |
 | `CurveFit`, `CurveFitModel` | `curve_fit` (`sigma` 1-D/2-D, `absolute_sigma`, bounds, losses) | LM or TRF, covariance as SciPy |
 | `Linprog` | `linprog` | revised simplex (default) or interior point; duals |
+| `Quadprog` (**in progress**, [docs/design-qp.md](docs/design-qp.md)) | MATLAB `quadprog`, OSQP | the API, validation and result blocks of ½xᵀPx + qᵀx s.t. equalities, inequalities, two-sided rows and bounds, with dense or sparse (go-sparse) P and A; solved today: positive definite P with equality rows only (range-space method); every other problem returns `ErrMethod` until the Goldfarb–Idnani and ADMM solvers land |
 | `Brute` | `brute` | grid then Nelder–Mead polish |
 | `CheckGrad`, `ApproxFprime` | `check_grad`, `approx_fprime` | forward differences |
 
