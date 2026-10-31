@@ -85,15 +85,20 @@ func newProjector(m, n int, a []float64) (*projector, bool) {
 	p.qr = append([]float64(nil), a...)
 	p.tau = make([]float64, m)
 	p.perm = make([]int, m)
-	norms := make([]float64, m)
+	// Householder QR with column pivoting, LAPACK dlaqp2's algorithm: the
+	// partial column norms are downdated (LAPACK Working Note 176) and
+	// recomputed when cancellation makes the downdate unreliable.
+	vn1, vn2 := make([]float64, m), make([]float64, m)
+	tol3z := math.Sqrt(epsmch)
 	for j := range m {
 		p.perm[j] = j
-		norms[j] = vnorm(p.qr[j*n : (j+1)*n])
+		vn1[j] = vnorm(p.qr[j*n : (j+1)*n])
+		vn2[j] = vn1[j]
 	}
 	for i := 0; i < m; i++ {
 		piv := i
 		for j := i + 1; j < m; j++ {
-			if norms[j] > norms[piv] {
+			if vn1[j] > vn1[piv] {
 				piv = j
 			}
 		}
@@ -103,18 +108,29 @@ func newProjector(m, n int, a []float64) (*projector, bool) {
 				ci[r], cp[r] = cp[r], ci[r]
 			}
 			p.perm[i], p.perm[piv] = p.perm[piv], p.perm[i]
-			norms[piv] = norms[i]
+			vn1[piv], vn2[piv] = vn1[i], vn2[i]
 		}
 		col := p.qr[i*n : (i+1)*n]
 		p.tau[i] = dlarfg(n-i, &col[i], col[min(i+1, n-1):], 1)
 		aii := col[i]
 		col[i] = 1
 		for j := i + 1; j < m; j++ {
-			dlarfLeft(n-i, 1, col[i:], 1, p.tau[i], p.qr[j*n+i:(j+1)*n], n-i)
+			householder(col[i:], p.tau[i], p.qr[j*n+i:(j+1)*n])
 		}
 		col[i] = aii
 		for j := i + 1; j < m; j++ {
-			norms[j] = vnorm(p.qr[j*n+i+1 : (j+1)*n])
+			if vn1[j] == 0 {
+				continue
+			}
+			r := math.Abs(p.qr[j*n+i]) / vn1[j]
+			temp := math.Max(1-r*r, 0)
+			q := vn1[j] / vn2[j]
+			if temp*q*q <= tol3z {
+				vn1[j] = vnorm(p.qr[j*n+i+1 : (j+1)*n])
+				vn2[j] = vn1[j]
+			} else {
+				vn1[j] *= math.Sqrt(temp)
+			}
 		}
 	}
 	// Singular Jacobian (the last row of R, whose only entry is R(m-1,m-1),
@@ -123,6 +139,15 @@ func newProjector(m, n int, a []float64) (*projector, bool) {
 		p.initSVD()
 	}
 	return p, true
+}
+
+// householder applies I - tau·v·vᵀ to c with go-simd/floats kernels (the
+// projections need not round like SciPy's, unlike SLSQP's dlarfLeft).
+func householder(v []float64, tau float64, c []float64) {
+	if tau == 0 {
+		return
+	}
+	floats.Axpy(-tau*floats.Dot(v, c), v, c)
 }
 
 // rAt returns R(i, j) for i <= j (the callers never ask below the diagonal).
@@ -167,7 +192,7 @@ func (p *projector) qtx(x, out []float64) {
 		col := p.qr[i*p.n : (i+1)*p.n]
 		aii := col[i]
 		col[i] = 1
-		dlarfLeft(p.n-i, 1, col[i:], 1, p.tau[i], w[i:], p.n-i)
+		householder(col[i:], p.tau[i], w[i:])
 		col[i] = aii
 	}
 	copy(out, w[:p.m])
@@ -181,7 +206,7 @@ func (p *projector) qy(y, out []float64) {
 		col := p.qr[i*p.n : (i+1)*p.n]
 		aii := col[i]
 		col[i] = 1
-		dlarfLeft(p.n-i, 1, col[i:], 1, p.tau[i], out[i:], p.n-i)
+		householder(col[i:], p.tau[i], out[i:p.n])
 		col[i] = aii
 	}
 }
