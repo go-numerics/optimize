@@ -1,8 +1,23 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **task 4 implemented** (`quadprog.go`: the API of §2, validation,
-canonical rows, result blocks, and the direct solve of positive-definite
-equality-constrained problems; every other problem returns `ErrMethod`) and
+Status: **tasks 4, 5, 6 and a simplified 7 implemented**. Task 6
+(`qp_gi.go`): the Goldfarb–Idnani walk of §3 for a positive definite dense P,
+with equalities first, Householder insertion and 2×2-reflection deletion,
+infeasibility certificates, the set-aside rule and the objective drift check;
+checked against Clarabel (x to 1e-7) and quadprog (1e-8) on the 39-case oracle
+fixture, and against `lsei` on 600 random problems (a witness that declines or
+stops early on rank-deficient equalities: only a feasible lsei point with a
+lower objective would fail the test). Differences from §3: R is a dense n×n
+array, not packed; the slacks are recomputed each pass instead of updated
+incrementally; the redundant-equality skip is a satisfied-row test. Task 7 is
+simplified: `UpdateQ` and `QPOptions.WorkingSet` enter the previous active set
+as equalities and use it only if dual feasible, else start cold (always the
+cold answer; it saves selection scans, not pivots: measured 506 against 480
+inserts and deletes over 245 accepted warm starts), not the factor repair of
+Prop. 8.1–8.2; `UpdateBounds`, `UpdateMatrixValues` and `WarmStart` are not
+written. Perf against quadprog is deferred (no quiet-machine measurement yet),
+and the design's release plan (v0.5.0 at task 14) is kept. Earlier: task 4
+(`quadprog.go`: the API of §2, validation, canonical rows, result blocks) and
 **task 5 implemented** (`tools/qporacle gen` and `diff`, `testdata/qp/planted.json`);
 the solvers of §3 and §4 are not written. Findings while implementing task 5:
 the `osqp==1.1.3` wheel bundles the OSQP **v1.0.0** C core on x86_64 and arm64,

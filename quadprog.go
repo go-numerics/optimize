@@ -206,6 +206,7 @@ type QPSolver struct {
 	m    *qpModel
 	opts QPOptions
 	meth QPMethod
+	last []int // active set of the previous Solve
 }
 
 // Quadprog solves p once: NewQPSolver followed by Solve.
@@ -248,16 +249,34 @@ func (s *QPSolver) Solve() (*QPResult, error) {
 	if s.meth == QPADMM {
 		return nil, fmt.Errorf("%w: the ADMM solver is not implemented yet (design-qp.md task 8)", ErrMethod)
 	}
-	for _, r := range m.rows {
-		if r.l != r.u {
-			return nil, fmt.Errorf("%w: the active-set solver is not implemented yet (design-qp.md task 6); only equality constraints are solved", ErrMethod)
-		}
-	}
 	feasTol := s.opts.FeasTol
 	if feasTol == 0 {
 		feasTol = 1e-9
 	}
-	return m.solveEqualities(feasTol)
+	hint := s.opts.WorkingSet
+	if hint == nil {
+		hint = s.last
+	}
+	res := m.solveGI(s.opts.MaxIter, feasTol, hint)
+	s.last = res.ActiveSet
+	return res, nil
+}
+
+// UpdateQ replaces the linear term. The next Solve warm-starts from the
+// active set of the previous one (or QPOptions.WorkingSet): the rows are
+// entered as equalities, and the start is used only if it is dual feasible,
+// otherwise the solve is cold. Either way the answer is the one a cold solve
+// gives; the warm start only saves pivots (design-qp.md §5, simplified: the
+// factors are rebuilt, not repaired by Prop. 8.1–8.2).
+func (s *QPSolver) UpdateQ(q []float64) error {
+	if len(q) != s.m.n {
+		return fmt.Errorf("%w: q has %d entries, want %d", ErrDimension, len(q), s.m.n)
+	}
+	if !allFinite(q) {
+		return fmt.Errorf("%w: q contains NaN or Inf", ErrInput)
+	}
+	copy(s.m.q, q)
+	return nil
 }
 
 // validate checks the options against n variables and mRows canonical rows.
@@ -707,81 +726,6 @@ func (md *qpModel) rowAdd(r qpRow, s float64, out []float64) {
 	default:
 		out[r.ref] += s
 	}
-}
-
-// solveEqualities solves min ½xᵀPx + qᵀx s.t. a_j·x = b_j for every canonical
-// row (all equalities), P positive definite, by the range-space method:
-// with P = LLᵀ, W = L⁻¹Aᵀ and S = WᵀW, the multipliers solve S·λ = b + Wᵀ·L⁻¹q
-// and x = L⁻ᵀ(Wλ − L⁻¹q).
-func (md *qpModel) solveEqualities(feasTol float64) (*QPResult, error) {
-	n, mr := md.n, len(md.rows)
-	if int64(mr)*int64(n) > qpDirectLimit {
-		return nil, fmt.Errorf("%w: %d equality rows × %d variables exceed the %d entries of the direct solve", ErrInput, mr, n, qpDirectLimit)
-	}
-	// Solve is reached with the active-set method only, which chooseMethod
-	// allows for a positive definite P: md.chol is its Cholesky factor.
-	chol := md.chol
-	z := forwardSolve(chol, n, md.q) // L⁻¹q
-	w := make([][]float64, mr)       // rows of W: L⁻¹a_j
-	rhs := make([]float64, mr)
-	for j, r := range md.rows {
-		a := make([]float64, n)
-		md.rowAdd(r, 1, a)
-		w[j] = forwardSolve(chol, n, a)
-		rhs[j] = r.l + dot(w[j], z)
-	}
-	lambda := make([]float64, mr)
-	if mr > 0 {
-		s := make([]float64, mr*mr)
-		for i := 0; i < mr; i++ {
-			for j := 0; j <= i; j++ {
-				v := dot(w[i], w[j])
-				s[i*mr+j], s[j*mr+i] = v, v
-			}
-		}
-		if !choleskyRel(s, mr, 1e-12) {
-			return nil, fmt.Errorf("%w: linearly dependent equality rows need the Goldfarb–Idnani solver (design-qp.md task 6)", ErrMethod)
-		}
-		lambda = lpCholSolve(s, mr, rhs)
-	}
-	t := make([]float64, n) // Wλ − L⁻¹q
-	for i := range t {
-		t[i] = -z[i]
-	}
-	for j := range w {
-		for i := range t {
-			t[i] += float64(lambda[j] * w[j][i])
-		}
-	}
-	x := backSolve(chol, n, t)
-	return md.assemble(x, lambda, QPActiveSet, feasTol), nil
-}
-
-// choleskyRel is lpCholesky with a relative pivot test: it also reports false
-// when a pivot is below rel times the diagonal entry it was taken from, which
-// is how the linear dependence of the rows of A shows in S = A·P⁻¹·Aᵀ (an
-// exact zero pivot is rare after rounding).
-func choleskyRel(a []float64, m int, rel float64) bool {
-	for j := 0; j < m; j++ {
-		d := a[j*m+j]
-		d0 := d
-		for k := 0; k < j; k++ {
-			d -= float64(a[j*m+k] * a[j*m+k])
-		}
-		if !(d > rel*d0) {
-			return false
-		}
-		d = math.Sqrt(d)
-		a[j*m+j] = d
-		for i := j + 1; i < m; i++ {
-			s := a[i*m+j]
-			for k := 0; k < j; k++ {
-				s -= float64(a[i*m+k] * a[j*m+k])
-			}
-			a[i*m+j] = s / d
-		}
-	}
-	return true
 }
 
 // forwardSolve solves L·y = b for the lower-triangular factor of lpCholesky.
