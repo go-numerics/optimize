@@ -204,6 +204,14 @@ reference loop (`TestTrsmMatchesReference`), which halves its time in
 `BenchmarkTrsm` and gives the 1.4× above. The subproblem scratch is reused
 across iterations (0.7 MB allocated per Quad50 solve instead of 11 MB).
 
+## trust-constr
+
+`tools/slsqpbench` times `BenchmarkTrustConstr*` against SciPy's
+`minimize(method='trust-constr')` on the same five problems, in the same
+interleaved rounds as SLSQP.
+
+TRUSTCONSTR_TABLE
+
 ## Reproducing
 
 ```sh
