@@ -21,13 +21,32 @@ var tcRoundingSensitive = map[string]bool{
 	"Infeasible/fd": true, "Infeasible/jac": true,
 }
 
-// tcPathExceptions leave SciPy's path although both SciPy wheels agree:
-// HS21/jac (44 against 60 iterations, same solution), HS35/jac (48/46),
-// HS48/fd (one gradient more in SciPy), and SingularEq3 (a rank-deficient
-// Jacobian, where SciPy's and our SVD fallbacks round differently).
+// tcPathExceptions are the runs whose evaluation counts differ from SciPy's
+// although both SciPy wheels agree on them. Each was traced iterate by iterate
+// (`slsqporacle trace` and `tracediff`, docs/design.md "Why four runs differ
+// from SciPy"); on all four the iteration count is SciPy's and only the
+// number of evaluations differs:
+//
+//   - HS48/fd and Rosen-free/fd: a tangential step differs by 1e-16 to 5e-16
+//     (relative) — no SVD, and on Rosen-free no constraint at all, so only
+//     dot products and updates of two to five entries: go-simd/floats fuses
+//     each multiply-add, the OpenBLAS core that generated the fixture
+//     (Nehalem, `OPENBLAS_VERBOSE=2`) does not. The finite-difference Jacobian
+//     of a later iterate turns that into 4e-8 to 1e-7, and the run stops one
+//     gradient earlier or later;
+//   - SingularEq3/jac and /fd: the Jacobian is rank-deficient, so the
+//     projections use an SVD, and go-ndarray's U and Vt differ from LAPACK's
+//     dgesdd in the last bit (1.5e-16 on the first Newton point); a trial
+//     point is evaluated once more at iteration 3.
+//
+// HS21/jac (60 iterations in SciPy, a different count here) and HS35/jac (46)
+// were our defects, now fixed: projected_cg's rt_g and the tangential radius
+// use norm(x)**2, the square of the rounded norm, not x·x, and its boundary
+// step is x + (theta*alpha)*p, not x + theta*(alpha*p). Both take SciPy's
+// exact path. On the four left the solution, status and objective are
+// asserted as everywhere else, and the iteration count must equal SciPy's.
 var tcPathExceptions = map[string]bool{
-	"HS21/jac": true, "HS35/jac": true, "HS48/fd": true,
-	"SingularEq3/jac": true, "SingularEq3/fd": true,
+	"HS48/fd": true, "Rosen-free/fd": true, "SingularEq3/jac": true, "SingularEq3/fd": true,
 }
 
 // TestTrustConstrFixtures replays testdata/trustconstr.json (SciPy 1.18.1's
@@ -95,6 +114,9 @@ func TestTrustConstrFixtures(t *testing.T) {
 		// checked (amd64 and arm64).
 		deterministic := !tcRoundingSensitive[c.Name] && !tcPathExceptions[c.Name] &&
 			(runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64")
+		if tcPathExceptions[c.Name] && r.Nit != c.Nit {
+			t.Errorf("%s: nit %d, SciPy %d", c.Name, r.Nit, c.Nit)
+		}
 		if deterministic && !same {
 			t.Errorf("%s: nit/nfev/njev %d/%d/%d, SciPy %d/%d/%d", c.Name, r.Nit, r.Nfev, r.Njev, c.Nit, c.Nfev, c.Njev)
 		}
