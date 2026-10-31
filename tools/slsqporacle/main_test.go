@@ -154,6 +154,20 @@ func TestGenerateCommand(t *testing.T) {
 	if argv := command(""); argv[0] != "uv" {
 		t.Errorf("host command %v", argv)
 	}
+	// --method is prepended to the script as METHOD; unknown methods fail.
+	var head []byte
+	runner = func(_ []string, stdin io.Reader, stdout, _ io.Writer) error {
+		in, _ := io.ReadAll(stdin)
+		head = in[:min(len(in), 40)]
+		_, err := stdout.Write(raw)
+		return err
+	}
+	if _, err := run(t, "--method", "trust-constr", "-o", dst); err != nil || !bytes.HasPrefix(head, []byte(`METHOD = "trust-constr"`)) {
+		t.Errorf("method not prepended: %v %q", err, head)
+	}
+	if _, err := run(t, "--method", "COBYLA", "-o", dst); err == nil {
+		t.Error("unknown method accepted")
+	}
 
 	runner = func([]string, io.Reader, io.Writer, io.Writer) error { return errors.New("boom") }
 	if _, err := run(t, "-o", dst); err == nil || !strings.Contains(err.Error(), "boom") {
