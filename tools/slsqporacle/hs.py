@@ -303,18 +303,71 @@ VARIANTS = {
 METHOD = globals().get("METHOD", "SLSQP")
 
 
+# TRACE is prepended by the Go harness (trace subcommand): the name of one case
+# whose every objective, gradient and constraint evaluation, and every
+# iteration, is recorded in EVENTS instead of running the whole table.
+TRACE = globals().get("TRACE")
+EVENTS = []
+
+
+def traced(tag, fn):
+    def wrapper(x, *args):
+        EVENTS.append([tag, [float(v) for v in x]])
+        return fn(x, *args)
+
+    return wrapper
+
+
+def flat(v):
+    return [float(t) for t in np.ravel(np.asarray(v, dtype=float))]
+
+
+def spy_trust_constr():
+    """Record the arguments and results of the two trust-region sub-solvers
+    (trace of trust-constr only): modified_dogleg(A, Y, b, delta, lb, ub) and
+    projected_cg(H, c, Z, Y, b, delta, lb, ub)."""
+    from scipy.optimize._trustregion_constr import equality_constrained_sqp as eqsqp
+
+    dogleg, pcg = eqsqp.modified_dogleg, eqsqp.projected_cg
+
+    def spy_dogleg(A, Y, b, delta, lb, ub):
+        out = dogleg(A, Y, b, delta, lb, ub)
+        Ad = A.toarray() if hasattr(A, "toarray") else A
+        newton = -Y.dot(b)
+        g = A.T.dot(b)
+        EVENTS.extend([["dogleg.A", flat(Ad)], ["dogleg.newton", flat(newton)], ["dogleg.g", flat(g)],["dogleg.b", flat(b)], ["dogleg.delta", [float(delta)]], ["dogleg.out", flat(out)]])
+        return out
+
+    def spy_pcg(H, c, Z, Y, b, delta, lb, ub):
+        out = pcg(H, c, Z, Y, b, delta, lb, ub)
+        EVENTS.extend([["pcg.c", flat(c)], ["pcg.delta", [float(delta)]], ["pcg.out", flat(out[0])]])
+        return out
+
+    eqsqp.modified_dogleg, eqsqp.projected_cg = spy_dogleg, spy_pcg
+
+
 def run(case, pname, jac, cons, opts, tol=None):
     p = P[pname]
     kw = dict(method=METHOD, constraints=cons, options=opts)
+    fun = p["f"]
     if p["bounds"] is not None:
         kw["bounds"] = p["bounds"]
     if tol is not None:
         kw["tol"] = tol
     if jac:
         kw["jac"] = p["g"]
+    if TRACE:
+        fun = traced("f", fun)
+        if jac:
+            kw["jac"] = traced("g", p["g"])
+        for i, c in enumerate(cons):
+            c["fun"] = traced(f"c{i}", c["fun"])
+            if "jac" in c:
+                c["jac"] = traced(f"j{i}", c["jac"])
+        kw["callback"] = lambda xk, *state: EVENTS.append(["it", [float(v) for v in xk]])
     base = dict(name=case, problem=pname, jac=jac, options=opts, tol=tol, fstar=p["fstar"])
     try:
-        r = minimize(p["f"], np.array(p["x0"], float), **kw)
+        r = minimize(fun, np.array(p["x0"], float), **kw)
     except Exception as e:  # e.g. trust-constr with more equalities than variables
         return dict(base, error=f"{type(e).__name__}: {e}")
     if METHOD == "trust-constr":
@@ -333,6 +386,15 @@ def run(case, pname, jac, cons, opts, tol=None):
         multipliers=mult, maxcv=maxcv(p, r.x), **extra,
     )
 
+
+if TRACE:
+    if METHOD == "trust-constr":
+        spy_trust_constr()
+    pname, _, mode = TRACE.partition("/")
+    res = run(TRACE, pname, mode == "jac", old_cons(P[pname], mode == "jac"), {})
+    json.dump(dict(method=METHOD, scipy=scipy.__version__, numpy=np.__version__, machine=platform.machine(),
+                   case=TRACE, events=EVENTS, result=res), sys.stdout)
+    sys.exit(0)
 
 cases = []
 for name in P:

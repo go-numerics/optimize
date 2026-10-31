@@ -188,14 +188,62 @@ SLSQP's. The projections always use dense QR with column pivoting.
 **Fidelity.** `tools/slsqporacle --method trust-constr --platform
 linux/amd64` replays the 100 SLSQP runs with `trust-constr`. Success or
 failure agrees with SciPy on all 100 (two raise in both: more equalities than
-variables, an `ErrInput` here), the status itself on 95 (the others are `gtol`
-against `xtol`, both successes), and every successful objective is within
-1e-5 of SciPy's or 1e-4 of the known optimum. 59 runs take SciPy's exact path
-on arm64 and 68 on amd64. SciPy's own arm64 and x86_64 wheels disagree with
-each other on 35 runs (`slsqporacle diff`), almost all with finite-difference
-derivatives; counts are asserted on every other run except five listed in
-`trustconstr_fixture_test.go` (HS21/jac, HS35/jac, HS48/fd and the
-rank-deficient SingularEq3), on amd64 and arm64.
+variables, an `ErrInput` here), the status itself on 93 on arm64 and 94 on
+amd64 (the others are `gtol` against `xtol`, both successes), and every
+successful objective is within 1e-5 of SciPy's or 1e-4 of the known optimum.
+65 runs take SciPy's exact path on arm64 and 69 on amd64. SciPy's own arm64 and
+x86_64 wheels disagree with each other on 35 runs (`slsqporacle diff`), almost
+all with finite-difference derivatives; counts are asserted on every other run
+except four listed in `trustconstr_fixture_test.go` (HS48/fd, Rosen-free/fd and
+the rank-deficient SingularEq3 with and without derivatives), on amd64 and
+arm64.
+
+**Why four runs differ from SciPy.** `slsqporacle trace --platform
+linux/amd64 <case>` records every objective, gradient and constraint
+evaluation and every iteration of one SciPy run, plus the arguments and
+results of `modified_dogleg` and `projected_cg` (monkey-patched in the
+interpreter fed on standard input); `go test -run TestTraceDump` records the
+same events for this package (`OPTIMIZE_TRACE_CASE`, `OPTIMIZE_TRACE_OUT`);
+`slsqporacle tracediff` finds, tag by tag, the first event that differs
+bitwise and the first beyond a tolerance. Of the five runs left in v0.4.0:
+
+- **HS21/jac and HS35/jac were our defects.** SciPy's `projected_cg` computes
+  `rt_g = norm(g)**2` and the tangential radius `sqrt(r**2 - norm(dn)**2)`: the
+  square of the *rounded* norm, which is not the dot product `g·g`; and its
+  boundary step is `x + theta*alpha*p`, that is `x + (theta*alpha)*p`, where
+  the port applied `theta` to the already scaled `alpha*p`. Both now follow
+  the source (`sqNorm`, and `theta*alpha` in `projectedCG`), and both runs
+  take SciPy's exact path (60 and 46 iterations; the same change makes the
+  nit of HS48/fd equal to SciPy's). A/B: with the unchanged go-simd/floats
+  kernels this alone fixes both.
+- **HS48/fd and Rosen-free/fd are last-bit rounding.** The first divergence is
+  a tangential step 1e-16 to 5e-16 away (relative), in a run whose
+  projections cannot be the cause (Rosen-free has no constraint, so `Z = I`):
+  only dot products and updates of two to five entries remain. go-simd/floats
+  fuses each multiply-add (`Axpy` is `math.FMA`; its `Dot` accumulates in
+  fused lanes), while NumPy rounds `y + alpha*x` in two operations and the
+  OpenBLAS core that produced the fixture — `OPENBLAS_VERBOSE=2` prints
+  `Core: Nehalem`, because Docker on Apple silicon emulates a CPU without
+  AVX or FMA — sums `ddot` left to right below 16 entries
+  (`kernel/x86_64/ddot.c`). On real x86_64 hardware OpenBLAS picks the Haswell
+  or SkylakeX core, which fuses, and SciPy's arm64 wheel fuses too: there is no
+  single SciPy to match to the bit. The finite-difference Jacobian then turns
+  1e-16 into 4e-8 (HS48) or 1e-7 (Rosen-free) one or two iterations later, and
+  the run stops one gradient earlier or later; the iteration count is SciPy's
+  (asserted). An experiment with unfused, sequential kernels below 16 entries
+  (no go-simd) gave 66 and 67 exact runs in two variants against 65, and made
+  Rosen-free/fd exact in the first, but moved other runs off the path (HS35/jac
+  in the second): rounding the
+  kernels differently trades runs rather than removing the cause, so the
+  kernels were not changed.
+- **SingularEq3/jac and /fd are the SVD.** The Jacobian is rank-deficient, so
+  the projections use `scipy.linalg.svd` (LAPACK `dgesdd`) and here
+  go-ndarray's SVD: the first Newton point differs by 1.5e-16 and a trial
+  point is evaluated once more at iteration 3. The iteration count is SciPy's
+  (asserted).
+
+On these four the status, solution and objective are asserted as on every
+other run, and the iteration count must equal SciPy's.
 
 **Omitted.** `keep_feasible` (strict bounds), sparse Jacobians and the
 NormalEquation/AugmentedSystem projections, the SR1 strategy and

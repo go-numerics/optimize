@@ -18,6 +18,14 @@ import (
 
 func vnorm(x []float64) float64 { return math.Sqrt(floats.Dot(x, x)) }
 
+// sqNorm is SciPy's norm(x)**2: the square of the rounded norm, which is not
+// the dot product x·x (projected_cg's rt_g, the trust radius of the
+// tangential step).
+func sqNorm(x []float64) float64 {
+	n := vnorm(x)
+	return float64(n * n)
+}
+
 func vnormInf(x []float64) float64 {
 	m := 0.0
 	for _, v := range x {
@@ -476,7 +484,7 @@ func projectedCG(hmul func(p, out []float64), c []float64, p *projector, delta f
 	}
 	hp := make([]float64, n)
 	hmul(pd, hp)
-	rtg := floats.Dot(g, g)
+	rtg := sqNorm(g)
 	if delta-vnorm(x) < closeToZero {
 		return x, cgInfo{0, 2, true}
 	}
@@ -509,7 +517,7 @@ func projectedCG(hmul func(p, out []float64), c []float64, p *projector, delta f
 			copy(ap, pd)
 			floats.Scale(alpha, ap)
 			if _, theta, ok := boxSphereIntersections(x, ap, lb, ub, delta, false); ok {
-				floats.Axpy(theta, ap, x)
+				floats.Axpy(theta*alpha, pd, x) // SciPy: x + theta*alpha*p
 			}
 			clipBox(x, lb, ub)
 			stop, hits = 2, true
@@ -525,7 +533,7 @@ func projectedCG(hmul func(p, out []float64), c []float64, p *projector, delta f
 			floats.Scale(alpha, ap)
 			if _, theta, ok := boxSphereIntersections(x, ap, lb, ub, delta, false); ok {
 				copy(lastFeasible, x)
-				floats.Axpy(theta, ap, lastFeasible)
+				floats.Axpy(theta*alpha, pd, lastFeasible)
 				clipBox(lastFeasible, lb, ub)
 				counter = 0
 			}
@@ -535,7 +543,7 @@ func projectedCG(hmul func(p, out []float64), c []float64, p *projector, delta f
 		// most n - m, so that test never fires and is omitted.
 		floats.Axpy(alpha, hp, r)
 		p.nullSpace(r, g)
-		rtgNext := floats.Dot(g, g)
+		rtgNext := sqNorm(g)
 		beta := rtgNext / rtg
 		for i := range negG {
 			negG[i] = -g[i]

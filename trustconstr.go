@@ -18,6 +18,12 @@ import (
 // gradients and quasi-Newton updates are evaluated, so that the evaluation
 // counts are comparable.
 
+// tcSpy, when set by a test, receives the inputs and results of the two
+// trust-region sub-solvers of every SQP iteration, under the tags that
+// tools/slsqporacle/hs.py records for SciPy (dogleg.*, pcg.*), so that
+// `slsqporacle tracediff` can locate where a run leaves SciPy's path.
+var tcSpy func(tag string, v []float64)
+
 var trustConstrMessages = map[int]string{
 	0: "The maximum number of function evaluations is exceeded.",
 	1: "`gtol` termination condition is satisfied.",
@@ -595,18 +601,39 @@ func equalityConstrainedSQP(fs sqpFuncs, x0 []float64, f0 float64, c0, b0, a0 []
 	hd, ad := make([]float64, n), make([]float64, m)
 	for !fs.stop(x, lastFailed, optimality, cv, tr, penalty, cg) {
 		dn := modifiedDogleg(proj, b, trFactor*tr, lbBox, ubBox)
+		if tcSpy != nil {
+			nw := make([]float64, n)
+			nbb := make([]float64, m)
+			for i := range b {
+				nbb[i] = -b[i]
+			}
+			proj.rowSpace(nbb, nw)
+			gg := make([]float64, n)
+			matTvec(m, n, a, b, gg)
+			tcSpy("dogleg.A", a)
+			tcSpy("dogleg.newton", nw)
+			tcSpy("dogleg.g", gg)
+			tcSpy("dogleg.b", b)
+			tcSpy("dogleg.delta", []float64{trFactor * tr})
+			tcSpy("dogleg.out", dn)
+		}
 		h(dn, hd)
 		ct := make([]float64, n)
 		for i := range ct {
 			ct[i] = hd[i] + c[i]
 		}
-		trT := math.Sqrt(tr*tr - floats.Dot(dn, dn))
+		trT := math.Sqrt(float64(tr*tr) - sqNorm(dn)) // explicit: no fused multiply-subtract on arm64
 		lbT, ubT := make([]float64, n), make([]float64, n)
 		for i := range n {
 			lbT[i], ubT[i] = trustLb[i]-dn[i], trustUb[i]-dn[i]
 		}
 		var dt []float64
 		dt, cg = projectedCG(h, ct, proj, trT, lbT, ubT)
+		if tcSpy != nil {
+			tcSpy("pcg.c", ct)
+			tcSpy("pcg.delta", []float64{trT})
+			tcSpy("pcg.out", dt)
+		}
 		d := make([]float64, n)
 		for i := range d {
 			d[i] = dn[i] + dt[i]

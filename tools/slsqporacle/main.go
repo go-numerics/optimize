@@ -141,7 +141,7 @@ func RootCmd() *cobra.Command {
 	cmd.Flags().StringVar(&method, "method", "SLSQP", "minimize method: SLSQP or trust-constr")
 	cmd.Flags().StringVar(&platform, "platform", "",
 		"run SciPy in a container of this platform (e.g. linux/amd64) instead of on the host")
-	cmd.AddCommand(diffCmd())
+	cmd.AddCommand(diffCmd(), traceCmd(), tracediffCmd())
 	return cmd
 }
 
