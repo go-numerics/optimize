@@ -2,8 +2,17 @@
 
 Status: **task 4 implemented** (`quadprog.go`: the API of §2, validation,
 canonical rows, result blocks, and the direct solve of positive-definite
-equality-constrained problems; every other problem returns `ErrMethod`); the
-solvers of §3 and §4 are not written.
+equality-constrained problems; every other problem returns `ErrMethod`) and
+**task 5 implemented** (`tools/qporacle gen` and `diff`, `testdata/qp/planted.json`);
+the solvers of §3 and §4 are not written. Findings while implementing task 5:
+the `osqp==1.1.3` wheel bundles the OSQP **v1.0.0** C core on x86_64 and arm64,
+but has no Python call for it, so the harness loads the extension module with
+`ctypes` and calls `osqp_version()` (and fails, before solving anything, if it
+is not `1.0.0`); OSQP v1.0.0 refuses a non-convex P at setup (an
+`OSQPException` from the failed LDLᵀ factorisation), it does not return a
+status, which the ADMM solver's `QPNonConvex` test (§6.4) must account for;
+Clarabel 0.11.1 accepts an indefinite P and returns "Solved", so it is no
+oracle for non-convexity; `mm fetch/convert` stay in task 12.
 Differences from §2 made while implementing: `QPResult.Sparse` holds the
 residuals and marginals of the `ASparse` rows (the design had no block for
 them); the `QPSolver` update and warm-start methods are left to tasks 7 and
