@@ -70,7 +70,7 @@ func TestCommittedFixtureEnvironment(t *testing.T) {
 			t.Errorf("pin %s, fixture ran %s", pin, got)
 		}
 	}
-	if f.Machine != "x86_64" || len(f.Cases) != 15 {
+	if f.Machine != "x86_64" || len(f.Cases) != 39 {
 		t.Errorf("machine %q, %d cases", f.Machine, len(f.Cases))
 	}
 }
@@ -406,7 +406,7 @@ func TestGenCommand(t *testing.T) {
 	}
 	dst := filepath.Join(t.TempDir(), "out.json")
 	out, err := run(t, "gen", "--platform", "linux/amd64", "-o", dst)
-	if err != nil || !strings.Contains(out, "wrote 15 cases") || !strings.Contains(out, "core 1.0.0") || gotArgv[0] != "docker" {
+	if err != nil || !strings.Contains(out, "wrote 39 cases") || !strings.Contains(out, "core 1.0.0") || gotArgv[0] != "docker" {
 		t.Fatalf("%v %q %v", err, out, gotArgv)
 	}
 	g, err := readFixture(dst)

@@ -118,6 +118,25 @@ case("random-5", "P = LL' + I, 3 inequalities, 1 equality, bounds, seed 20261031
      np.round(np.vstack([_r.randn(4, 5), np.eye(5)]), 3), [-inf] * 3 + [0.0] + [-1.0] * 5,
      [1.0] * 3 + [0.0] + [1.0] * 5)
 
+# --- a larger generated set: feasible, strictly convex, mixed constraints ------
+# Feasible by construction (a point x0 satisfies every row up to the rounding of
+# the data), data rounded to 3 and 6 decimals so they are the same on every
+# platform.
+_g = np.random.RandomState(31102026)
+for _i in range(24):
+    _n = [5, 8, 12, 20][_i % 4]
+    _L = np.round(_g.randn(_n, _n) / math.sqrt(_n), 3)
+    _P = np.round(_L @ _L.T + 0.5 * np.eye(_n), 6)
+    _q = np.round(_g.randn(_n), 3)
+    _x0 = np.round(_g.randn(_n), 3)
+    _Ai = np.round(_g.randn(_n, _n), 3)
+    _Ae = np.round(_g.randn(max(1, _n // 4), _n), 3)
+    _A = np.vstack([_Ae, _Ai, np.eye(_n)])
+    _be = np.round(_Ae @ _x0, 3)
+    _l = np.concatenate([_be, [-inf] * _n, np.full(_n, -3.0)])
+    _u = np.concatenate([_be, np.round(_Ai @ _x0 + np.abs(_g.randn(_n)) * (_i % 3) * 0.2, 3), np.full(_n, 3.0)])
+    case(f"gen-{_i:02d}-n{_n}", f"generated, n = {_n}: {len(_Ae)} equalities, {_n} inequalities, bounds [-3, 3]",
+         _P, _q, _A, _l, _u)
 
 # --- solvers -----------------------------------------------------------------
 def run_osqp(c, **settings):

@@ -44,7 +44,7 @@ have `…Array()` accessors.
 | `LeastSquares(…, LM, …)`, `Leastsq` | `least_squares(method='lm')`, `leastsq` (with `cov_x`) | MINPACK lmder/lmdif |
 | `CurveFit`, `CurveFitModel` | `curve_fit` (`sigma` 1-D/2-D, `absolute_sigma`, bounds, losses) | LM or TRF, covariance as SciPy |
 | `Linprog` | `linprog` | revised simplex (default) or interior point; duals |
-| `Quadprog` (**in progress**, [docs/design-qp.md](docs/design-qp.md)) | MATLAB `quadprog`, OSQP | the API, validation and result blocks of ½xᵀPx + qᵀx s.t. equalities, inequalities, two-sided rows and bounds, with dense or sparse (go-sparse) P and A; solved today: positive definite P with equality rows only (range-space method); every other problem returns `ErrMethod` until the Goldfarb–Idnani and ADMM solvers land |
+| `Quadprog` (**in progress**, [docs/design-qp.md](docs/design-qp.md)) | MATLAB `quadprog`, OSQP | the API, validation and result blocks of ½xᵀPx + qᵀx s.t. equalities, inequalities, two-sided rows and bounds, with dense or sparse (go-sparse) P and A; solved today: positive definite P by the Goldfarb–Idnani dual active-set method (equalities, inequalities, two-sided rows, bounds; infeasibility certificates; dependent and redundant rows; `UpdateQ` warm start from the previous active set); a singular P, P = 0 or sparse constraints return `ErrMethod` until the ADMM solver lands. Checked against OSQP, Clarabel and quadprog on 39 problems (x to 1e-7 and 1e-8) and against the SLSQP `lsei` chain on 600 random ones |
 | `Brute` | `brute` | grid then Nelder–Mead polish |
 | `CheckGrad`, `ApproxFprime` | `check_grad`, `approx_fprime` | forward differences |
 

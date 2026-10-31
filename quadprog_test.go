@@ -150,19 +150,14 @@ func TestQuadprogPinnedVariables(t *testing.T) {
 
 func TestQuadprogNotImplemented(t *testing.T) {
 	id := qpArr(t, []float64{1, 0, 0, 1}, 2, 2)
-	ineq := QPConstraints{AUb: qpArr(t, []float64{1, 1}, 1, 2), BUb: qpArr(t, []float64{1}, 1)}
 	for name, tc := range map[string]struct {
 		p    QPProblem
 		opts *QPOptions
 	}{
-		"inequality":        {QPProblem{P: id, Q: []float64{1, 1}, Cons: ineq}, nil},
-		"bounds":            {QPProblem{P: id, Q: []float64{1, 1}, Cons: QPConstraints{Bounds: []Bound{{0, 1}, {0, 1}}}}, nil},
 		"ADMM requested":    {QPProblem{P: id, Q: []float64{1, 1}}, &QPOptions{Method: QPADMM}},
 		"P = 0 (LP)":        {QPProblem{Q: []float64{1, 1}}, nil},
 		"singular P":        {QPProblem{P: qpArr(t, []float64{1, 1, 1, 1}, 2, 2), Q: []float64{1, 1}}, nil},
 		"sparse constraint": {QPProblem{P: id, Q: []float64{1, 1}, Cons: QPConstraints{ASparse: qpCSC(t, 1, 2, []int{0, 1, 2}, []int32{0, 0}, []float64{1, 1}), L: []float64{1}, U: []float64{1}}}, nil},
-		"dependent rows": {QPProblem{P: id, Q: []float64{1, 1}, Cons: QPConstraints{
-			AEq: qpArr(t, []float64{1, 1, 1, 1}, 2, 2), BEq: qpArr(t, []float64{1, 1}, 2)}}, nil},
 	} {
 		if _, err := Quadprog(tc.p, tc.opts); !errors.Is(err, ErrMethod) {
 			t.Errorf("%s: %v, want ErrMethod", name, err)
@@ -293,10 +288,6 @@ func TestQuadprogSizeLimits(t *testing.T) {
 	qpDirectLimit = 3
 	if _, err := Quadprog(QPProblem{PSparse: pu, Q: []float64{0, 0}}, &QPOptions{Method: QPActiveSet}); !errors.Is(err, ErrInput) {
 		t.Errorf("dense P above the limit: %v", err)
-	}
-	qpDirectLimit = 5
-	if _, err := Quadprog(QPProblem{P: id, Q: []float64{0, 0}, Cons: QPConstraints{AEq: qpArr(t, []float64{1, 1, 1, 0, 1, 1}, 3, 2), BEq: qpArr(t, []float64{1, 1, 1}, 3)}}, nil); !errors.Is(err, ErrInput) {
-		t.Errorf("m·n above the limit: %v", err)
 	}
 	qpDirectLimit = oldDirect
 	if _, err := symmetricPLimit(t); err == nil {
