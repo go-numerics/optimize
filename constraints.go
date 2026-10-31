@@ -60,8 +60,8 @@ func (c LinearConstraint) general(n int) (genConstraint, error) {
 	m := len(a) / n
 	lb, _ := boundVector(c.Lb, m, math.Inf(-1))
 	ub, _ := boundVector(c.Ub, m, math.Inf(1))
-	return genConstraint{m: m, lb: lb, ub: ub, linear: true, a: a,
-		fun: func(x, out []float64) { matvec(m, n, a, x, out) }}, nil
+	// fun stays nil: linear constraints are evaluated as a·x directly.
+	return genConstraint{m: m, lb: lb, ub: ub, linear: true, a: a}, nil
 }
 
 // generalConstraints converts specs to the general form.

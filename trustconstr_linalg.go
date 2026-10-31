@@ -125,18 +125,16 @@ func newProjector(m, n int, a []float64) (*projector, bool) {
 	return p, true
 }
 
-// rAt returns R(i, j) (zero below the diagonal).
-func (p *projector) rAt(i, j int) float64 {
-	if i > j {
-		return 0
-	}
-	return p.qr[j*p.n+i]
-}
+// rAt returns R(i, j) for i <= j (the callers never ask below the diagonal).
+func (p *projector) rAt(i, j int) float64 { return p.qr[j*p.n+i] }
+
+// svdFunc is go-ndarray's SVD; tests replace it to reach the failure path.
+var svdFunc = linalg.SVD
 
 func (p *projector) initSVD() {
 	p.svd = true
 	arr, _ := ndarray.FromData(append([]float64(nil), p.a...), p.m, p.n)
-	u, s, vt, err := linalg.SVD(arr, false)
+	u, s, vt, err := svdFunc(arr, false)
 	if err != nil {
 		// A non-converging SVD keeps no direction: Z = I, LS = Y = 0.
 		p.k = 0
@@ -296,14 +294,10 @@ func (p *projector) nullSpace(x, out []float64) {
 // for which z + t·d lies in the ball of radius delta (t in [0, 1] unless
 // entireLine).
 func sphereIntersections(z, d []float64, delta float64, entireLine bool) (ta, tb float64, ok bool) {
+	// SciPy also handles an infinite radius; trust-constr's radii are
+	// always finite, so that branch is omitted.
 	if vnorm(d) == 0 {
 		return 0, 0, false
-	}
-	if math.IsInf(delta, 1) {
-		if entireLine {
-			return math.Inf(-1), math.Inf(1), true
-		}
-		return 0, 1, true
 	}
 	a := floats.Dot(d, d)
 	b := 2 * floats.Dot(z, d)
@@ -511,9 +505,9 @@ func projectedCG(hmul func(p, out []float64), c []float64, p *projector, delta f
 				counter = 0
 			}
 		}
-		if counter > maxIter {
-			break
-		}
+		// SciPy stops once counter exceeds max_infeasible_iter (n - m by
+		// default). counter cannot exceed the iteration count, itself at
+		// most n - m, so that test never fires and is omitted.
 		floats.Axpy(alpha, hp, r)
 		p.nullSpace(r, g)
 		rtgNext := floats.Dot(g, g)

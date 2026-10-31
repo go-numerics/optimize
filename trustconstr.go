@@ -167,21 +167,21 @@ func (ob *tcObjective) hess(x []float64) func(p, out []float64) {
 // of vᵀc), LinearVectorFunction or IdentityVectorFunction (bounds), with
 // their bounds lb <= f(x) <= ub.
 type tcVecFun struct {
-	gc             genConstraint
-	n, m           int
-	identity       bool
-	x, f, j        []float64
-	fOK, jOK, hOK  bool
-	v              []float64
-	bfgs           *bfgsHess
-	xPrev, jPrev   []float64
-	nfev, njev     int
-	fd             fdStep
-	lb, ub         []float64
-	jtv, jtvPrev   []float64
-	eq, less, grt  []int
-	interval       []int
-	dx, dg, vfull  []float64
+	gc            genConstraint
+	n, m          int
+	identity      bool
+	x, f, j       []float64
+	fOK, jOK, hOK bool
+	v             []float64
+	bfgs          *bfgsHess
+	xPrev, jPrev  []float64
+	nfev, njev    int
+	fd            fdStep
+	lb, ub        []float64
+	jtv, jtvPrev  []float64
+	eq, less, grt []int
+	interval      []int
+	dx, dg, vfull []float64
 }
 
 func newTCVecFun(gc genConstraint, x0 []float64, identity bool, fd fdStep) *tcVecFun {
@@ -519,10 +519,10 @@ func (tp *tcProblem) updateState(st *tcState, x []float64, lastFailed bool, tr, 
 
 // tcOpts are the trust-constr options with SciPy's defaults filled in.
 type tcOpts struct {
-	gtol, xtol, barrierTol           float64
-	maxiter                          int
-	penalty0, tr0, barrier0, btol0   float64
-	callback                         func(x []float64, f float64) bool
+	gtol, xtol, barrierTol         float64
+	maxiter                        int
+	penalty0, tr0, barrier0, btol0 float64
+	callback                       func(x []float64, f float64) bool
 }
 
 // sqpFuncs are the callbacks of equality_constrained_sqp.
@@ -666,10 +666,9 @@ func equalityConstrainedSQP(fs sqpFuncs, x0 []float64, f0 float64, c0, b0, a0 []
 		if ratio >= suffRatio {
 			x, f, b = xNext, fNext, bNext
 			c, a = fs.gradAndJac(x)
-			proj, ok = newProjector(m, n, a)
-			if !ok {
-				return nil, 0, fmt.Errorf("%w: more equality constraints than independent variables", ErrInput)
-			}
+			// m <= n was checked on the first factorisation and the shape
+			// does not change.
+			proj, _ = newProjector(m, n, a)
 			proj.leastSquares(c, v)
 			for i := range v {
 				v[i] = -v[i]
@@ -809,6 +808,20 @@ func minimizeTrustConstr(p Problem, x0 []float64, o *Options, lb, ub []float64, 
 	return r, nil
 }
 
+// barrierValue is f - μ Σ log s, with log s = -Inf for s <= 0 (SciPy's
+// _compute_function).
+func barrierValue(f, mu float64, s []float64) float64 {
+	sum := 0.0
+	for _, si := range s {
+		if si > 0 {
+			sum += math.Log(si)
+		} else {
+			sum += math.Inf(-1)
+		}
+	}
+	return f - mu*sum
+}
+
 // trInteriorPoint is tr_interior_point: a sequence of barrier problems
 //
 //	min f(x) - μ Σ log s  s.t.  c_eq(x) = 0, c_ineq(x) + s = 0
@@ -828,17 +841,7 @@ func trInteriorPoint(tp *tcProblem, st *tcState, opt tcOpts, x0, ceq0, cineq0, j
 	for i := range s0 {
 		s0[i] = math.Max(-1.5*cineq0[i], 1)
 	}
-	barrierF := func(f float64, s []float64) float64 {
-		sum := 0.0
-		for _, si := range s {
-			if si > 0 {
-				sum += math.Log(si)
-			} else {
-				sum += math.Inf(-1)
-			}
-		}
-		return f - mu*sum
-	}
+	barrierF := func(f float64, s []float64) float64 { return barrierValue(f, mu, s) }
 	barrierC := func(ceq, cineq, s []float64) []float64 {
 		out := make([]float64, ne+ni)
 		copy(out, ceq)
