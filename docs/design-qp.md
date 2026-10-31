@@ -1,6 +1,16 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **design, not implemented.** This document is item 5 of the go-scikit
+Status: **task 4 implemented** (`quadprog.go`: the API of §2, validation,
+canonical rows, result blocks, and the direct solve of positive-definite
+equality-constrained problems; every other problem returns `ErrMethod`); the
+solvers of §3 and §4 are not written.
+Differences from §2 made while implementing: `QPResult.Sparse` holds the
+residuals and marginals of the `ASparse` rows (the design had no block for
+them); the `QPSolver` update and warm-start methods are left to tasks 7 and
+11; an `ASparse` that declares more rows than its entries and bounds can
+account for is rejected (a CSC can declare 2³¹ empty rows in a few bytes);
+`QPAuto` takes the active set for a dense P only, so a sparse P needs
+`QPActiveSet` explicitly. This document is item 5 of the go-scikit
 parity plan (go-scikit/roadmap `PLAN.md`, wave 2). It specifies a dense dual
 active-set solver (Goldfarb–Idnani) first, then an ADMM solver in the shape
 of OSQP for large and sparse problems. It is written so that the
