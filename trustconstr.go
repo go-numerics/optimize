@@ -747,13 +747,12 @@ func minimizeTrustConstr(p Problem, x0 []float64, o *Options, lb, ub []float64, 
 	for _, c := range tp.cons {
 		st.v = append(st.v, clone(c.v))
 	}
-	stopped := false
 	global := func(x []float64, lastFailed bool, tr, penalty float64, cg cgInfo, barrier, btol float64, ip bool) bool {
 		tp.updateState(st, x, lastFailed, tr, penalty, cg)
 		st.barrier, st.barrierTol = barrier, btol
 		st.status = -1
 		if opt.callback != nil && opt.callback(clone(st.x), st.fun) {
-			st.status, stopped = 3, true
+			st.status = 3
 			return true
 		}
 		switch {
@@ -791,7 +790,7 @@ func minimizeTrustConstr(p Problem, x0 []float64, o *Options, lb, ub []float64, 
 		}
 		_, _, err = equalityConstrainedSQP(fs, x0, tp.obj.f, clone(tp.obj.g), ceq0, jeq0, opt.penalty0, opt.tr0, lbT, ubT)
 	} else {
-		err = trInteriorPoint(tp, opt, x0, ceq0, cineq0, jeq0, jineq0, global)
+		err = trInteriorPoint(tp, st, opt, x0, ceq0, cineq0, jeq0, jineq0, global)
 	}
 	if err != nil {
 		return nil, err
@@ -807,7 +806,6 @@ func minimizeTrustConstr(p Problem, x0 []float64, o *Options, lb, ub []float64, 
 		Nhev: st.nhev, Status: st.status, Success: st.status == 1 || st.status == 2,
 		Message: trustConstrMessages[st.status], Multipliers: mult,
 		Optimality: st.optimality, ConstrViolation: st.cv}
-	_ = stopped
 	return r, nil
 }
 
@@ -816,7 +814,7 @@ func minimizeTrustConstr(p Problem, x0 []float64, o *Options, lb, ub []float64, 
 //	min f(x) - μ Σ log s  s.t.  c_eq(x) = 0, c_ineq(x) + s = 0
 //
 // each solved by equalityConstrainedSQP in the scaled variables z = (x, s).
-func trInteriorPoint(tp *tcProblem, opt tcOpts, x0, ceq0, cineq0, jeq0, jineq0 []float64,
+func trInteriorPoint(tp *tcProblem, st *tcState, opt tcOpts, x0, ceq0, cineq0, jeq0, jineq0 []float64,
 	global func(x []float64, lastFailed bool, tr, penalty float64, cg cgInfo, barrier, btol float64, ip bool) bool) error {
 	const (
 		boundary = 0.995
@@ -932,17 +930,15 @@ func trInteriorPoint(tp *tcProblem, opt tcOpts, x0, ceq0, cineq0, jeq0, jineq0 [
 	}
 	for {
 		var err error
-		var trLast float64
-		z, trLast, err = equalityConstrainedSQP(fs, z, f0, g0, c0, j0, opt.penalty0, tr, trustLb, trustUb)
+		z, _, err = equalityConstrainedSQP(fs, z, f0, g0, c0, j0, opt.penalty0, tr, trustLb, trustUb)
 		if err != nil {
 			return err
 		}
-		_ = trLast
 		if terminate {
 			return nil
 		}
 		// state.tr_radius is the radius of the last stop test.
-		tr = math.Max(opt.tr0, enlarge*tpStateTr(global))
+		tr = math.Max(opt.tr0, enlarge*st.trRadius)
 		mu *= decay
 		tol *= decay
 		f0, c0 = fs.funAndConstr(z)

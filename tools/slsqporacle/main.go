@@ -107,15 +107,19 @@ func diffCmd() *cobra.Command {
 
 // RootCmd returns the command line of the harness.
 func RootCmd() *cobra.Command {
-	var out, platform string
+	var out, platform, method string
 	cmd := &cobra.Command{
 		Use:          "slsqporacle",
-		Short:        "Generate the SciPy SLSQP fixtures (testdata/slsqp.json)",
+		Short:        "Generate the SciPy fixtures of a constrained method (testdata/slsqp.json, testdata/trustconstr.json)",
 		SilenceUsage: true,
 		Args:         cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if method != "SLSQP" && method != "trust-constr" {
+				return fmt.Errorf("--method must be SLSQP or trust-constr, not %q", method)
+			}
+			src := append([]byte(fmt.Sprintf("METHOD = %q\n", method)), script...)
 			var buf bytes.Buffer
-			if err := runner(command(platform), bytes.NewReader(script), &buf, cmd.ErrOrStderr()); err != nil {
+			if err := runner(command(platform), bytes.NewReader(src), &buf, cmd.ErrOrStderr()); err != nil {
 				return fmt.Errorf("oracle: %w", err)
 			}
 			f, err := Decode(&buf)
@@ -134,6 +138,7 @@ func RootCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&out, "output", "o", "testdata/slsqp.json", "fixture file to write")
+	cmd.Flags().StringVar(&method, "method", "SLSQP", "minimize method: SLSQP or trust-constr")
 	cmd.Flags().StringVar(&platform, "platform", "",
 		"run SciPy in a container of this platform (e.g. linux/amd64) instead of on the host")
 	cmd.AddCommand(diffCmd())

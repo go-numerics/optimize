@@ -9,9 +9,11 @@ import (
 	"sort"
 )
 
-// Fixture is the content of testdata/slsqp.json: SciPy's SLSQP results on
-// the problems of hs.py and the environment they were produced in.
+// Fixture is the content of testdata/slsqp.json or testdata/trustconstr.json:
+// SciPy's results with one method on the problems of hs.py and the
+// environment they were produced in.
 type Fixture struct {
+	Method  string `json:"method,omitempty"`
 	Scipy   string `json:"scipy"`
 	Numpy   string `json:"numpy"`
 	Python  string `json:"python"`
@@ -38,6 +40,13 @@ type Case struct {
 	Multipliers []float64          `json:"multipliers"`
 	Maxcv       float64            `json:"maxcv"`
 	Fstar       *float64           `json:"fstar"`
+	// Error is SciPy's exception when minimize raised instead of returning.
+	Error string `json:"error,omitempty"`
+	// trust-constr only.
+	Optimality      *float64 `json:"optimality,omitempty"`
+	ConstrViolation *float64 `json:"constr_violation,omitempty"`
+	CgNiter         *int     `json:"cg_niter,omitempty"`
+	Nhev            *int     `json:"nhev,omitempty"`
 }
 
 // Decode reads a fixture, rejecting unknown fields, a fixture without cases
@@ -115,6 +124,10 @@ func Diff(a, b *Fixture) []Disagreement {
 		cb, ok := byName[ca.Name]
 		if !ok {
 			add(ca.Name, "only in the first fixture")
+			continue
+		}
+		if ca.Error != cb.Error {
+			add(ca.Name, "error %q, other %q", ca.Error, cb.Error)
 			continue
 		}
 		if ca.Status != cb.Status || ca.Success != cb.Success {

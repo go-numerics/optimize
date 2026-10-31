@@ -41,26 +41,41 @@ const (
 	// SLSQP is sequential least-squares quadratic programming; it is the
 	// method that accepts Options.Constraints.
 	SLSQP Method = "SLSQP"
+	// TrustConstr is the trust-region interior-point method (SciPy
+	// 'trust-constr', MATLAB fmincon 'interior-point'); it also accepts
+	// Options.Constraints.
+	TrustConstr Method = "trust-constr"
 )
 
 // Options configures Minimize. Zero values select the SciPy defaults of the
 // chosen method, listed with each field.
 type Options struct {
-	// Bounds constrains the variables (L-BFGS-B, SLSQP, Nelder-Mead and
-	// Powell, as in SciPy). nil means unbounded.
+	// Bounds constrains the variables (L-BFGS-B, SLSQP, trust-constr,
+	// Nelder-Mead and Powell, as in SciPy). nil means unbounded.
 	Bounds []Bound
 	// Constraints are general equality and inequality constraints
-	// (SLSQP only): Constraint, NonlinearConstraint or LinearConstraint
-	// values, SciPy's constraints argument. Other methods return an error
-	// when it is set, where SciPy only warns.
+	// (SLSQP and trust-constr): Constraint, NonlinearConstraint or
+	// LinearConstraint values, SciPy's constraints argument. Other methods
+	// return an error when it is set, where SciPy only warns.
 	Constraints []ConstraintSpec
+	// BarrierTol is trust-constr's barrier-parameter tolerance for the xtol
+	// test (1e-8).
+	BarrierTol float64
+	// InitialTrRadius, InitialConstrPenalty, InitialBarrierParameter and
+	// InitialBarrierTolerance are trust-constr's initial trust radius (1),
+	// merit penalty (1), barrier parameter (0.1) and barrier subproblem
+	// tolerance (0.1).
+	InitialTrRadius, InitialConstrPenalty            float64
+	InitialBarrierParameter, InitialBarrierTolerance float64
 	// Tol is minimize's tol argument: it sets the method's main tolerance
 	// the way SciPy does (Nelder-Mead: Xatol and Fatol; Powell: Xtol and
 	// Ftol; CG and BFGS: Gtol; Newton-CG: Xtol; L-BFGS-B: Ftol and Gtol;
-	// SLSQP: Ftol) when those fields are zero.
+	// SLSQP: Ftol; trust-constr: Gtol, Xtol and BarrierTol) when those
+	// fields are zero.
 	Tol float64
 	// MaxIter bounds the iterations (Nelder-Mead 200·n, Powell 1000·n,
-	// CG, BFGS and Newton-CG 200·n, L-BFGS-B 15000, SLSQP 100). For Nelder-Mead and
+	// CG, BFGS and Newton-CG 200·n, L-BFGS-B 15000, SLSQP 100,
+	// trust-constr 1000). For Nelder-Mead and
 	// Powell, setting only one of MaxIter and MaxFev leaves the other
 	// unlimited, as in SciPy.
 	MaxIter int
@@ -69,13 +84,16 @@ type Options struct {
 	MaxFev int
 	// Gtol is the gradient tolerance: CG and BFGS stop when the Norm-norm
 	// of the gradient is below it (1e-5); L-BFGS-B stops when the max-norm
-	// of the projected gradient is below it (SciPy pgtol, 1e-5).
+	// of the projected gradient is below it (SciPy pgtol, 1e-5);
+	// trust-constr stops when the max-norm of the Lagrangian gradient and
+	// the constraint violation are both below it (1e-8).
 	Gtol float64
 	// Ftol is the relative reduction tolerance: Powell (1e-4),
 	// L-BFGS-B ((f_k - f_{k+1})/max(|f_k|,|f_{k+1}|,1) <= Ftol, 2.22e-9);
 	// for SLSQP it is the accuracy goal of the stopping tests (1e-6).
 	Ftol float64
-	// Xtol is the step tolerance: Powell (1e-4), Newton-CG (1e-5).
+	// Xtol is the step tolerance: Powell (1e-4), Newton-CG (1e-5),
+	// trust-constr's trust radius (1e-8).
 	Xtol float64
 	// Xatol and Fatol are Nelder-Mead's absolute tolerances (1e-4 each).
 	Xatol, Fatol float64
@@ -143,10 +161,12 @@ func Minimize(p Problem, x0 []float64, method Method, opts *Options) (*Result, e
 		lb, ub = nil, nil
 	}
 	x0 = clone(x0)
-	if o.Constraints != nil && method != SLSQP {
+	if o.Constraints != nil && method != SLSQP && method != TrustConstr {
 		return nil, fmt.Errorf("%w: method %s cannot handle constraints", ErrMethod, method)
 	}
 	switch method {
+	case TrustConstr:
+		// SciPy does not clip x0 for trust-constr.
 	case NelderMead, Powell, LBFGSB, SLSQP:
 		if lb != nil {
 			// SciPy clips x0 into the bounds for these methods.
@@ -172,7 +192,12 @@ func Minimize(p Problem, x0 []float64, method Method, opts *Options) (*Result, e
 		}
 	}
 	var r *Result
-	if method == SLSQP {
+	if method == TrustConstr {
+		var gcs []genConstraint
+		if gcs, err = generalConstraints(o.Constraints, n); err == nil {
+			r, err = minimizeTrustConstr(p, x0, &o, lb, ub, gcs)
+		}
+	} else if method == SLSQP {
 		var cons []stdConstraint
 		if cons, err = standardizeConstraints(o.Constraints, n); err == nil {
 			r, err = minimizeSLSQPFixed(p, x0, &o, lb, ub, cons)
