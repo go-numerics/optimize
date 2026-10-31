@@ -36,6 +36,7 @@ have `…Array()` accessors.
 | `Minimize(…, NewtonCG, …)` | `minimize(method='Newton-CG')` | truncated Newton (Hess, HessP or FD) |
 | `Minimize(…, LBFGSB, …)` | `minimize(method='L-BFGS-B')` | L-BFGS-B 3.0 with bounds |
 | `Minimize(…, SLSQP, …)` with `Options.Constraints` | `minimize(method='SLSQP', constraints=…)`, MATLAB `fmincon` `'sqp'` | Kraft's SLSQP: bounds, equality and inequality constraints as `Constraint`, `NonlinearConstraint` or `LinearConstraint`; Lagrange multipliers in `Result.Multipliers` |
+| `Minimize(…, TrustConstr, …)` with `Options.Constraints` | `minimize(method='trust-constr')`, MATLAB `fmincon` `'interior-point'` | Byrd–Omojokun trust-region SQP, wrapped in a barrier (interior-point) method when there are inequalities or bounds; BFGS Hessians, or `Problem.Hess`/`HessP`; same constraint types; `Result.Optimality`, `ConstrViolation`, `Multipliers` |
 | `MinimizeScalar`, `Fminbound`, `Bracket` | `minimize_scalar` (brent, golden, bounded), `fminbound`, `bracket` | Brent, golden section, FMIN |
 | `Brentq`, `Brenth`, `Ridder`, `Bisect`, `Newton`, `RootScalar` | `brentq`, `brenth`, `ridder`, `bisect`, `newton` (Newton/secant/Halley), `root_scalar` | |
 | `Root`, `Fsolve` | `root(method='hybr')`, `fsolve` | MINPACK hybrd/hybrj (Powell hybrid) |
@@ -74,6 +75,11 @@ r, _ = optimize.Minimize(optimize.Problem{Func: f}, []float64{1, 5, 5, 1}, optim
 		optimize.Constraint{Kind: optimize.Eq, M: 1, Func: h},    // Σ xᵢ² − 40 = 0
 	}})
 // r.Fun = 17.0140172, r.Nit = 5 (SciPy: 5), r.Multipliers
+
+// The same problem by the interior-point method: minimize(..., method='trust-constr')
+r, _ = optimize.Minimize(optimize.Problem{Func: f}, []float64{1, 5, 5, 1}, optimize.TrustConstr,
+	&optimize.Options{Bounds: bounds, Constraints: cons})
+// r.Fun = 17.01402, r.Success, r.Optimality, r.ConstrViolation
 
 // popt, pcov = scipy.optimize.curve_fit(lambda x, a, b, c: a*np.exp(-b*x) + c, x, y)
 fit, err := optimize.CurveFit(func(x float64, p []float64) float64 {
@@ -115,6 +121,7 @@ noted.
 | `Minimize` (NM, Powell, CG, BFGS, Newton-CG, L-BFGS-B) | 79 runs on Rosenbrock n=2/10/100, Beale, Himmelblau, Powell singular, Wood, with and without gradients, bounds, iteration limits | every converged SciPy run is matched with an objective at least as good, within the method's own tolerance; on the arithmetic-only problems, **36/38 runs take SciPy's exact path** (identical nit, nfev, njev); the 2 exceptions are explained in docs/design.md |
 | L-BFGS-B | 44 runs, including 8 problems that reach rare branches (Cholesky failures, the 3.0 backtrack, Cauchy breakpoints) | identical nit/nfev/njev/status/message on every analytic-gradient run except Rosenbrock n=100 (513 vs 514 iterations, SciPy's Accelerate BLAS rounding); bit-identical to SciPy's C code built with sequential BLAS |
 | `Minimize(SLSQP)` | 100 runs: 36 Hock–Schittkowski problems and 10 stress cases (infeasible, inconsistent and singular linearisations, fixed variables), with and without derivatives, `NonlinearConstraint`/`LinearConstraint` and option variants; SciPy's x86_64 wheel (`tools/slsqporacle`) | 100/100 statuses; **88/100 on SciPy's exact path** (nit/nfev/njev, x to 1e-7, multipliers to 1e-6); the other 12 are runs on which SciPy's own arm64 and x86_64 wheels also disagree (docs/design.md) |
+| `Minimize(TrustConstr)` | the same 100 runs (`tools/slsqporacle --method trust-constr`) | success/failure as SciPy on 100/100 (2 are errors in both: more equalities than variables); identical status on 95/100 (the rest are gtol against xtol, both successes); objective within 1e-5 of SciPy or 1e-4 of the known optimum on every success; **59/100 on SciPy's exact path on arm64, 68/100 on amd64** — SciPy's own wheels disagree with each other on 35 runs |
 | `Root`/`Fsolve` | 23 runs (MGH problems with and without Jacobian, failure and option cases) | 23/23 identical counts, status and message; x bit-identical |
 | `LeastSquares(LM)` / `Leastsq` | 39 / 44 runs on the MGH least-squares set | 36/39 and 41/44 identical counts; the mismatches are on problems that call exp/sin/cos, where Go's libm and the C library differ in the last ulp |
 | `LeastSquares(TRF)` | 89 runs: MGH problems, bounds, all robust losses, `x_scale`, 2-/3-point differences | 86/89 identical nfev/njev/status (84/89 on amd64); every cost and active mask matches |
@@ -175,11 +182,11 @@ evaluation is at parity; the gap is in the solver's workspace handling.
 
 ## Not done
 
-- **`minimize`:** trust-constr, COBYLA/COBYQA, TNC, dogleg/trust-ncg and the
-  other trust-region methods; an interior-point NLP method and QP solvers
-  (active set, ADMM) are planned next and will share SLSQP's constraint
-  types. For
-  L-BFGS-B, the `hess_inv` operator is not provided.
+- **`minimize`:** COBYLA/COBYQA, TNC, dogleg/trust-ncg and the other
+  trust-region methods; trust-constr's `keep_feasible`, sparse Jacobians and
+  SR1 Hessian option; QP solvers (active set, ADMM) are planned next and will
+  share the constraint types. For L-BFGS-B, the `hess_inv` operator is not
+  provided.
 - **`root` / `least_squares`:** `root` methods other than `hybr`; the
   `band`/`col_deriv` options; dogbox; the lsmr trust-region solver and sparse
   Jacobians.

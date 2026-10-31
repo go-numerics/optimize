@@ -147,6 +147,62 @@ disagree (exit status 1 if any), which is how the wheels were compared; the
 harness and `tools/slsqpbench` have their own tests, run in CI, which need
 neither Python, Docker nor a quiet machine.
 
+## trust-constr (interior point)
+
+`Minimize(…, TrustConstr, …)` is SciPy's `trust-constr`: the Byrd–Omojokun
+trust-region SQP method for equality-constrained problems (Lalee, Nocedal and
+Plantenga 1998), and, as soon as there is an inequality or a bound, the
+barrier (interior-point) method of Byrd, Hribar and Nocedal (1999) around it.
+Sources opened for the port, BSD-3-Clause:
+
+- SciPy **v1.18.1** `scipy/optimize/_trustregion_constr/`:
+  `minimize_trustregion_constr.py` (driver, state, stop tests, statuses 0–4,
+  bounds widened by one ulp), `tr_interior_point.py` (barrier subproblem,
+  slack scaling, τ = 0.995, μ and tolerance ×0.2, trust radius ×5),
+  `equality_constrained_sqp.py` (normal and tangential steps, merit penalty,
+  second-order correction, radius updates), `qp_subproblem.py`
+  (`modified_dogleg`, `projected_cg`, box and sphere intersections),
+  `projections.py` (null-space, least-squares and row-space operators by QR
+  with column pivoting, SVD when the Jacobian is singular),
+  `canonical_constraint.py` (eq/less/greater/interval classification);
+- SciPy v1.18.1 `_hessian_update_strategy.py` (BFGS, `skip_update`,
+  `init_scale='auto'`) and `_differentiable_functions.py` (ScalarFunction and
+  VectorFunction): when gradients and BFGS updates happen — at **every** new
+  point, rejected trial points included, and again for a constraint when its
+  multipliers change — which is what makes the evaluation counts comparable;
+- SciPy v1.18.1 `_constraints.py` and `_minimize.py` (dictionary constraints
+  become `NonlinearConstraint(fun, 0, 0 or inf)` with a BFGS Hessian each; no
+  clipping of x0; `tol` sets gtol, xtol and barrier_tol);
+- Reference-LAPACK v3.12.1 `dlaqp2` (pivoted QR with norm downdating).
+
+The two papers themselves were not available to us; they are cited through
+SciPy's code.
+
+**Kernels.** The projections, CG and BFGS products use go-simd/floats
+(`Dot`, `Axpy`, `Xpby`, `Scale`). That is allowed here because SciPy's own
+iterates depend on its BLAS and on SuperLU (bounds-only problems use the
+sparse augmented system), so bit-identity is out of reach anyway; it means
+trust-constr's results are not bit-identical across architectures, unlike
+SLSQP's. The projections always use dense QR with column pivoting.
+
+**Fidelity.** `tools/slsqporacle --method trust-constr --platform
+linux/amd64` replays the 100 SLSQP runs with `trust-constr`. Success or
+failure agrees with SciPy on all 100 (two raise in both: more equalities than
+variables, an `ErrInput` here), the status itself on 95 (the others are `gtol`
+against `xtol`, both successes), and every successful objective is within
+1e-5 of SciPy's or 1e-4 of the known optimum. 59 runs take SciPy's exact path
+on arm64 and 68 on amd64. SciPy's own arm64 and x86_64 wheels disagree with
+each other on 35 runs (`slsqporacle diff`), almost all with finite-difference
+derivatives; counts are asserted on every other run except five listed in
+`trustconstr_fixture_test.go` (HS21/jac, HS35/jac, HS48/fd and the
+rank-deficient SingularEq3), on amd64 and arm64.
+
+**Omitted.** `keep_feasible` (strict bounds), sparse Jacobians and the
+NormalEquation/AugmentedSystem projections, the SR1 strategy and
+user-supplied constraint Hessians, `verbose` reports. Branches of SciPy's
+code that cannot be reached with these options (an infinite trust radius,
+the infeasible-iteration counter of projected CG) are documented in the code.
+
 ## MinimizeScalar, Bracket, Fminbound
 
 These are Brent's (1973) parabolic/golden method, the golden-section search,
