@@ -26,9 +26,11 @@ type qpFixFull struct {
 	} `json:"results"`
 }
 
-func loadQPFixture(t testing.TB) []qpFixFull {
+func loadQPFixture(t testing.TB) []qpFixFull { return loadQPFixtureFile(t, "testdata/qp/planted.json") }
+
+func loadQPFixtureFile(t testing.TB, path string) []qpFixFull {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/qp/planted.json")
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -96,15 +96,20 @@ func readFixture(path string) (*Fixture, error) {
 }
 
 func genCmd() *cobra.Command {
-	var out, platform string
+	var out, platform, set string
 	cmd := &cobra.Command{
 		Use:          "gen",
-		Short:        "Run the planted and hand problems through OSQP, Clarabel and quadprog",
+		Short:        "Run the planted and hand problems (or the generated sparse set) through OSQP, Clarabel and quadprog",
 		SilenceUsage: true,
 		Args:         cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if set != "planted" && set != "sparse" {
+				return fmt.Errorf("unknown --set %q: want planted or sparse", set)
+			}
 			var buf bytes.Buffer
-			if err := runner(command(platform), bytes.NewReader(script), &buf, cmd.ErrOrStderr()); err != nil {
+			// The set is chosen by a variable defined ahead of the embedded script.
+			in := append([]byte("QP_SET = \""+set+"\"\n"), script...)
+			if err := runner(command(platform), bytes.NewReader(in), &buf, cmd.ErrOrStderr()); err != nil {
 				return fmt.Errorf("oracle: %w", err)
 			}
 			f, err := Decode(&buf)
@@ -125,6 +130,8 @@ func genCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&out, "output", "o", "testdata/qp/planted.json", "fixture file to write")
+	cmd.Flags().StringVar(&set, "set", "planted",
+		"problem set: planted (the hand and planted problems) or sparse (generated sparse problems in the shape of the OSQP paper's random QP, equality QP, Lasso and portfolio classes)")
 	cmd.Flags().StringVar(&platform, "platform", "",
 		"run in a container of this platform (e.g. linux/amd64) instead of on the host")
 	return cmd

@@ -414,6 +414,21 @@ func TestGenCommand(t *testing.T) {
 		t.Fatalf("written fixture differs: %v", err)
 	}
 
+	// The set is chosen by a variable ahead of the script; an unknown set is refused.
+	var firstLine string
+	runner = func(_ []string, stdin io.Reader, w io.Writer, _ io.Writer) error {
+		in, _ := io.ReadAll(stdin)
+		firstLine, _, _ = strings.Cut(string(in), "\n")
+		_, err := w.Write(raw)
+		return err
+	}
+	if _, err := run(t, "gen", "--set", "sparse", "-o", dst); err != nil || firstLine != `QP_SET = "sparse"` {
+		t.Errorf("sparse set: %v %q", err, firstLine)
+	}
+	if _, err := run(t, "gen", "--set", "dense", "-o", dst); err == nil {
+		t.Error("unknown set accepted")
+	}
+
 	// A wheel with another core: the harness fails and writes nothing.
 	bad := clone(t, load(t))
 	bad.OsqpCore = "0.6.3"

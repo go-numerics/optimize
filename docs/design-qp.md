@@ -1,6 +1,10 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **tasks 4–9 implemented**. Tasks 8 and 9 (`qp_admm.go`,
+Status: **tasks 4–9 implemented**. The oracle also has a generated sparse set
+(`qporacle gen --set sparse`, `testdata/qp/sparse.json`: random QP, equality QP,
+Lasso and portfolio in the shape of the OSQP paper's classes, three sizes each,
+sparse P and A): the ADMM solver gives OSQP's iteration count and ρ-update
+count on 12 of 12 (`TestADMMSparseAgainstOSQP`). Tasks 8 and 9 (`qp_admm.go`,
 `qp_admm_check.go`, `qp_admm_scale.go`, `qp_kkt.go`; one PR, because the
 unscaled-termination branches of task 8 cannot be covered without the scaling
 of task 9): OSQP v1.0.0's iteration with the KKT of §4.1 factored by go-sparse

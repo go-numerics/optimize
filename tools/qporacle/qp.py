@@ -54,6 +54,13 @@ if CORE != WANT_CORE:
 import clarabel
 import quadprog
 
+# The set to generate is chosen by a variable that tools/qporacle defines ahead of
+# this script (gen --set); run by hand, the planted set is the default.
+try:
+    QP_SET
+except NameError:
+    QP_SET = "planted"
+
 CASES = []
 
 
@@ -137,6 +144,67 @@ for _i in range(24):
     _u = np.concatenate([_be, np.round(_Ai @ _x0 + np.abs(_g.randn(_n)) * (_i % 3) * 0.2, 3), np.full(_n, 3.0)])
     case(f"gen-{_i:02d}-n{_n}", f"generated, n = {_n}: {len(_Ae)} equalities, {_n} inequalities, bounds [-3, 3]",
          _P, _q, _A, _l, _u)
+
+# --- the generated sparse set: --set sparse ----------------------------------
+# Problems in the shape of the classes of the OSQP paper's section 8 (written
+# from their description, not from osqp_benchmarks): random QP, equality QP, Lasso
+# and portfolio, three sizes each. Sparse structure, data rounded to 3 decimals.
+if QP_SET == "sparse":
+    CASES.clear()
+    _g = np.random.RandomState(20261101)
+
+    def _sprand(m, n, density):
+        M = sp.random(m, n, density=density, random_state=_g, data_rvs=_g.randn, format="csc")
+        return np.round(M.toarray(), 3)
+
+    for _n in (20, 30, 40):
+        _M = _sprand(_n, _n, 0.15)
+        _A = _sprand(2 * _n, _n, 0.15)
+        case(f"sp-random-n{_n}", f"random QP: P = MM' + 0.01 I (M 15% dense), {2 * _n} rows, n = {_n}",
+             np.round(_M @ _M.T + 0.01 * np.eye(_n), 6), np.round(_g.randn(_n), 3), _A,
+             np.round(-_g.uniform(0, 1, 2 * _n), 3), np.round(_g.uniform(0, 1, 2 * _n), 3))
+    for _n in (20, 30, 40):
+        _M = _sprand(_n, _n, 0.15)
+        _A = _sprand(_n // 2, _n, 0.3)
+        _b = np.round(_A @ np.round(_g.randn(_n), 3), 3)
+        case(f"sp-equality-n{_n}", f"equality QP: {_n // 2} equalities (feasible by construction), n = {_n}",
+             np.round(_M @ _M.T + 0.01 * np.eye(_n), 6), np.round(_g.randn(_n), 3), _A, _b, _b)
+    for _k in (8, 12, 16):
+        _m = 2 * _k
+        _Ad = _sprand(_m, _k, 0.25)
+        _b = np.round(_g.randn(_m), 3)
+        # variables (x, y, t): min 1/2 |y|^2 + lam 1't, y = Ax - b, -t <= x <= t
+        _n = 2 * _k + _m
+        _P = np.zeros((_n, _n))
+        _P[_k:_k + _m, _k:_k + _m] = np.eye(_m)
+        _q = np.concatenate([np.zeros(_k + _m), np.full(_k, 0.5)])
+        _A = np.zeros((_m + 2 * _k, _n))
+        _A[:_m, :_k] = _Ad
+        _A[:_m, _k:_k + _m] = -np.eye(_m)
+        _A[_m:_m + _k, :_k] = np.eye(_k)
+        _A[_m:_m + _k, _k + _m:] = -np.eye(_k)
+        _A[_m + _k:, :_k] = np.eye(_k)
+        _A[_m + _k:, _k + _m:] = np.eye(_k)
+        case(f"sp-lasso-k{_k}", f"Lasso, {_k} features, {_m} samples, P singular (zero on x and t)", _P, _q, _A,
+             np.concatenate([_b, np.full(_k, -inf), np.zeros(_k)]),
+             np.concatenate([_b, np.zeros(_k), np.full(_k, inf)]))
+    for _n in (12, 20, 30):
+        _k = _n // 4
+        _F = _sprand(_n, _k, 0.5)
+        _N = _n + _k
+        _P = np.zeros((_N, _N))
+        _P[:_n, :_n] = np.diag(np.round(_g.uniform(0, np.sqrt(_k), _n), 3))
+        _P[_n:, _n:] = np.eye(_k)
+        _P = 2 * _P
+        _q = np.concatenate([np.round(-_g.randn(_n), 3), np.zeros(_k)])
+        _A = np.zeros((_k + 1 + _n, _N))
+        _A[:_k, :_n] = _F.T
+        _A[:_k, _n:] = -np.eye(_k)
+        _A[_k, :_n] = 1.0
+        _A[_k + 1:, :_n] = np.eye(_n)
+        case(f"sp-portfolio-n{_n}", f"portfolio, {_n} assets, {_k} factors, P = 2 blkdiag(D, I)", _P, _q, _A,
+             np.concatenate([np.zeros(_k), [1.0], np.zeros(_n)]),
+             np.concatenate([np.zeros(_k), [1.0], np.full(_n, inf)]))
 
 # --- solvers -----------------------------------------------------------------
 def run_osqp(c, **settings):
