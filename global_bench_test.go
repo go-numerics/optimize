@@ -149,8 +149,8 @@ func TestGlobalBenchRowsRun(t *testing.T) {
 			t.Fatalf("duplicate row %s", row.name)
 		}
 		seen[row.name] = true
-		if strings.HasSuffix(row.name, ".30") {
-			continue // seconds each; the benchmark runs them
+		if strings.HasSuffix(row.name, ".30") || (raceEnabled && strings.HasSuffix(row.name, ".10")) {
+			continue // seconds each (more under -race); the benchmark runs them
 		}
 		if nfev, _ := row.run(); nfev <= 0 {
 			t.Errorf("%s: nfev %d", row.name, nfev)
