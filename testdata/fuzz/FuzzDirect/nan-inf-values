@@ -1,0 +1,10 @@
+go test fuzz v1
+byte('\x05')
+float64(-2)
+float64(2)
+float64(-0.0001)
+int32(500)
+int32(30)
+bool(false)
+float64(0.0001)
+[]byte("\x00\x08\x01\x02\x10\x03")

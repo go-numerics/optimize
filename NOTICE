@@ -1,0 +1,11 @@
+go-numerics/optimize is distributed under the BSD 3-Clause licence (LICENSE).
+
+It contains code derived from the following third-party works.
+
+DIRECT (direct.go, direct_core.go, direct_sub.go)
+  Port to Go of scipy/optimize/_direct/ (DIRect.c, DIRsubrout.c, DIRserial.c)
+  from SciPy v1.18.1, which is the C version, by Steven G. Johnson, of the
+  DIRECT 2.0.4 Fortran code by Joerg M. Gablonsky.
+  Copyright (c) 1999, 2000, 2001 North Carolina State University.
+  MIT License; the full text is in COPYING.DIRECT and the notice is at the top
+  of each ported file.
