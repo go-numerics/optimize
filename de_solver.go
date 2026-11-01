@@ -664,9 +664,6 @@ func (s *deSolver) result(nit int, msg string, status int) *DEResult {
 	}
 	if s.ncv > 0 && s.report(r) > 0 { // an infeasible best member is no success
 		r.Success = false
-		if r.Status == DEConverged {
-			r.Status = DEInfeasible
-		}
 	}
 	return r
 }

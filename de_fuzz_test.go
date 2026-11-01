@@ -35,6 +35,15 @@ func FuzzDifferentialEvolution(f *testing.F) {
 			Recombination: Float(cr), RNG: NewRNG(seed), NoPolish: true,
 			MaxIter: Int(int(maxiter) % 8), Updating: DEUpdating(int(upd) % 3), Workers: int(workers)%3 + 1,
 		}
+		if strat%3 == 0 {
+			o.Integrality = make([]bool, dim)
+			o.Integrality[0] = true
+		}
+		if pop%2 == 1 && pop != 255 {
+			o.Constraints = []ConstraintSpec{Constraint{Kind: Ineq, M: 1, Func: func(x, c []float64) {
+				c[0] = x[0] - cr
+			}}}
+		}
 		if upd%2 == 1 {
 			o.RNG = NewLegacyRNG(uint32(seed))
 		}
