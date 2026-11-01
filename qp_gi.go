@@ -37,6 +37,12 @@ type giState struct {
 	nit    int
 }
 
+// vdot is dot(vec(c, sgn), x) without building the vector (the scan of the
+// violated constraints calls it for every column at every pass).
+func (g *giState) vdot(c giColumn, sgn float64, x []float64) float64 {
+	return sgn * c.sign * g.md.rowDot(g.md.rows[c.row], x)
+}
+
 func (g *giState) vec(c giColumn, sgn float64) []float64 {
 	v := make([]float64, g.n)
 	g.md.rowAdd(g.md.rows[c.row], sgn*c.sign, v)
@@ -150,7 +156,7 @@ func (g *giState) start() {
 		mq[i] = -md.q[i]
 	}
 	g.x = backSolve(md.chol, n, forwardSolve(md.chol, n, mq))
-	g.f = -0.5 * dot(mq, g.x)
+	g.f = -0.5 * floats.Dot(mq, g.x)
 }
 
 // enterHint inserts the hinted canonical rows (e.g. the previous solve's
@@ -164,7 +170,7 @@ func (g *giState) enterHint(hint []int) int {
 		best, bs := -1, math.Inf(1)
 		for i, c := range g.cols {
 			if c.row == row && !c.eq {
-				if s := math.Abs(dot(g.vec(c, 1), g.x) - c.b); s < bs {
+				if s := math.Abs(g.vdot(c, 1, g.x) - c.b); s < bs {
 					best, bs = i, s
 				}
 			}
@@ -206,12 +212,12 @@ func (g *giState) recover() {
 	d := g.dvec(mq) // Jᵀa
 	xu := make([]float64, n)
 	for r := 0; r < n; r++ {
-		xu[r] = dot(g.j[r*n:(r+1)*n], d)
+		xu[r] = floats.Dot(g.j[r*n:(r+1)*n], d)
 	}
 	y := make([]float64, k) // Rᵀy = ρ, forward
 	for i := 0; i < k; i++ {
 		c := g.cols[g.ws[i]]
-		t := g.wsSign[i]*c.b - dot(g.vec(c, g.wsSign[i]), xu)
+		t := g.wsSign[i]*c.b - g.vdot(c, g.wsSign[i], xu)
 		for l := 0; l < i; l++ {
 			t -= float64(g.r[l*n+i] * y[l])
 		}
@@ -219,7 +225,7 @@ func (g *giState) recover() {
 	}
 	g.x = xu
 	for r := 0; r < n; r++ {
-		g.x[r] += dot(g.j[r*n:r*n+k], y)
+		g.x[r] += floats.Dot(g.j[r*n:r*n+k], y)
 	}
 	g.u = make([]float64, k)
 	for i := k - 1; i >= 0; i-- { // Ru = y, backward
@@ -229,7 +235,7 @@ func (g *giState) recover() {
 		}
 		g.u[i] = t / g.r[i*n+i]
 	}
-	g.f = 0.5*dot(md.px(g.x), g.x) + dot(md.q, g.x)
+	g.f = 0.5*floats.Dot(md.px(g.x), g.x) + floats.Dot(md.q, g.x)
 }
 
 // repair is Proposition 8.2: recover (x, u) from the cached factors, and while
@@ -268,7 +274,7 @@ func (g *giState) walk(maxIter int, feasTol float64) (int, string, []float64) {
 			if inWS[i] || setAside[i] {
 				continue
 			}
-			si := dot(g.vec(c, 1), g.x) - c.b
+			si := g.vdot(c, 1, g.x) - c.b
 			if c.eq {
 				if math.Abs(si) <= feasTol*(1+math.Abs(c.b)) {
 					continue // satisfied: nothing to enter (a redundant or already-met equality)
@@ -330,7 +336,7 @@ func (g *giState) enter(istar int, s float64, maxIter int, feasTol float64, inWS
 		z := make([]float64, n)
 		if nd2 > 1e3*0x1p-52*vnorm(d) {
 			for r := 0; r < n; r++ {
-				z[r] = dot(g.j[r*n+k:(r+1)*n], d2)
+				z[r] = floats.Dot(g.j[r*n+k:(r+1)*n], d2)
 			}
 		} else {
 			nd2 = 0
@@ -399,7 +405,7 @@ func (g *giState) enter(istar int, s float64, maxIter int, feasTol float64, inWS
 		}
 		inWS[g.ws[idel]] = false
 		g.remove(idel)
-		s = dot(nstar, g.x) - bstar
+		s = floats.Dot(nstar, g.x) - bstar
 	}
 }
 
@@ -427,11 +433,11 @@ func (g *giState) insert(d []float64, ci int, sgn, ustar float64) {
 	// v = d₂ − α e₁ (no cancellation: α has the sign opposite to d₂₁).
 	v := clone(d2)
 	v[0] -= alpha
-	vv := dot(v, v)
+	vv := floats.Dot(v, v)
 	if vv > 0 {
 		for r := 0; r < n; r++ {
 			row := g.j[r*n+k : (r+1)*n]
-			floats.Axpy(-2*dot(row, v)/vv, v, row)
+			floats.Axpy(-2*floats.Dot(row, v)/vv, v, row)
 		}
 	}
 	for i := 0; i < k; i++ {

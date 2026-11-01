@@ -3,8 +3,10 @@ package optimize
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/go-ndarray/ndarray"
+	"github.com/go-simd/floats"
 	"github.com/go-sparse/sparse"
 )
 
@@ -30,9 +32,11 @@ const (
 	QPADMM QPMethod = "admm"
 )
 
-// qpAutoLimit is the n + m up to which QPAuto chooses the active-set method
-// (provisional, design-qp.md §2.3).
-const qpAutoLimit = 2000
+// qpAutoLimit is the n + m up to which QPAuto chooses the active-set method.
+// Measured by tools/qpbench on dense positive definite problems (docs/perf.md):
+// the active set, which is exact, is faster than ADMM at 1e-3 up to n + m = 1550
+// (0.75) and slower at 3100 (1.09); the ratio crosses 1 near 2600.
+const qpAutoLimit = 2500
 
 // qpDirectLimit bounds the number of entries of each dense matrix the direct
 // equality-constrained solve allocates (n·n for the Cholesky factor of P and
@@ -553,6 +557,8 @@ func (md *qpModel) addDenseFamily(a, b *ndarray.Array, what string, z *qpSizes) 
 	} else {
 		md.nUb = rows
 	}
+	md.dense = slices.Grow(md.dense, rows*md.n) // sizes bounded by z.add above
+	md.rows = slices.Grow(md.rows, rows)
 	for i := 0; i < rows; i++ {
 		r := qpRow{l: math.Inf(-1), u: bv[i], kind: rowDense, ref: len(md.dense) / md.n, blk: blkUb, src: i}
 		if eq {
@@ -594,6 +600,8 @@ func (md *qpModel) addLinear(lc LinearConstraint, idx int, z *qpSizes) error {
 	if err := z.add(int64(rows)*int64(md.n), int64(rows)); err != nil {
 		return err
 	}
+	md.dense = slices.Grow(md.dense, rows*md.n) // sizes bounded by z.add above
+	md.rows = slices.Grow(md.rows, rows)
 	for i := 0; i < rows; i++ {
 		if math.IsInf(l[i], -1) && math.IsInf(u[i], 1) {
 			continue
@@ -633,6 +641,7 @@ func (md *qpModel) addSparse(a *sparse.CSC[float64], lIn, uIn []float64, z *qpSi
 	}
 	md.sp = b.ToCSR()
 	md.nSp = b.Rows
+	md.rows = slices.Grow(md.rows, b.Rows) // one allocation instead of the doubling
 	for i := 0; i < b.Rows; i++ {
 		md.addRow(qpRow{l: l[i], u: u[i], kind: rowSparse, ref: i, blk: blkSparse, src: i})
 	}
@@ -699,7 +708,7 @@ func (md *qpModel) positiveDefinite() bool {
 func (md *qpModel) rowDot(r qpRow, x []float64) float64 {
 	switch r.kind {
 	case rowDense:
-		return dot(md.dense[r.ref*md.n:(r.ref+1)*md.n], x)
+		return floats.Dot(md.dense[r.ref*md.n:(r.ref+1)*md.n], x)
 	case rowSparse:
 		s := 0.0
 		for k := md.sp.Indptr[r.ref]; k < md.sp.Indptr[r.ref+1]; k++ {
@@ -714,9 +723,7 @@ func (md *qpModel) rowDot(r qpRow, x []float64) float64 {
 func (md *qpModel) rowAdd(r qpRow, s float64, out []float64) {
 	switch r.kind {
 	case rowDense:
-		for j, v := range md.dense[r.ref*md.n : (r.ref+1)*md.n] {
-			out[j] += float64(s * v)
-		}
+		floats.Axpy(s, md.dense[r.ref*md.n:(r.ref+1)*md.n], out[:md.n])
 	case rowSparse:
 		for k := md.sp.Indptr[r.ref]; k < md.sp.Indptr[r.ref+1]; k++ {
 			out[md.sp.Indices[k]] += float64(s * md.sp.Data[k])
@@ -758,7 +765,7 @@ func (md *qpModel) px(x []float64) []float64 {
 	switch {
 	case md.p != nil:
 		for i := range out {
-			out[i] = dot(md.p[i*md.n:(i+1)*md.n], x)
+			out[i] = floats.Dot(md.p[i*md.n:(i+1)*md.n], x)
 		}
 	case md.pUpper != nil:
 		u := md.pUpper
@@ -798,7 +805,7 @@ func (md *qpModel) assemble(x, marg []float64, method QPMethod, feasTol float64)
 func (md *qpModel) fill(x, marg []float64, method QPMethod) (*QPResult, []float64) {
 	n := md.n
 	grad := md.px(x)
-	fun := 0.5*dot(grad, x) + dot(md.q, x)
+	fun := 0.5*floats.Dot(grad, x) + floats.Dot(md.q, x)
 	res := make([]float64, n) // P·x + q − Σ marg·a
 	for i := range res {
 		res[i] = grad[i] + md.q[i]

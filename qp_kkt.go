@@ -3,6 +3,7 @@ package optimize
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-sparse/sparse"
 	"github.com/go-sparse/sparse/ldl"
@@ -23,6 +24,17 @@ import (
 // qpFactorLimit bounds the entries of L the ADMM solver will allocate (2²⁸ is
 // 2 GiB of values plus 1 GiB of indices). A variable so that tests can lower it.
 var qpFactorLimit int64 = 1 << 28
+
+// qpTimeKKT turns on the accounting of the time spent in go-sparse: the AMD
+// ordering and the symbolic analysis (qpKKTAnalyseNS), the numeric
+// refactorisations (qpKKTFactorNS) and the triangular solves (qpKKTSolveNS), in
+// nanoseconds. Only tools/qpbench's benchmark sets it: it splits the ADMM time into
+// the part that belongs to go-sparse and the rest. Not safe for concurrent solves;
+// off, it costs one branch per call.
+var (
+	qpTimeKKT                                   bool
+	qpKKTAnalyseNS, qpKKTFactorNS, qpKKTSolveNS int64
+)
 
 // The ordering and the symbolic analysis only fail on malformed input, which
 // buildKKT excludes; they are variables so that a test can make them fail.
@@ -105,6 +117,9 @@ func buildKKT(pu *sparse.CSC[float64], a *admmCSR, n, m int, sigma float64, rhoI
 // analyse orders K with AMD and runs the symbolic phase once; the factor it
 // would need is refused above qpFactorLimit entries.
 func (k *admmKKT) analyse() error {
+	if qpTimeKKT {
+		defer func(t time.Time) { qpKKTAnalyseNS += int64(time.Since(t)) }(time.Now())
+	}
 	perm, err := qpAMD(k.mat.ToCSR())
 	if err != nil {
 		return fmt.Errorf("%w: ordering the KKT matrix: %v", ErrInput, err)
@@ -123,6 +138,9 @@ func (k *admmKKT) analyse() error {
 // factor runs the numeric phase on the current values. A zero or non-finite
 // pivot, or fewer than n positive pivots, is errNonConvex.
 func (k *admmKKT) factor() error {
+	if qpTimeKKT {
+		defer func(t time.Time) { qpKKTFactorNS += int64(time.Since(t)) }(time.Now())
+	}
 	if err := k.fac.Refactor(k.mat); err != nil {
 		return fmt.Errorf("%w: %v", errNonConvex, err)
 	}
@@ -134,6 +152,9 @@ func (k *admmKKT) factor() error {
 
 // solve overwrites b (length n+m) with K⁻¹b.
 func (k *admmKKT) solve(b []float64) {
+	if qpTimeKKT {
+		defer func(t time.Time) { qpKKTSolveNS += int64(time.Since(t)) }(time.Now())
+	}
 	// The only errors are a wrong length or a missing factorisation, both
 	// excluded by construction (factor succeeded before any solve).
 	_ = k.fac.Solve(b)
