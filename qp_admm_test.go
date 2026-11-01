@@ -5,16 +5,22 @@ import (
 	"math"
 	"os"
 	"testing"
+
+	"github.com/go-sparse/sparse"
 )
 
 type qpFixFull struct {
-	Name    string      `json:"name"`
-	Note    string      `json:"note"`
-	P       [][]float64 `json:"p"`
-	Q       []float64   `json:"q"`
-	A       [][]float64 `json:"a"`
-	L       []float64   `json:"l"`
-	U       []float64   `json:"u"`
+	Name string      `json:"name"`
+	Note string      `json:"note"`
+	P    [][]float64 `json:"p"`
+	Q    []float64   `json:"q"`
+	A    [][]float64 `json:"a"`
+	// The sparse form (tools/qporacle fixture.go): m rows, P full symmetric.
+	M       int       `json:"m"`
+	PCSC    *qpFixCSC `json:"p_csc"`
+	ACSC    *qpFixCSC `json:"a_csc"`
+	L       []float64 `json:"l"`
+	U       []float64 `json:"u"`
 	Results map[string]struct {
 		Status     string    `json:"status"`
 		X          []float64 `json:"x"`
@@ -24,6 +30,65 @@ type qpFixFull struct {
 		RhoUpdates int       `json:"rho_updates"`
 		Error      string    `json:"error"`
 	} `json:"results"`
+}
+
+type qpFixCSC struct {
+	Indptr  []int     `json:"indptr"`
+	Indices []int32   `json:"indices"`
+	Data    []float64 `json:"data"`
+}
+
+func (s *qpFixCSC) dense(rows, cols int) [][]float64 {
+	d := make([][]float64, rows)
+	for i := range d {
+		d[i] = make([]float64, cols)
+	}
+	for j := 0; j < cols; j++ {
+		for k := s.Indptr[j]; k < s.Indptr[j+1]; k++ {
+			d[s.Indices[k]][j] = s.Data[k]
+		}
+	}
+	return d
+}
+
+// csc returns the matrix as a sparse.CSC; upper keeps the entries with row <= column.
+func (s *qpFixCSC) csc(t testing.TB, rows, cols int, upper bool) *sparse.CSC[float64] {
+	t.Helper()
+	ptr := []int{0}
+	var idx []int32
+	var val []float64
+	for j := 0; j < cols; j++ {
+		for k := s.Indptr[j]; k < s.Indptr[j+1]; k++ {
+			if !upper || int(s.Indices[k]) <= j {
+				idx = append(idx, s.Indices[k])
+				val = append(val, s.Data[k])
+			}
+		}
+		ptr = append(ptr, len(idx))
+	}
+	m, err := sparse.NewCSC(rows, cols, ptr, idx, val)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+// fixtureProblemSparse rebuilds a sparse-form case through PSparse and ASparse.
+func fixtureProblemSparse(t testing.TB, c qpFixFull) QPProblem {
+	t.Helper()
+	n := len(c.Q)
+	return QPProblem{PSparse: c.PCSC.csc(t, n, n, true), Q: c.Q,
+		Cons: QPConstraints{ASparse: c.ACSC.csc(t, c.M, n, false), L: qpInf(c.L), U: qpInf(c.U)}}
+}
+
+func qpInf(v []float64) []float64 {
+	o := clone(v)
+	for i := range o {
+		if math.Abs(o[i]) >= 1e20 {
+			o[i] = math.Copysign(math.Inf(1), o[i])
+		}
+	}
+	return o
 }
 
 func loadQPFixture(t testing.TB) []qpFixFull { return loadQPFixtureFile(t, "testdata/qp/planted.json") }
@@ -48,6 +113,12 @@ func loadQPFixtureFile(t testing.TB, path string) []qpFixFull {
 func fixtureProblem(t testing.TB, c qpFixFull) QPProblem {
 	t.Helper()
 	n := len(c.Q)
+	if c.PCSC != nil { // the dense form of a sparse case, for the active set
+		c.P = c.PCSC.dense(n, n)
+	}
+	if c.ACSC != nil {
+		c.A = c.ACSC.dense(c.M, n)
+	}
 	p := make([]float64, 0, n*n)
 	for _, r := range c.P {
 		p = append(p, r...)

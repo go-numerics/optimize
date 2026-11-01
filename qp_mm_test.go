@@ -11,7 +11,7 @@ import (
 // against Clarabel at 1e-10. Every case Clarabel solves, we solve to its
 // objective within 1e-5 relative; the tallies are in the log.
 func TestMarosMeszarosFixtures(t *testing.T) {
-	admmOK, asOK, admmBad, total := 0, 0, 0, 0
+	admmOK, asOK, admmBad, total, nsparse, matched := 0, 0, 0, 0, 0, 0
 	for _, path := range []string{"testdata/qp/mm/tiny.json", "testdata/qp/mm/small.json"} {
 		for _, c := range loadQPFixtureFile(t, path) {
 			total++
@@ -20,15 +20,22 @@ func TestMarosMeszarosFixtures(t *testing.T) {
 				continue
 			}
 			pr := fixtureProblem(t, c)
+			prA := pr
+			if c.PCSC != nil { // over the dense cap: ADMM takes the sparse form
+				prA = fixtureProblemSparse(t, c)
+				nsparse++
+			}
 			tol := 1e-5 * math.Max(1, math.Abs(*ref.Obj))
-			r, err := Quadprog(pr, &QPOptions{Method: QPADMM, EpsAbs: 1e-9, EpsRel: 1e-9, MaxIter: 400000, Polish: true})
+			r, err := Quadprog(prA, &QPOptions{Method: QPADMM, EpsAbs: 1e-9, EpsRel: 1e-9, MaxIter: 400000, Polish: true})
 			switch {
 			case err != nil || r.Status != QPOptimal || math.Abs(r.Fun-*ref.Obj) > tol:
-				// QSHARE2B: OSQP v1.0.0 with the same settings and the same 400000
-				// iterations also ends at "maximum iterations reached" (primal residual
-				// 0.18 on linux/amd64), so the limit is matching behaviour, not a defect.
-				if long := c.Results["osqp_long"]; c.Name == "QSHARE2B" && long.Status == "maximum iterations reached" && long.Iter == 400000 {
-					t.Logf("%s: both ADMM and OSQP stop at the iteration limit", c.Name)
+				// OSQP v1.0.0 with the same settings and the same 400000 iterations ends
+				// with the same status: QSHARE2B, QSCAGR7, QSCTAP1 and QSHARE1B at the
+				// iteration limit, PRIMALC2 and PRIMALC5 with a (false) dual infeasibility
+				// certificate. That is matching behaviour, not a defect.
+				if long := c.Results["osqp_long"]; r != nil && err == nil && r.Status != QPOptimal && long.Status == osqpStatusOf(r.Status) {
+					t.Logf("%s: ADMM and OSQP v1.0.0 agree on %q", c.Name, long.Status)
+					matched++
 					continue
 				}
 				admmBad++
@@ -45,9 +52,23 @@ func TestMarosMeszarosFixtures(t *testing.T) {
 		}
 	}
 	t.Logf("%d problems: ADMM agrees on %d (disagrees %d), active set on %d", total, admmOK, admmBad, asOK)
-	if total != 25 || admmBad > 0 {
-		t.Errorf("total %d, ADMM disagreements %d", total, admmBad)
+	t.Logf("%d of them in the sparse fixture form; ADMM and OSQP v1.0.0 fail alike on %d", nsparse, matched)
+	if total != 33 || nsparse != 8 || matched != 6 || admmBad > 0 {
+		t.Errorf("total %d, sparse %d, ADMM disagreements %d", total, nsparse, admmBad)
 	}
+}
+
+// osqpStatusOf is the OSQP status string a QPResult status corresponds to.
+func osqpStatusOf(s int) string {
+	switch s {
+	case QPIterLimit:
+		return "maximum iterations reached"
+	case QPInfeasible:
+		return "primal infeasible"
+	case QPUnbounded:
+		return "dual infeasible"
+	}
+	return "solved"
 }
 
 func statusOf(r *QPResult) int {

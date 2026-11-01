@@ -214,7 +214,6 @@ if QP_SET == "sparse":
 if QP_SET == "mm":
     import scipy.io as spio
     CASES.clear()
-    MM_DENSE_CAP = 30000
     for _nm in MM_NAMES.split(","):
         _d = spio.loadmat(f"{MM_DIR}/{_nm}.mat")
         _P = _d["P"].astype(float).toarray()
@@ -225,9 +224,6 @@ if QP_SET == "mm":
         _l = _d["l"].T.flatten().astype(float)
         _u = _d["u"].T.flatten().astype(float)
         _n, _m = len(_q), _A.shape[0]
-        if _n * (_n + _m) > MM_DENSE_CAP:
-            print(f"skipping {_nm}: n={_n} m={_m} is over the dense cap", file=sys.stderr)
-            continue
         _l[_l > 9e19] = inf
         _u[_u > 9e19] = inf
         _l[_l < -9e19] = -inf
@@ -310,6 +306,19 @@ def run_quadprog(c):
     return dict(status="solved", x=vec(x), obj=num(f), iter=int(it[0]))
 
 
+# A problem whose dense P and A would hold more than this many entries is written
+# in compressed sparse column form.
+DENSE_CAP = 30000
+
+
+def csc_json(M):
+    S = sp.csc_matrix(M)
+    S.eliminate_zeros()
+    S.sort_indices()
+    return dict(indptr=[int(v) for v in S.indptr], indices=[int(v) for v in S.indices],
+                data=[float(v) for v in S.data])
+
+
 out = []
 for c in CASES:
     res = dict(osqp=run_osqp(c),
@@ -323,8 +332,14 @@ for c in CASES:
         # iterations): says whether a problem OSQP fails at 100000 is also failed by
         # OSQP at the budget we give ours.
         res["osqp_long"] = run_osqp(c, eps_abs=1e-9, eps_rel=1e-9, polishing=True, max_iter=400000)
-    out.append(dict(name=c["name"], note=c["note"], n=len(c["q"]), p=c["P"].tolist(), q=c["q"].tolist(),
-                    a=c["A"].tolist(), l=big(c["l"]), u=big(c["u"]), results=res))
+    n, m = len(c["q"]), c["A"].shape[0]
+    if n * (n + m) > DENSE_CAP:
+        # Over the dense cap: the sparse form of the fixture (m, p_csc, a_csc).
+        mats = dict(p=None, a=None, m=m, p_csc=csc_json(c["P"]), a_csc=csc_json(c["A"]))
+    else:
+        mats = dict(p=c["P"].tolist(), a=c["A"].tolist())
+    out.append(dict(name=c["name"], note=c["note"], n=n, q=c["q"].tolist(), l=big(c["l"]), u=big(c["u"]),
+                    results=res, **mats))
 
 json.dump(dict(osqp=version("osqp"), osqp_core=CORE, clarabel=version("clarabel"),
                quadprog=version("quadprog"), numpy=np.__version__,
