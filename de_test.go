@@ -186,7 +186,7 @@ func TestDEPolish(t *testing.T) {
 		t.Errorf("%+v", r)
 	}
 	// a custom polisher: rejected when worse, error and bad results reported
-	worse := func(f func([]float64) float64, x0 []float64, b []Bound) (*Result, error) {
+	worse := func(f func([]float64) float64, x0 []float64, b []Bound, _ []ConstraintSpec) (*Result, error) {
 		return &Result{X: x0, Fun: f(x0) + 1, Success: true, Nfev: 3}, nil
 	}
 	r, _ = DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(3), Polish: worse})
@@ -195,17 +195,17 @@ func TestDEPolish(t *testing.T) {
 	}
 	boom := errors.New("boom")
 	if _, err := DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(1),
-		Polish: func(func([]float64) float64, []float64, []Bound) (*Result, error) { return nil, boom }}); !errors.Is(err, boom) {
+		Polish: func(func([]float64) float64, []float64, []Bound, []ConstraintSpec) (*Result, error) { return nil, boom }}); !errors.Is(err, boom) {
 		t.Error(err)
 	}
 	for _, res := range []*Result{nil, {X: []float64{1}}} {
 		if _, err := DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(1),
-			Polish: func(func([]float64) float64, []float64, []Bound) (*Result, error) { return res, nil }}); !errors.Is(err, ErrInput) {
+			Polish: func(func([]float64) float64, []float64, []Bound, []ConstraintSpec) (*Result, error) { return res, nil }}); !errors.Is(err, ErrInput) {
 			t.Error(err)
 		}
 	}
 	// outside the bounds: rejected
-	out := func(f func([]float64) float64, x0 []float64, b []Bound) (*Result, error) {
+	out := func(f func([]float64) float64, x0 []float64, b []Bound, _ []ConstraintSpec) (*Result, error) {
 		return &Result{X: []float64{9, 9}, Fun: -1, Success: true}, nil
 	}
 	r, _ = DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(1), Polish: out})
@@ -360,6 +360,121 @@ func TestDEGenerationAllocs(t *testing.T) {
 		a := testing.AllocsPerRun(20, func() { s.generation() })
 		if a != 0 {
 			t.Errorf("updating %v: %v allocations per generation", upd, a)
+		}
+	}
+}
+
+func deSumGE(v float64) ConstraintSpec { // x0 + x1 >= v
+	return Constraint{Kind: Ineq, M: 1, Func: func(x, c []float64) { c[0] = x[0] + x[1] - v }}
+}
+
+func TestDEConstraintsAndIntegralityErrors(t *testing.T) {
+	ok := box(2, -3.5, 3.5)
+	for name, o := range map[string]*DEOptions{
+		"integrality length":  {Integrality: []bool{true}},
+		"no integer inside":   {Integrality: []bool{true, false}},
+		"nil constraint":      {Constraints: []ConstraintSpec{nil}},
+		"bad constraint spec": {Constraints: []ConstraintSpec{Constraint{}}},
+	} {
+		b := ok
+		if name == "no integer inside" {
+			b = []Bound{{0.2, 0.8}, {0, 1}}
+		}
+		if _, err := DifferentialEvolution(deSphere, b, o); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
+
+func TestDEConstraints(t *testing.T) {
+	for _, upd := range []DEUpdating{DEImmediate, DEDeferred} {
+		// min x0²+x1² subject to x0+x1 >= 1: the optimum is (1/2, 1/2)
+		r, err := DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(3), Updating: upd,
+			Constraints: []ConstraintSpec{deSumGE(1)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !r.Success || math.Abs(r.Fun-0.5) > 1e-3 || len(r.Constr) != 1 || r.ConstrViolation > 0 {
+			t.Errorf("updating %v: %+v", upd, r)
+		}
+	}
+	// infeasible: Success false, status 4, SciPy's message
+	imp := Constraint{Kind: Ineq, M: 1, Func: func(x, c []float64) { c[0] = -1 - float64(x[0]*x[0]) }}
+	r, _ := DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(3), MaxIter: Int(5),
+		Constraints: []ConstraintSpec{imp}})
+	if r.Success || r.Status != DEInfeasible || r.ConstrViolation <= 0 ||
+		r.Message != "The solution does not satisfy the constraints, MAXCV = "+pyRepr(r.ConstrViolation) {
+		t.Errorf("%+v", r)
+	}
+	// a NaN violation counts as feasible and never reports as violated
+	nan := Constraint{Kind: Ineq, M: 1, Func: func(x, c []float64) { c[0] = math.NaN() }}
+	r, _ = DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(3), MaxIter: Int(3), NoPolish: true,
+		Constraints: []ConstraintSpec{nan}})
+	if r.Status == DEInfeasible {
+		t.Errorf("%+v", r)
+	}
+	// a custom polisher receives the constraints and the pinned bounds
+	var got []ConstraintSpec
+	_, _ = DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(3), MaxIter: Int(2),
+		Constraints: []ConstraintSpec{deSumGE(0)}, Integrality: []bool{true, false},
+		Polish: func(f func([]float64) float64, x0 []float64, b []Bound, c []ConstraintSpec) (*Result, error) {
+			got = c
+			if b[0].Lo != b[0].Hi || b[0].Lo != x0[0] || b[1].Lo == b[1].Hi {
+				t.Errorf("bounds %v for %v", b, x0)
+			}
+			return &Result{X: x0, Fun: math.Inf(1)}, nil
+		}})
+	if len(got) != 1 {
+		t.Error("constraints not passed to the polisher")
+	}
+	// callbacks see the violation report
+	seen := false
+	_, _ = DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(3), MaxIter: Int(2), NoPolish: true,
+		Constraints: []ConstraintSpec{deSumGE(0)}, Callback: func(r *DEResult) bool { seen = len(r.Constr) == 1; return false }})
+	if !seen {
+		t.Error("callback without constraint report")
+	}
+}
+
+func TestDEIntegrality(t *testing.T) {
+	f := func(x []float64) float64 { return float64((x[0]-2.4)*(x[0]-2.4)) + float64((x[1]-1)*(x[1]-1)) }
+	r, err := DifferentialEvolution(f, box(2, -5.5, 5.5), &DEOptions{RNG: NewRNG(1), Integrality: []bool{true, false}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.X[0] != 2 || math.Abs(r.X[1]-1) > 1e-6 {
+		t.Errorf("%v", r.X)
+	}
+	for _, row := range r.Population {
+		if row[0] != math.Round(row[0]) {
+			t.Fatalf("non-integer member %v", row)
+		}
+	}
+	// every variable integral: no polish, so no extra evaluations
+	r, _ = DifferentialEvolution(f, box(2, -5, 5), &DEOptions{RNG: NewRNG(1), Integrality: []bool{true, true},
+		Polish: func(func([]float64) float64, []float64, []Bound, []ConstraintSpec) (*Result, error) {
+			t.Error("polish called")
+			return nil, nil
+		}})
+	if r.X[0] != 2 || r.X[1] != 1 {
+		t.Errorf("%v", r.X)
+	}
+	// all false is the same as nil
+	if _, err := DifferentialEvolution(f, box(2, -5, 5), &DEOptions{RNG: NewRNG(1), Integrality: []bool{false, false}, MaxIter: Int(2)}); err != nil {
+		t.Error(err)
+	}
+}
+
+// no feasible member at all: the least violating is promoted, and the
+// deferred and immediate paths agree on the report.
+func TestDENoFeasibleMember(t *testing.T) {
+	c := Constraint{Kind: Ineq, M: 1, Func: func(x, c []float64) { c[0] = x[0] - 100 }}
+	for _, upd := range []DEUpdating{DEImmediate, DEDeferred} {
+		r, _ := DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), Updating: upd, MaxIter: Int(15),
+			NoPolish: true, Constraints: []ConstraintSpec{c}})
+		// violation shrinks toward x0 = 5
+		if r.X[0] < 3 || r.Status != DEInfeasible {
+			t.Errorf("updating %v: %+v", upd, r.X)
 		}
 	}
 }
