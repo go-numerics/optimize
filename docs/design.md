@@ -396,10 +396,10 @@ dual active-set solver, then an OSQP-style ADMM solver for large and sparse
 problems. The design, its sources and the task list are in
 [`design-qp.md`](design-qp.md).
 
-## Global optimisers (planned)
+## Global optimisers (v0.6.0)
 
-Differential evolution, basin hopping and DIRECT/DIRECT-L are designed but
-not implemented yet: SciPy's exact random stream (PCG64 and the legacy
+Differential evolution, basin hopping and DIRECT/DIRECT-L are implemented:
+SciPy's exact random stream (PCG64 and the legacy
 MT19937, through go-ndarray's `random`), deterministic parallel evaluation,
 the C DIRECT code ported statement by statement. The design, its sources, the
 validation plan and the task list are in [`design-global.md`](design-global.md).
