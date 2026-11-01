@@ -265,8 +265,8 @@ func warmUpdates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s0.UpdateMatrixValues([]float64{1}, nil); !errors.Is(err, ErrInput) {
-		t.Errorf("P = 0: %v", err)
+	if err := s0.UpdateMatrixValues([]float64{1}, nil); !errors.Is(err, ErrMethod) {
+		t.Errorf("ADMM: %v", err)
 	}
 	ps := qpCSC(t, 2, 2, []int{0, 1, 3}, []int32{0, 0, 1}, []float64{2, 1, 3})
 	sp, err := NewQPSolver(QPProblem{PSparse: ps, Q: []float64{-1, -1}}, &QPOptions{Method: QPActiveSet})

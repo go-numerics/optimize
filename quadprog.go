@@ -202,12 +202,12 @@ type qpModel struct {
 // QPSolver holds a validated problem and the factors of the last solve. It is
 // not safe for concurrent use. The updates and warm starts are in qp_solver.go.
 type QPSolver struct {
-	m      *qpModel
-	opts   QPOptions
-	meth   QPMethod
-	last   []int    // active set of the previous Solve
-	gi     *giState // active-set factors kept between solves; nil when stale
-	x0, y0 []float64
+	m    *qpModel
+	opts QPOptions
+	meth QPMethod
+	last []int    // active set of the previous Solve
+	gi   *giState // active-set factors kept between solves; nil when stale
+	ad   *admm    // the ADMM solver (QPADMM only)
 }
 
 // Quadprog solves p once: NewQPSolver followed by Solve.
@@ -241,6 +241,12 @@ func NewQPSolver(p QPProblem, opts *QPOptions) (*QPSolver, error) {
 	if s.meth, err = m.chooseMethod(o.Method); err != nil {
 		return nil, err
 	}
+	if s.meth == QPADMM {
+		if s.ad, err = newADMM(m, o.admmSettings()); err != nil {
+			return nil, err
+		}
+		s.ad.setWarm(o.X0, o.Y0)
+	}
 	return s, nil
 }
 
@@ -248,7 +254,7 @@ func NewQPSolver(p QPProblem, opts *QPOptions) (*QPSolver, error) {
 func (s *QPSolver) Solve() (*QPResult, error) {
 	m := s.m
 	if s.meth == QPADMM {
-		return nil, fmt.Errorf("%w: the ADMM solver is not implemented yet (design-qp.md task 8)", ErrMethod)
+		return s.ad.solve(), nil
 	}
 	feasTol := s.opts.FeasTol
 	if feasTol == 0 {
@@ -772,6 +778,24 @@ func (md *qpModel) px(x []float64) []float64 {
 // assemble builds the result for the point x and marginals marg of the
 // canonical rows (P·x + q = Σ marg_j·a_j).
 func (md *qpModel) assemble(x, marg []float64, method QPMethod, feasTol float64) *QPResult {
+	r, grad := md.fill(x, marg, method)
+	// design-qp.md §3.6: optimality is checked against (34), and the status
+	// drops to QPNumericalFail when the recomputed residuals say the point is
+	// not a solution (NaN fails both tests).
+	scale := math.Max(1, math.Max(vnormInf(md.q), vnormInf(grad)))
+	// An infinite scale (an overflowing P·x) would accept any residual.
+	if !(scale <= math.MaxFloat64) || !(r.Optimality <= 1e-8*scale) || !(r.ConstrViolation <= feasTol*(1+md.maxSide())) {
+		r.Status, r.Success = QPNumericalFail, false
+		r.Message = fmt.Sprintf("Numerical difficulties: stationarity residual %.3g, constraint violation %.3g.", r.Optimality, r.ConstrViolation)
+	}
+	return r
+}
+
+// fill builds the result blocks for x and the marginals marg without judging
+// the point: the objective, the residuals and marginals per family, Y,
+// Optimality and ConstrViolation, all recomputed from scratch. It also returns
+// P·x.
+func (md *qpModel) fill(x, marg []float64, method QPMethod) (*QPResult, []float64) {
 	n := md.n
 	grad := md.px(x)
 	fun := 0.5*dot(grad, x) + dot(md.q, x)
@@ -797,16 +821,7 @@ func (md *qpModel) assemble(x, marg []float64, method QPMethod, feasTol float64)
 	for _, v := range res {
 		r.Optimality = math.Max(r.Optimality, math.Abs(v))
 	}
-	// design-qp.md §3.6: optimality is checked against (34), and the status
-	// drops to QPNumericalFail when the recomputed residuals say the point is
-	// not a solution (NaN fails both tests).
-	scale := math.Max(1, math.Max(vnormInf(md.q), vnormInf(grad)))
-	// An infinite scale (an overflowing P·x) would accept any residual.
-	if !(scale <= math.MaxFloat64) || !(r.Optimality <= 1e-8*scale) || !(r.ConstrViolation <= feasTol*(1+md.maxSide())) {
-		r.Status, r.Success = QPNumericalFail, false
-		r.Message = fmt.Sprintf("Numerical difficulties: stationarity residual %.3g, constraint violation %.3g.", r.Optimality, r.ConstrViolation)
-	}
-	return r
+	return r, grad
 }
 
 // maxSide is the largest finite |l| or |u| of the canonical rows, the scale

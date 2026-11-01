@@ -23,6 +23,9 @@ func (s *QPSolver) UpdateQ(q []float64) error {
 		return fmt.Errorf("%w: q contains NaN or Inf", ErrInput)
 	}
 	copy(s.m.q, q)
+	if s.ad != nil {
+		s.ad.setQ(q) // the iterates stay as the warm start
+	}
 	return nil
 }
 
@@ -33,6 +36,9 @@ func (s *QPSolver) UpdateQ(q []float64) error {
 // reverse, and an equality (l == u) cannot become an interval or the reverse;
 // otherwise the error is ErrBounds. The active-set factors are kept.
 func (s *QPSolver) UpdateBounds(l, u []float64) error {
+	if s.ad != nil {
+		return errADMMUpdate("UpdateBounds")
+	}
 	m := s.m
 	if len(l) != len(m.rows) || len(u) != len(m.rows) {
 		return fmt.Errorf("%w: l and u have %d and %d entries, want %d canonical rows", ErrDimension, len(l), len(u), len(m.rows))
@@ -69,18 +75,18 @@ func (s *QPSolver) UpdateBounds(l, u []float64) error {
 // seeded with the previous active set; a P that is no longer positive definite
 // is rejected and nothing changes.
 func (s *QPSolver) UpdateMatrixValues(p, a []float64) error {
+	if s.ad != nil {
+		return errADMMUpdate("UpdateMatrixValues")
+	}
 	m := s.m
 	n := m.n
 	if p != nil {
-		want := -1
+		want := 0 // P = 0 has no values
 		switch {
 		case m.p != nil:
 			want = n * n
 		case m.pUpper != nil:
 			want = m.pUpper.NNZ()
-		}
-		if want < 0 {
-			return fmt.Errorf("%w: P = 0 has no values to update", ErrInput)
 		}
 		if len(p) != want {
 			return fmt.Errorf("%w: p has %d values, want %d", ErrDimension, len(p), want)
@@ -90,9 +96,6 @@ func (s *QPSolver) UpdateMatrixValues(p, a []float64) error {
 		}
 	}
 	if a != nil {
-		if m.sp != nil {
-			return fmt.Errorf("%w: updating ASparse values is not implemented", ErrMethod)
-		}
 		if len(a) != len(m.dense) {
 			return fmt.Errorf("%w: a has %d values, want %d", ErrDimension, len(a), len(m.dense))
 		}
@@ -146,6 +149,13 @@ func (s *QPSolver) WarmStart(x, y []float64) error {
 	if !allFinite(x) || !allFinite(y) {
 		return fmt.Errorf("%w: x and y must be finite", ErrInput)
 	}
-	s.x0, s.y0 = clone(x), clone(y)
+	if s.ad != nil {
+		s.ad.setWarm(x, y)
+	}
 	return nil
+}
+
+// errADMMUpdate is the answer of the updates the ADMM solver does not have yet.
+func errADMMUpdate(what string) error {
+	return fmt.Errorf("%w: %s is not implemented for the ADMM method yet (design-qp.md task 11)", ErrMethod, what)
 }

@@ -73,8 +73,8 @@ func TestQuadprogUnconstrained(t *testing.T) {
 			wantVec(t, name, r.X, []float64{1, 1}, 1e-12)
 		}
 	}
-	if _, err := Quadprog(QPProblem{PSparse: qpCSC(t, 2, 2, []int{0, 1, 2}, []int32{0, 1}, []float64{2, 4}), Q: p.Q}, nil); !errors.Is(err, ErrMethod) {
-		t.Errorf("QPAuto with a sparse P: %v, want ErrMethod (ADMM)", err)
+	if r, err := Quadprog(QPProblem{PSparse: qpCSC(t, 2, 2, []int{0, 1, 2}, []int32{0, 1}, []float64{2, 4}), Q: p.Q}, nil); err != nil || r.Method != QPADMM {
+		t.Errorf("QPAuto with a sparse P: %v %+v, want the ADMM method", err, r)
 	}
 	// An off-diagonal sparse entry is mirrored: P = [[2 1] [1 2]], q = −(3, 3).
 	r, err = Quadprog(QPProblem{PSparse: qpCSC(t, 2, 2, []int{0, 1, 3}, []int32{0, 0, 1}, []float64{2, 1, 2}), Q: []float64{-3, -3}}, &QPOptions{Method: QPActiveSet})
@@ -148,19 +148,20 @@ func TestQuadprogPinnedVariables(t *testing.T) {
 	}
 }
 
-func TestQuadprogNotImplemented(t *testing.T) {
+// What returned ErrMethod before the ADMM solver existed is solved by it.
+func TestQuadprogADMMTakesTheRest(t *testing.T) {
 	id := qpArr(t, []float64{1, 0, 0, 1}, 2, 2)
 	for name, tc := range map[string]struct {
 		p    QPProblem
 		opts *QPOptions
 	}{
 		"ADMM requested":    {QPProblem{P: id, Q: []float64{1, 1}}, &QPOptions{Method: QPADMM}},
-		"P = 0 (LP)":        {QPProblem{Q: []float64{1, 1}}, nil},
+		"P = 0 (LP)":        {QPProblem{Q: []float64{1, 1}, Cons: QPConstraints{Bounds: []Bound{{0, 10}, {1, 10}}}}, nil},
 		"singular P":        {QPProblem{P: qpArr(t, []float64{1, 1, 1, 1}, 2, 2), Q: []float64{1, 1}}, nil},
 		"sparse constraint": {QPProblem{P: id, Q: []float64{1, 1}, Cons: QPConstraints{ASparse: qpCSC(t, 1, 2, []int{0, 1, 2}, []int32{0, 0}, []float64{1, 1}), L: []float64{1}, U: []float64{1}}}, nil},
 	} {
-		if _, err := Quadprog(tc.p, tc.opts); !errors.Is(err, ErrMethod) {
-			t.Errorf("%s: %v, want ErrMethod", name, err)
+		if r, err := Quadprog(tc.p, tc.opts); err != nil || r.Method != QPADMM || r.Status != QPOptimal {
+			t.Errorf("%s: %v %+v, want an ADMM solution", name, err, r)
 		}
 	}
 }

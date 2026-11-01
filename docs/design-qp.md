@@ -1,6 +1,21 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **tasks 4, 5, 6 and 7 implemented**. Task 7 (`qp_solver.go`, `qp_gi.go`):
+Status: **tasks 4–9 implemented**. Tasks 8 and 9 (`qp_admm.go`,
+`qp_admm_check.go`, `qp_admm_scale.go`, `qp_kkt.go`; one PR, because the
+unscaled-termination branches of task 8 cannot be covered without the scaling
+of task 9): OSQP v1.0.0's iteration with the KKT of §4.1 factored by go-sparse
+v0.2.0 `ldl.Permuted` (AMD), `floats.Mul/Axpby3/Clamp/MaxAbs`, Ruiz scaling,
+ρ adaptation every 50 iterations, termination in OSQP's order with the duality
+gap, certificates, `QPNonConvex` from the KKT inertia (fewer than n positive
+pivots or a zero pivot; OSQP raises at setup instead). Read from OSQP v1.0.0:
+`auxil.c`, `osqp_api.c` (solve loop, update/warm-start), `scaling.c`,
+`algebra/builtin/vector.c`, `qdldl_interface.c`. Result on the 38 oracle cases
+OSQP can read: same status on 38, same iteration count and ρ-update count on
+38 (`TestADMMAgainstOSQP`); against Clarabel at 1e-9 settings x agrees to 1e-5
+on 35 solved cases. Deviations: a NaN residual is `QPNumericalFail` (OSQP loops
+to `max_iter`); `X`, `Y` and the objective are NaN for the statuses OSQP gives
+no solution; `UpdateBounds`/`UpdateMatrixValues` for ADMM wait for task 11.
+Task 7 (`qp_solver.go`, `qp_gi.go`):
 `QPSolver` keeps J, R, the working set and the multipliers between solves;
 `UpdateQ`, `UpdateBounds` (same row kinds only) and `WorkingSet` recover x and u
 from the factors by (35) and repair by dropping the most negative inequality
