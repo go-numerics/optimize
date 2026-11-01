@@ -12,11 +12,10 @@ import (
 
 // Quadratic programming: the API of docs/design-qp.md (§2). This file holds
 // the types, the validation (§2.1), the canonical rows (§2.2), the method
-// choice (§2.3) and the result assembly. The Goldfarb–Idnani and ADMM solvers
-// of §3 and §4 are not written yet: until they land, Quadprog solves the
-// problems whose canonical rows are all equalities (including none) and whose
-// P is positive definite, directly, and returns ErrMethod for every other
-// problem.
+// choice (§2.3) and the result assembly. The solvers are in qp_gi.go (the
+// Goldfarb–Idnani active set, §3), qp_admm*.go (OSQP v1.0.0's ADMM, §4) and
+// qp_solver.go (QPSolver, §5); problems whose canonical rows are all equalities
+// (including none) and whose P is positive definite are solved directly.
 
 // QPMethod names a quadratic-programming algorithm.
 type QPMethod string
@@ -105,9 +104,9 @@ type QPOptions struct {
 	PolishDelta            float64
 	PolishRefine           int
 	NoDualGapCheck         bool
-	// X0 and Y0 (lengths n and the number of canonical rows) and WorkingSet
-	// (canonical row indices) are validated; the solvers that use them are
-	// not written yet.
+	// X0 and Y0 (lengths n and the number of canonical rows) warm-start ADMM,
+	// WorkingSet (canonical row indices) warm-starts the active set; both are
+	// validated.
 	X0, Y0     []float64
 	WorkingSet []int
 }
