@@ -378,15 +378,41 @@ GOWORK=off go test -run '^$' -bench . -benchtime=1s -cpu 1   # Go side only
 
 ## Global optimisation (`DifferentialEvolution`, `Basinhopping`, `Direct`)
 
-**Status: the comparison with SciPy is not measured yet.** `tools/globalbench`
-(interleaved rounds, medians, a 1-minute load check after every round, as
-`tools/qpbench`) is merged and tested without Python, Docker or a quiet machine,
-but the build machine's 1-minute load average was 36–110 all day (other
-sessions), above the tool's refusal threshold of 8, so no number is claimed:
-a Go-only timing taken at that load is not a measurement and is not reported
-here either. Same for the per-generation effect of the go-simd/floats v0.7.0
-`AxpyDiffNoFMA` kernels in DE's mutation (PR #39): the 296 exact-path fixtures
-prove the arithmetic unchanged; the time is for the first quiet run.
+**Measured 2026-11-01** (Apple M4 Max, one thread, `tools/globalbench`, medians of 3
+interleaved rounds, 1-minute load 7.8 before and 6.3 after, no round discarded;
+only three rounds because the load stayed above 8 for most of the day: a first
+attempt of five rounds lost its fifth to a load of 56 and was abandoned, nothing
+from it is reported). SciPy 1.18.1, NumPy 2.5.4. Ratio = ours / SciPy, above 1 is
+slower. **No row is slower than SciPy.** Where nfev is equal both sides took the
+same path; on `de.rastrigin.10` (libm) the counts differ by 1.2%.
+
+| Row | nfev ours / SciPy | time ours | time SciPy | ratio |
+|---|---|---|---|---|
+| de.sphere.2 | 2823 / 2823 | 562 µs | 33.7 ms | 0.017 |
+| de.sphere.10 | 57761 / 57761 | 58.6 ms | 688 ms | 0.085 |
+| de.sphere.30 | 450481 / 450481 | 1.32 s | 5.9 s | 0.223 |
+| de.rosenbrock.2 | 3903 / 3903 | 786 µs | 51.8 ms | 0.015 |
+| de.rosenbrock.10 | 150161 / 150161 | 153 ms | 1.96 s | 0.078 |
+| de.rosenbrock.30 | 452217 / 452217 | 1.33 s | 6.69 s | 0.198 |
+| de.rastrigin.2 | 1953 / 1953 | 422 µs | 25.9 ms | 0.016 |
+| de.rastrigin.10 | 125411 / 123911 | 144 ms | 1.55 s | 0.093 |
+| de.rastrigin.30 | 450791 / 450791 | 1.51 s | 6.49 s | 0.233 |
+| dev.sphere.10 (SciPy vectorised, deferred) | 68411 evaluations / 467 calls | 69 ms | 182 ms | 0.379 |
+| dev.rosenbrock.10 | 150161 / 1012 calls | 153 ms | 402 ms | 0.381 |
+| dev.rastrigin.10 | 86755 / 633 calls | 97 ms | 237 ms | 0.409 |
+| deoverhead.trivial.10 (7650 trials) | 7650 / 7650 | 7.98 ms (1.04 µs per trial) | 86.1 ms (11.3 µs per trial) | 0.093 |
+| bh.himmelblau.100 | 871 / 871 | 836 µs | 10.4 ms | 0.081 |
+| direct.styblinskitang.2 (documentation example) | 2011 / 2011 | 457 µs | 5.5 ms | 0.083 |
+| direct.rosenbrock.2 | 835 / 835 | 67.6 µs | 2.43 ms | 0.028 |
+| direct.rosenbrock.5 | 619 / 619 | 51.2 µs | 1.84 ms | 0.028 |
+| direct.sphere.10 | 181 / 181 | 20.1 µs | 261 µs | 0.077 |
+
+The risk row of the design, DE against SciPy's `vectorized=True`, is 2.4–2.6 times
+faster (the objective is a NumPy expression on SciPy's side and a Go loop on ours;
+for `vectorized` SciPy's nfev counts calls, not evaluations, so the per-evaluation
+column of the tool is not meaningful there). The effect of the go-simd/floats
+v0.7.0 `AxpyDiffNoFMA` mutation kernels alone (PR #39) was not isolated: that
+needs an A/B of two builds on a quiet machine; the table is the whole of v0.6.0.
 
 Rows (`BenchmarkGlobal` in `global_bench_test.go`, `tools/globalbench/bench.py`
 with the same names and parameters; SciPy 1.18.1, one thread, `workers=1`):
