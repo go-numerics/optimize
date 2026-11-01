@@ -543,6 +543,9 @@ func FuzzReadFixture(f *testing.F) {
 	f.Add([]byte(`{"cases":[{"name":"a","n":2,"p":[[1]],"q":[0]}]}`))
 	f.Add([]byte(`{"cases":` + strings.Repeat("[", 5000)))
 	f.Add([]byte{})
+	f.Add([]byte(sparseCaseJSON))
+	f.Add([]byte(strings.Replace(sparseCaseJSON, `"indptr":[0,1,2]`, `"indptr":[0,9,2]`, 1)))
+	f.Add([]byte(strings.Replace(sparseCaseJSON, `"indices":[0,1]`, `"indices":[1,1]`, 1)))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		fx, err := Decode(bytes.NewReader(data))
 		if err != nil {
