@@ -198,7 +198,8 @@ evaluation is at parity; the gap is in the solver's workspace handling.
   Jacobians.
 - **`linprog`:** HiGHS-class performance, MILP, singleton-row presolve,
   crossover and sparse matrices.
-- **Global optimisers:** differential_evolution, basinhopping, shgo,
+- **Global optimisers:** differential_evolution, basinhopping and direct
+  (designed: [docs/design-global.md](docs/design-global.md)), shgo,
   dual_annealing.
 
 ## Licence
