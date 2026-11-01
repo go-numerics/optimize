@@ -57,6 +57,12 @@ type Fixture struct {
 	Reductions []Reduction `json:"reductions,omitempty"`
 	// BH holds the cases of the "bh" method (basin hopping).
 	BH []BHCase `json:"bh,omitempty"`
+	// Sources maps the SciPy benchmark files that the "funcs" and "stats"
+	// methods imported to their SHA-256, Funcs holds the "funcs" method's
+	// functions and Stats the "stats" method's seeded runs.
+	Sources map[string]string `json:"sources,omitempty"`
+	Funcs   []FuncCase        `json:"funcs,omitempty"`
+	Stats   []StatCase        `json:"stats,omitempty"`
 }
 
 // BHStep is one callback of scipy.optimize.basinhopping: the minimum of a
@@ -218,8 +224,14 @@ func Decode(r io.Reader) (*Fixture, error) {
 	if err := dec.Decode(&f); err != nil {
 		return nil, fmt.Errorf("fixture: %w", err)
 	}
-	if len(f.Cases) == 0 && len(f.DE) == 0 && len(f.BH) == 0 {
+	if len(f.Cases) == 0 && len(f.DE) == 0 && len(f.BH) == 0 && len(f.Funcs) == 0 && len(f.Stats) == 0 {
 		return nil, fmt.Errorf("fixture: no cases")
+	}
+	if err := checkFuncs(f.Funcs); err != nil {
+		return nil, err
+	}
+	if err := checkStats(f.Stats); err != nil {
+		return nil, err
 	}
 	if err := checkDE(f.DE); err != nil {
 		return nil, err
@@ -331,6 +343,8 @@ func Diff(a, b *Fixture) []Disagreement {
 	}
 	diffDE(a, b, add)
 	diffBH(a, b, add)
+	diffFuncs(a, b, add)
+	diffStats(a, b, add)
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Case < out[j].Case })
 	return out
 }

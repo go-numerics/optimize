@@ -1,6 +1,9 @@
 # Design: global optimisation (`DifferentialEvolution`, `Basinhopping`, `Direct`)
 
-Status: **designed, not implemented.** This is the last slice of item 5 of the
+Status: **implemented in v0.6.0** (tasks 3 to 10 of section 13; tasks 1 and 2
+are go-ndarray and go-simd releases; the comparison of times, task 9, is built
+but not yet measured, see docs/perf.md; sections 14 and 15 record what was
+found on the way). This is the last slice of item 5 of the
 go-scikit parity plan (`go-scikit/roadmap` PLAN.md, wave 2: "global methods
 (differential evolution, basin hopping, DIRECT)"). It covers
 `scipy.optimize.differential_evolution`, `scipy.optimize.basinhopping` and
@@ -1037,3 +1040,39 @@ function request and compared field by field.
   was not kept). Matching it needs the kernel itself; until then L-BFGS-B
   results agree with SciPy's to the tolerance of the termination test and the
   basin-hopping decisions are SciPy's on every fixture.
+
+## 15. Statistical layer: as built (v0.6.0)
+
+- `internal/gofuncs`: 21 functions (Ackley01 N = 2 and 5, Alpine01, Bohachevsky1,
+  Branin01, Bukin06, CrossInTray, Deb01, DropWave, EggHolder, Griewank,
+  HimmelBlau, Rastrigin N = 2 and 5, Rosenbrock, Salomon, Schwefel26,
+  SixHumpCamel, Sphere, StyblinskiTang, Wavy), fewer than the ~30 of §7.3:
+  Shubert01 (fglob rounded to 4 digits, so SciPy's own success rule cannot
+  pass) and Easom (needle in a haystack, 0 successes on both sides) carry no
+  information and were left out. Each is checked against SciPy's own class at
+  three points, to 1e-12 relative (`testdata/global/funcs.json`; the SciPy
+  source files are downloaded at the pinned tag and their SHA-256 are in the
+  fixture).
+- `testdata/global/stats.json`: SciPy 1.18.1 (linux/amd64 container), 100
+  seeds: `differential_evolution(popsize=20, rng=seed)` on 16 transcendental
+  functions, `basinhopping(niter=30, minimizer L-BFGS-B with bounds, rng=seed,
+  x0 from default_rng(10000+seed))` on 8, `direct` defaults on all 21.
+- Criteria as §7.2, with one change: for basin hopping the nfev comparison is
+  of the mean, not the median. Its nfev is bimodal (runs that stay on a
+  plateau against runs that descend), and the median sits on the cliff between
+  the clusters (Ackley01/2: medians 3584 against 3210 before the L-BFGS-B work
+  of section 14, means 3101.5 against 3097.4).
+- Results (Go against SciPy, successes of 100): DE 16/16 functions with equal
+  success counts, medians of nfev equal on 13 and within 3 % on the others
+  (Rastrigin 2 and 5, Schwefel26: polishing follows another finite-difference
+  path), 1 359 of 1 600 seeds on SciPy's exact path (same success and nfev);
+  basin hopping: successes 60/59, 100/100, 100/100, 100/100, 72/72, 0/0, 7/7,
+  39/41, all p > 0.4; DIRECT: same status and same success on 21/21, same nfev
+  and nit on 19 (Rastrigin/5: 195 against 185; Schwefel26: 615 against 623,
+  through libm `sin`/`cos` in a comparison of equal values).
+- Negative control: DE stopped after 15 generations on Rastrigin/5 is
+  detected (p = 5e-46).
+- The `Nextafter` of DE's integral limits has no black-box effect (the limits
+  of an integral axis are only compared for equality and overwritten when
+  polishing; removing the two calls leaves every SciPy-result fixture
+  unchanged), so `TestDEIntegralLimitsAreOpen` checks the interval itself.

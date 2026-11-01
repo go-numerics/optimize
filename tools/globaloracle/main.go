@@ -32,6 +32,21 @@ import (
 //go:embed global.py
 var script []byte
 
+// gobScript is the oracle of the benchmark functions and the statistical
+// layer (methods "funcs" and "stats"); it downloads SciPy's
+// go_benchmark_functions at the pinned tag, so these two methods need network.
+//
+//go:embed gob.py
+var gobScript []byte
+
+// scriptFor returns the oracle script that runs method.
+func scriptFor(method string) []byte {
+	if method == "funcs" || method == "stats" {
+		return gobScript
+	}
+	return script
+}
+
 const (
 	scipyPin = "scipy==1.18.1"
 	numpyPin = "numpy==2.5.4"
@@ -39,7 +54,7 @@ const (
 
 // methods lists the methods global.py can run; the others of the design
 // (differential evolution, basin hopping) are added with their ports.
-var methods = []string{"direct", "de", "bh"}
+var methods = []string{"direct", "de", "bh", "funcs", "stats"}
 
 // osExit is replaced by tests.
 var osExit = os.Exit
@@ -96,7 +111,7 @@ func genCmd() *cobra.Command {
 			if out == "" {
 				out = "testdata/global/" + method + ".json"
 			}
-			src := append([]byte(fmt.Sprintf("METHOD = %q\n", method)), script...)
+			src := append([]byte(fmt.Sprintf("METHOD = %q\n", method)), scriptFor(method)...)
 			var buf bytes.Buffer
 			if err := runner(command(platform), bytes.NewReader(src), &buf, cmd.ErrOrStderr()); err != nil {
 				return fmt.Errorf("oracle: %w", err)
@@ -114,7 +129,7 @@ func genCmd() *cobra.Command {
 			}
 			err = errors.Join(Encode(w, f), w.Close())
 			if err == nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases)+len(f.DE)+len(f.BH), f.Scipy, f.Machine, out)
+				fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases)+len(f.DE)+len(f.BH)+len(f.Funcs)+len(f.Stats), f.Scipy, f.Machine, out)
 			}
 			return err
 		},
