@@ -2,6 +2,7 @@ package optimize
 
 import (
 	"math"
+	"slices"
 
 	"github.com/go-simd/floats"
 	"github.com/go-sparse/sparse"
@@ -214,13 +215,12 @@ func (a *admm) loadData() {
 	a.scaleData()
 }
 
-// setRho (re)classifies the rows, rebuilds the ρ vector for the scalar ρ and
-// updates the KKT matrix: it assembles and factors it the first time, rewrites
-// its diagonal afterwards. A KKT matrix that is not quasi-definite sets
-// a.nonConvex.
-func (a *admm) setRho(rho float64) error {
-	a.rho = math.Min(math.Max(rho, admmRhoMin), admmRhoMax)
+// classify sets the type of each row from its (scaled) bounds and the ρ vector
+// from the type (OSQP's set_rho_vec), and reports whether any type changed.
+func (a *admm) classify() bool {
+	changed := false
 	for i := 0; i < a.m; i++ {
+		old := a.ctype[i]
 		switch {
 		case a.l[i] < -admmInfty*admmMinScaling && a.u[i] > admmInfty*admmMinScaling:
 			a.ctype[i] = -1
@@ -233,7 +233,63 @@ func (a *admm) setRho(rho float64) error {
 			a.rhoVec[i] = a.rho
 		}
 		a.rhoInv[i] = 1 / a.rhoVec[i]
+		changed = changed || a.ctype[i] != old
 	}
+	return changed
+}
+
+// setBounds takes the sides from the model's canonical rows (updated by the
+// caller), scales them, and refactors only if a row changed type
+// (osqp_update_data_vec with update_rho_vec). The iterates stay as the warm start.
+func (a *admm) setBounds() {
+	for i, r := range a.md.rows {
+		a.orig.l[i], a.orig.u[i] = math.Max(r.l, -admmInfty), math.Min(r.u, admmInfty)
+	}
+	floats.Mul(a.l, a.orig.l, a.e)
+	floats.Mul(a.u, a.orig.u, a.e)
+	if a.classify() {
+		a.refactor()
+	}
+}
+
+// resetMatrices re-derives the working data after the values of P or A changed
+// (design-qp.md §5: rerun the scaling, then refactor numerically on the stored
+// symbolic factor; OSQP's osqp_update_data_mat unscales, updates and rescales).
+// A changed pattern (an entry of a dense P that became zero or nonzero) needs a
+// new ordering and symbolic factor. The iterates stay as the warm start.
+func (a *admm) resetMatrices() error {
+	a.orig = a.md.admmFromModel()
+	a.loadData()
+	a.classify()
+	k := buildKKT(a.pu, &a.a, a.n, a.m, a.set.sigma, a.rhoInv)
+	if a.kkt != nil && slices.Equal(a.kkt.mat.Indptr, k.mat.Indptr) && slices.Equal(a.kkt.mat.Indices, k.mat.Indices) {
+		copy(a.kkt.mat.Data, k.mat.Data)
+		a.nonConvex = a.kkt.factor()
+		return nil
+	}
+	if err := k.analyse(); err != nil {
+		return err
+	}
+	a.kkt = k
+	a.nonConvex = k.factor()
+	return nil
+}
+
+// refactor writes the current 1/ρ into the KKT diagonal and factors it.
+func (a *admm) refactor() {
+	for i, p := range a.kkt.rhoDiag {
+		a.kkt.mat.Data[p] = -a.rhoInv[i]
+	}
+	a.nonConvex = a.kkt.factor()
+}
+
+// setRho (re)classifies the rows, rebuilds the ρ vector for the scalar ρ and
+// updates the KKT matrix: it assembles and factors it the first time, rewrites
+// its diagonal afterwards. A KKT matrix that is not quasi-definite sets
+// a.nonConvex.
+func (a *admm) setRho(rho float64) error {
+	a.rho = math.Min(math.Max(rho, admmRhoMin), admmRhoMax)
+	a.classify()
 	a.nonConvex = nil
 	if a.kkt == nil {
 		k := buildKKT(a.pu, &a.a, a.n, a.m, a.set.sigma, a.rhoInv)
@@ -241,14 +297,10 @@ func (a *admm) setRho(rho float64) error {
 			return err
 		}
 		a.kkt = k
-	} else {
-		for i, p := range a.kkt.rhoDiag {
-			a.kkt.mat.Data[p] = -a.rhoInv[i]
-		}
+		a.nonConvex = a.kkt.factor()
+		return nil
 	}
-	if err := a.kkt.factor(); err != nil {
-		a.nonConvex = err
-	}
+	a.refactor()
 	return nil
 }
 

@@ -1,6 +1,16 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **tasks 4–10 implemented**. Task 10 (`qp_admm_polish.go`): OSQP's
+Status: **tasks 4–11 implemented**. Task 11 (`qp_solver.go`, `qp_admm.go`):
+the ADMM `QPSolver` keeps K's symbolic factor, ρ and the iterates (OSQP's
+warm_starting). `UpdateQ` rescales q; `UpdateBounds` rescales l, u and
+reclassifies the rows (loose / inequality / equality) and refactors numerically
+only if a type changed (`update_rho_vec`); `UpdateMatrixValues` reruns the
+scaling on the unscaled data (as `osqp_update_data_mat`), rebuilds K and
+refactors on the stored symbolic factor when the pattern is unchanged (a dense
+P whose zero pattern changes gets a new ordering), refuses an update whose KKT
+matrix is not quasi-definite and restores the previous data; `a` holds the dense
+rows then the ASparse entries in CSC order. Measured: warm / cold iterations
+0.53 after a 1% perturbation of q at 1e-6 tolerances (40 problems). Task 10 (`qp_admm_polish.go`): OSQP's
 `polish.c` (read at v1.0.0): active rows `z−l < −y` or `l = u` (lower), `u−z < y`
 (upper), reduced system `[P+δI Aredᵀ; Ared −δI]` through the same
 `ldl.Permuted`, `PolishRefine` passes of refinement against the unregularised

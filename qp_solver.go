@@ -34,11 +34,9 @@ func (s *QPSolver) UpdateQ(q []float64) error {
 // bounds; one entry per canonical row, -Inf and +Inf for a missing side). A row
 // keeps the kind it was created with: a finite side cannot become infinite or the
 // reverse, and an equality (l == u) cannot become an interval or the reverse;
-// otherwise the error is ErrBounds. The active-set factors are kept.
+// otherwise the error is ErrBounds. The active-set factors are kept. ADMM takes
+// any sides and refactors only if a row changes type (OSQP's update_rho_vec).
 func (s *QPSolver) UpdateBounds(l, u []float64) error {
-	if s.ad != nil {
-		return errADMMUpdate("UpdateBounds")
-	}
 	m := s.m
 	if len(l) != len(m.rows) || len(u) != len(m.rows) {
 		return fmt.Errorf("%w: l and u have %d and %d entries, want %d canonical rows", ErrDimension, len(l), len(u), len(m.rows))
@@ -47,12 +45,18 @@ func (s *QPSolver) UpdateBounds(l, u []float64) error {
 		return err
 	}
 	for i, r := range m.rows {
-		if math.IsInf(l[i], -1) != math.IsInf(r.l, -1) || math.IsInf(u[i], 1) != math.IsInf(r.u, 1) || (l[i] == u[i]) != (r.l == r.u) {
+		// The active set keeps the kind of each row (its columns); ADMM takes any
+		// sides: a row whose type (loose, inequality, equality) changes gets a new
+		// ρ and a numeric refactorisation.
+		if s.ad == nil && (math.IsInf(l[i], -1) != math.IsInf(r.l, -1) || math.IsInf(u[i], 1) != math.IsInf(r.u, 1) || (l[i] == u[i]) != (r.l == r.u)) {
 			return fmt.Errorf("%w: canonical row %d changes kind (finite sides or equality status)", ErrBounds, i)
 		}
 	}
 	for i := range m.rows {
 		m.rows[i].l, m.rows[i].u = l[i], u[i]
+	}
+	if s.ad != nil {
+		s.ad.setBounds()
 	}
 	if g := s.gi; g != nil {
 		for i, c := range g.cols {
@@ -70,14 +74,15 @@ func (s *QPSolver) UpdateBounds(l, u []float64) error {
 // without changing their patterns. p holds the n×n values row-major for a dense
 // P (symmetrised as (P+Pᵀ)/2), or the entries of PSparse in their stored order;
 // a holds the dense canonical rows (AEq, AUb, the Linear blocks) row-major, the
-// bound rows excluded. nil keeps the old values. ASparse values cannot be
-// updated yet (ErrMethod). The active-set factors are rebuilt on the next Solve,
-// seeded with the previous active set; a P that is no longer positive definite
-// is rejected and nothing changes.
+// bound rows excluded, followed by the entries of ASparse in its CSC storage
+// order (ADMM only). nil keeps the old values. The active-set factors are
+// rebuilt on the next Solve, seeded with the previous active set; a P that is no
+// longer positive definite is rejected and nothing changes. The ADMM solver
+// reruns its scaling and refactors numerically on the stored symbolic factor
+// (a new ordering only if the nonzero pattern of a dense P changed), keeps ρ
+// and the iterates as the warm start, and rejects a P that makes the KKT matrix
+// not quasi-definite, leaving the solver as it was.
 func (s *QPSolver) UpdateMatrixValues(p, a []float64) error {
-	if s.ad != nil {
-		return errADMMUpdate("UpdateMatrixValues")
-	}
 	m := s.m
 	n := m.n
 	if p != nil {
@@ -95,15 +100,19 @@ func (s *QPSolver) UpdateMatrixValues(p, a []float64) error {
 			return fmt.Errorf("%w: p contains NaN or Inf", ErrInput)
 		}
 	}
+	spN := 0 // entries of ASparse: the values after the dense rows' (ADMM only)
+	if m.sp != nil {
+		spN = m.sp.NNZ()
+	}
 	if a != nil {
-		if len(a) != len(m.dense) {
-			return fmt.Errorf("%w: a has %d values, want %d", ErrDimension, len(a), len(m.dense))
+		if len(a) != len(m.dense)+spN {
+			return fmt.Errorf("%w: a has %d values, want %d", ErrDimension, len(a), len(m.dense)+spN)
 		}
 		if !allFinite(a) {
 			return fmt.Errorf("%w: a contains NaN or Inf", ErrInput)
 		}
 	}
-	oldP, oldD, oldC := m.p, m.dense, m.chol
+	oldP, oldD, oldC, oldSP := m.p, m.dense, m.chol, m.sp
 	var oldU []float64
 	if m.pUpper != nil {
 		oldU = m.pUpper.Data
@@ -122,13 +131,35 @@ func (s *QPSolver) UpdateMatrixValues(p, a []float64) error {
 		m.pUpper.Data = clone(p)
 	}
 	if a != nil {
-		m.dense = clone(a)
+		m.dense = clone(a[:len(m.dense)])
+		if spN > 0 { // same pattern: CSR → CSC, new values, back to CSR
+			c := m.sp.ToCSC()
+			copy(c.Data, a[len(m.dense):])
+			m.sp = c.ToCSR()
+		}
 	}
-	if p != nil && s.meth == QPActiveSet && !m.positiveDefinite() {
-		m.p, m.dense, m.chol = oldP, oldD, oldC
+	restore := func() {
+		m.p, m.dense, m.chol, m.sp = oldP, oldD, oldC, oldSP
 		if oldU != nil {
 			m.pUpper.Data = oldU
 		}
+	}
+	if s.ad != nil {
+		err := s.ad.resetMatrices()
+		if err == nil && s.ad.nonConvex != nil {
+			err = fmt.Errorf("%w: the updated KKT matrix is not quasi-definite: %v", ErrInput, s.ad.nonConvex)
+		}
+		if err != nil { // back to the data that worked
+			restore()
+			// The old pattern is the one the stored symbolic factor was made for,
+			// so this cannot need a new ordering and cannot fail.
+			_ = s.ad.resetMatrices()
+			return err
+		}
+		return nil
+	}
+	if p != nil && !m.positiveDefinite() {
+		restore()
 		return fmt.Errorf("%w: the updated P is not positive definite; the active-set method needs it", ErrInput)
 	}
 	s.gi = nil
@@ -153,9 +184,4 @@ func (s *QPSolver) WarmStart(x, y []float64) error {
 		s.ad.setWarm(x, y)
 	}
 	return nil
-}
-
-// errADMMUpdate is the answer of the updates the ADMM solver does not have yet.
-func errADMMUpdate(what string) error {
-	return fmt.Errorf("%w: %s is not implemented for the ADMM method yet (design-qp.md task 11)", ErrMethod, what)
 }
