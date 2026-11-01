@@ -1,7 +1,5 @@
-github.com/go-ndarray/ndarray v0.30.0 h1:B92CiS5giXQGEBeuJU54ASI4IC7KRNmXvheRkSTV+IE=
-github.com/go-ndarray/ndarray v0.30.0/go.mod h1:OVccdl+ajDh+zTtEvkE/Xai2LTzdYigdPG/5XtzWFqk=
-github.com/go-simd/floats v0.6.0 h1:LrU3z7eLtKr+SPR8+JXzrD/anYVzi3Pe0LiDySpT0mY=
-github.com/go-simd/floats v0.6.0/go.mod h1:Aq5a6oY5pUqm9Hpi+iV2nrNmaaUb0rwHvUHIerXWSvA=
+github.com/go-ndarray/ndarray v0.32.0 h1:WvEYR51OVebUYm4U4hSjSaVkMBWJURJgXeQEa/KBiLY=
+github.com/go-ndarray/ndarray v0.32.0/go.mod h1:OVccdl+ajDh+zTtEvkE/Xai2LTzdYigdPG/5XtzWFqk=
 github.com/go-simd/floats v0.7.0 h1:6puR4IJ5EXl7m0Fg1PYERcN40h+xLL8AuAeXItdlJ1k=
 github.com/go-simd/floats v0.7.0/go.mod h1:Aq5a6oY5pUqm9Hpi+iV2nrNmaaUb0rwHvUHIerXWSvA=
 github.com/go-sparse/sparse v0.3.0 h1:y++tCTIdQsGwUavxCHKfDt4AX8T2zUnwyDQ3Vix3uP8=
