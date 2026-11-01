@@ -5,7 +5,7 @@ go 1.27.2
 require (
 	github.com/go-ndarray/ndarray v0.28.0
 	github.com/go-simd/floats v0.5.0
-	github.com/go-sparse/sparse v0.1.0
+	github.com/go-sparse/sparse v0.2.0
 )
 
 require golang.org/x/sys v0.49.0 // indirect

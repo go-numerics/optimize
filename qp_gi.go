@@ -52,12 +52,6 @@ const (
 	giNumerical
 )
 
-// solveGI runs the method on a model whose P is positive definite
-// (md.chol is set).
-func (md *qpModel) solveGI(maxIter int, feasTol float64, hint []int) *QPResult {
-	return md.newGI().solve(maxIter, feasTol, hint, false)
-}
-
 // newGI builds the columns of the dual method from the canonical rows
 // (equalities first); the factors are set by start.
 func (md *qpModel) newGI() *giState {
