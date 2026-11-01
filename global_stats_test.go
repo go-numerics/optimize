@@ -191,6 +191,9 @@ func TestStatisticsDE(t *testing.T) {
 		if c.Method != "de" {
 			continue
 		}
+		if raceEnabled && !raceSubset[c.Name] {
+			continue // see race_on_test.go
+		}
 		f, ok := gofuncs.ByName(c.Name)
 		if !ok {
 			t.Fatalf("unknown function %s", c.Name)
@@ -211,7 +214,7 @@ func TestStatisticsDE(t *testing.T) {
 		}
 		n++
 	}
-	if n < 10 {
+	if n < 10 && !raceEnabled {
 		t.Fatalf("only %d differential-evolution functions in the fixture", n)
 	}
 }
@@ -223,6 +226,9 @@ func TestStatisticsBasinhopping(t *testing.T) {
 	n := 0
 	for _, c := range loadStats(t) {
 		if c.Method != "bh" {
+			continue
+		}
+		if raceEnabled && !raceSubset[c.Name] {
 			continue
 		}
 		f, ok := gofuncs.ByName(c.Name)
@@ -252,7 +258,7 @@ func TestStatisticsBasinhopping(t *testing.T) {
 		}
 		n++
 	}
-	if n < 6 {
+	if n < 6 && !raceEnabled {
 		t.Fatalf("only %d basin-hopping functions in the fixture", n)
 	}
 }
