@@ -1,6 +1,9 @@
 # Design: global optimisation (`DifferentialEvolution`, `Basinhopping`, `Direct`)
 
-Status: **designed, not implemented.** This is the last slice of item 5 of the
+Status: **implemented in v0.6.0** (tasks 3 to 10 of section 13; tasks 1 and 2
+are go-ndarray and go-simd releases; the comparison of times, task 9, is built
+but not yet measured, see docs/perf.md; sections 14 and 15 record what was
+found on the way). This is the last slice of item 5 of the
 go-scikit parity plan (`go-scikit/roadmap` PLAN.md, wave 2: "global methods
 (differential evolution, basin hopping, DIRECT)"). It covers
 `scipy.optimize.differential_evolution`, `scipy.optimize.basinhopping` and
