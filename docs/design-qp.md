@@ -295,8 +295,10 @@ in the `QPResult` comment, which a test asserts on every fixture.
 ### 2.3 Method choice (`QPAuto`)
 
 `QPActiveSet` when P is given dense, its Cholesky succeeds, no `ASparse` is
-given and `n + m ≤ 2000`; otherwise `QPADMM`. The threshold is provisional
-and is set from the perf measurements of task 13. The accuracies differ:
+given and `n + m ≤ 2500`; otherwise `QPADMM`. The threshold was set from the
+perf measurements of task 13 (docs/perf.md: the exact active set is faster than
+ADMM at 1e-3 up to `n + m` = 1550 and slower at 3100; the ratio crosses 1 near
+2600). The accuracies differ:
 ADMM's defaults are OSQP's 1e-3. `QPResult.Method` says which ran, and the
 README must say so in the first line describing `Quadprog`.
 
