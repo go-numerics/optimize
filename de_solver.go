@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/go-simd/floats"
 )
@@ -51,6 +52,20 @@ type deSolver struct {
 	accept   []bool
 	scaled   [][]float64 // custom strategy: the population in problem units
 	dev      []float64
+
+	// integrality (nil: none) and constraints (general form lb <= g(x) <= ub)
+	integral []bool
+	cons     []genConstraint
+	ncv      int         // total constraint components; 0 without constraints
+	feasible []bool      // per member
+	cv       [][]float64 // per member violations, width max(1, ncv)
+	cvTrial  []float64   // violations of the immediate trial
+	tFeas    []bool      // deferred: feasibility of the trials
+	tCV      [][]float64 // deferred: violations of the trials
+	g        []float64   // one constraint's values
+	sel      [][]float64 // feasible subset handed to evalPopulation
+	selOut   []float64
+	selIdx   []int
 }
 
 // alloc sizes the population and the scratch space for s.s members.
@@ -81,6 +96,26 @@ func (s *deSolver) alloc() {
 	if s.o.CustomStrategy != nil {
 		s.scaled = matrix(s.s, s.n)
 	}
+	w := max(1, s.ncv)
+	s.feasible = make([]bool, s.s)
+	for i := range s.feasible {
+		s.feasible[i] = true
+	}
+	s.cv = matrix(s.s, w)
+	s.cvTrial = make([]float64, w)
+	s.g = make([]float64, s.maxM())
+	s.sel = make([][]float64, s.s)
+	s.selOut = make([]float64, s.s)
+	s.selIdx = make([]int, s.s)
+}
+
+// maxM is the largest number of components of one constraint.
+func (s *deSolver) maxM() int {
+	m := 0
+	for _, c := range s.cons {
+		m = max(m, c.m)
+	}
+	return m
 }
 
 func matrix(r, c int) [][]float64 {
@@ -104,13 +139,65 @@ func (s *deSolver) allocDeferred() {
 	s.fill = make([]int64, s.s)
 	s.crossAll = make([]float64, s.s*s.n)
 	s.accept = make([]bool, s.s)
+	s.tFeas = make([]bool, s.s)
+	for i := range s.tFeas {
+		s.tFeas[i] = true // unconstrained: every trial is feasible
+	}
+	s.tCV = matrix(s.s, max(1, s.ncv))
 }
 
-// scaleInto is _scale_parameters: x = m + (t-0.5)·w. (Integrality, task 6.)
+// scaleInto is _scale_parameters: x = m + (t-0.5)·w, rounded half to even on
+// the integral axes.
 func (s *deSolver) scaleInto(dst, t []float64) {
 	for j, v := range t {
 		dst[j] = s.arg1[j] + float64((v-0.5)*s.arg2[j])
 	}
+	for j, isInt := range s.integral {
+		if isInt {
+			dst[j] = math.RoundToEven(dst[j])
+		}
+	}
+}
+
+// violation fills out (width ncv) with the violation of every constraint
+// component at x: max(lb-g, 0) + max(g-ub, 0), NumPy's NaN-propagating
+// maximum (the builtin), as _ConstraintWrapper.violation.
+func (s *deSolver) violation(x, out []float64) {
+	off := 0
+	for _, c := range s.cons {
+		g := s.g[:c.m]
+		if c.linear {
+			for i := range g {
+				g[i] = dot(c.a[i*s.n:(i+1)*s.n], x)
+			}
+		} else {
+			c.fun(x, g)
+		}
+		for i, gi := range g {
+			out[off+i] = max(c.lb[i]-gi, 0) + max(gi-c.ub[i], 0)
+		}
+		off += c.m
+	}
+}
+
+// isFeasible is ~(np.sum(cv) > 0): a NaN violation counts as feasible.
+func isFeasible(cv []float64) bool { return !(floats.SumPairwise(cv) > 0) }
+
+// acceptTrial is _accept_trial (Lampinen).
+func acceptTrial(eT float64, fT bool, cvT []float64, eO float64, fO bool, cvO []float64) bool {
+	switch {
+	case fO && fT:
+		return eT <= eO
+	case fT: // the original is infeasible
+		return true
+	}
+	// infeasible trial: accepted when no component is worse (a NaN is)
+	for i, v := range cvT {
+		if !(v <= cvO[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // unscale is _unscale_parameters: t = (x-m)·r + 0.5.
@@ -159,9 +246,31 @@ func argmin(e []float64) int {
 
 // promote is _promote_lowest_energy.
 func (s *deSolver) promote() {
-	l := argmin(s.energies)
+	l := -1 // the best feasible member, NumPy's argmin over the feasible ones
+	for i, ok := range s.feasible {
+		if !ok {
+			continue
+		}
+		e := s.energies[i]
+		if math.IsNaN(e) {
+			l = i
+			break
+		}
+		if l < 0 || e < s.energies[l] {
+			l = i
+		}
+	}
+	if l < 0 { // none feasible: the least violating
+		sums := s.dev
+		for i, row := range s.cv {
+			sums[i] = floats.SumPairwise(row)
+		}
+		l = argmin(sums)
+	}
 	s.energies[0], s.energies[l] = s.energies[l], s.energies[0]
 	s.pop[0], s.pop[l] = s.pop[l], s.pop[0]
+	s.feasible[0], s.feasible[l] = s.feasible[l], s.feasible[0]
+	s.cv[0], s.cv[l] = s.cv[l], s.cv[0]
 }
 
 func allInf(e []float64) bool {
@@ -185,8 +294,38 @@ func anyInf(e []float64) bool {
 // initEnergies evaluates the whole population (the first block of solve and
 // of __next__), within the evaluation budget.
 func (s *deSolver) initEnergies() {
-	s.evalPopulation(s.pop, s.energies)
+	if s.ncv == 0 {
+		s.evalPopulation(s.pop, s.energies)
+	} else {
+		for i, row := range s.pop {
+			s.scaleInto(s.x, row)
+			s.violation(s.x, s.cv[i])
+			s.feasible[i] = isFeasible(s.cv[i])
+		}
+		for i := range s.energies {
+			s.energies[i] = math.Inf(1)
+		}
+		s.evalFeasible(s.pop, s.feasible, s.energies)
+	}
 	s.promote()
+}
+
+// evalFeasible evaluates the members flagged feasible (within the budget, in
+// order) and stores their energies; the others keep +Inf:
+// energies[feasible] = _calculate_population_energies(members[feasible]).
+func (s *deSolver) evalFeasible(members [][]float64, feasible []bool, out []float64) {
+	k := 0
+	for i, ok := range feasible {
+		out[i] = math.Inf(1)
+		if ok {
+			s.sel[k], s.selIdx[k] = members[i], i
+			k++
+		}
+	}
+	s.evalPopulation(s.sel[:k], s.selOut[:k])
+	for j := range k {
+		out[s.selIdx[j]] = s.selOut[j]
+	}
 }
 
 // evalPopulation is _calculate_population_energies for the members in
@@ -378,12 +517,21 @@ func (s *deSolver) generationImmediate() bool {
 		}
 		s.ensureBounds(trial)
 		s.scaleInto(s.x, trial)
-		energy := s.f(s.x)
-		s.nfev++
-		if energy <= s.energies[c] {
+		feasible, energy := true, 0.0
+		if s.ncv > 0 {
+			s.violation(s.x, s.cvTrial)
+			feasible, energy = isFeasible(s.cvTrial), math.Inf(1)
+		}
+		if feasible {
+			energy = s.f(s.x)
+			s.nfev++
+		}
+		if acceptTrial(energy, feasible, s.cvTrial, s.energies[c], s.feasible[c], s.cv[c]) {
 			copy(s.pop[c], trial)
 			s.energies[c] = energy
-			if energy <= s.energies[0] {
+			s.feasible[c] = feasible
+			copy(s.cv[c], s.cvTrial)
+			if acceptTrial(energy, feasible, s.cvTrial, s.energies[0], s.feasible[0], s.cv[0]) {
 				s.promote()
 			}
 		}
@@ -444,14 +592,25 @@ func (s *deSolver) generationDeferred() bool {
 			}
 		}
 	}
-	s.evalPopulation(s.trials, s.tEnergy)
+	if s.ncv == 0 {
+		s.evalPopulation(s.trials, s.tEnergy)
+	} else {
+		for i, row := range s.trials {
+			s.scaleInto(s.x, row)
+			s.violation(s.x, s.tCV[i])
+			s.tFeas[i] = isFeasible(s.tCV[i])
+		}
+		s.evalFeasible(s.trials, s.tFeas, s.tEnergy)
+	}
 	for i := range sz {
-		s.accept[i] = s.tEnergy[i] <= s.energies[i]
+		s.accept[i] = acceptTrial(s.tEnergy[i], s.tFeas[i], s.tCV[i], s.energies[i], s.feasible[i], s.cv[i])
 	}
 	for i := range sz {
 		if s.accept[i] {
 			copy(s.pop[i], s.trials[i])
 			s.energies[i] = s.tEnergy[i]
+			s.feasible[i] = s.tFeas[i]
+			copy(s.cv[i], s.tCV[i])
 		}
 	}
 	s.promote()
@@ -503,7 +662,32 @@ func (s *deSolver) result(nit int, msg string, status int) *DEResult {
 	for i := range s.pop {
 		s.scaleInto(r.Population[i], s.pop[i])
 	}
+	if s.ncv > 0 && s.report(r) > 0 { // an infeasible best member is no success
+		r.Success = false
+		if r.Status == DEConverged {
+			r.Status = DEInfeasible
+		}
+	}
 	return r
+}
+
+// report fills r.Constr and r.ConstrViolation from the violations at r.X and
+// returns the largest one (np.max: a NaN propagates).
+func (s *deSolver) report(r *DEResult) float64 {
+	vio := make([]float64, s.ncv)
+	s.violation(r.X, vio)
+	r.Constr = make([][]float64, len(s.cons))
+	off := 0
+	for k, c := range s.cons {
+		r.Constr[k] = vio[off : off+c.m : off+c.m]
+		off += c.m
+	}
+	mx := vio[0]
+	for _, v := range vio[1:] {
+		mx = max(mx, v)
+	}
+	r.ConstrViolation = mx
+	return mx
 }
 
 // solve is DifferentialEvolutionSolver.solve.
@@ -546,13 +730,24 @@ func (s *deSolver) solve() (*DEResult, error) {
 	if err := s.polish(res); err != nil {
 		return nil, err
 	}
+	if s.ncv > 0 {
+		if mx := s.report(res); mx > 0 {
+			res.Success, res.Status = false, DEInfeasible
+			res.Message = "The solution does not satisfy the constraints, MAXCV = " + pyRepr(mx)
+		}
+	}
 	return res, nil
 }
 
 // polish is the polishing block of solve.
 func (s *deSolver) polish(res *DEResult) error {
-	if s.o.NoPolish {
-		return nil
+	if s.o.NoPolish || (s.integral != nil && !slices.Contains(s.integral, false)) {
+		return nil // nothing to polish when every variable is an integer
+	}
+	for i, isInt := range s.integral { // pin the integral axes
+		if isInt {
+			s.lo[i], s.hi[i] = res.X[i], res.X[i]
+		}
 	}
 	bounds := make([]Bound, s.n)
 	for i := range bounds {
@@ -562,9 +757,13 @@ func (s *deSolver) polish(res *DEResult) error {
 		r   *Result
 		err error
 	)
-	if s.o.Polish != nil {
-		r, err = s.o.Polish(s.f, clone(res.X), bounds)
-	} else {
+	switch {
+	case s.o.Polish != nil:
+		r, err = s.o.Polish(s.f, clone(res.X), bounds, s.o.Constraints)
+	case s.ncv > 0:
+		r, err = Minimize(Problem{Func: s.f}, clone(res.X), TrustConstr,
+			&Options{Bounds: bounds, Constraints: s.o.Constraints})
+	default:
 		r, err = Minimize(Problem{Func: s.f}, clone(res.X), LBFGSB, &Options{Bounds: bounds})
 	}
 	if err != nil {

@@ -3,8 +3,11 @@ package optimize
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"testing"
+
+	"github.com/go-ndarray/ndarray"
 )
 
 // The fixture of tools/globaloracle (testdata/global/de.json): SciPy 1.18.1's
@@ -34,7 +37,16 @@ type deCase struct {
 		Updating      string      `json:"updating"`
 		Polish        bool        `json:"polish"`
 		Maxfun        *int        `json:"maxfun"`
+		Constraints   []struct {
+			Type string      `json:"type"`
+			Name string      `json:"name"`
+			A    [][]float64 `json:"A"`
+			Lb   []*float64  `json:"lb"`
+			Ub   []*float64  `json:"ub"`
+		} `json:"constraints"`
+		Integrality []bool `json:"integrality"`
 	} `json:"options"`
+	ConstrViolation *dgHex `json:"constr_violation"`
 	Error      *string   `json:"error"`
 	X          []dgHex   `json:"x"`
 	Fun        dgHex     `json:"fun"`
@@ -90,7 +102,21 @@ func loadDEFixture(t testing.TB) *deFixture {
 	return &f
 }
 
-var deStrategyOf = map[string]DEStrategy{
+// deNLConstraints are the Go twins of NL_CONSTRAINTS in global.py; every
+// product is rounded before it is summed.
+var deNLConstraints = map[string]struct {
+	m int
+	f func(x, c []float64)
+}{
+	"circle": {1, func(x, c []float64) { c[0] = float64(x[0]*x[0]) + float64(x[1]*x[1]) }},
+	"hyper": {2, func(x, c []float64) {
+		c[0] = x[0] * x[1]
+		c[1] = x[0] - float64(float64(x[1]*x[1])*x[1])
+	}},
+	"impossible": {1, func(x, c []float64) { c[0] = float64(float64(x[0]*x[0])+float64(x[1]*x[1])) + 1.0 }},
+}
+
+var deStrategyOf =map[string]DEStrategy{
 	"best1bin": Best1Bin, "best1exp": Best1Exp, "rand1bin": Rand1Bin, "rand1exp": Rand1Exp,
 	"randtobest1bin": RandToBest1Bin, "randtobest1exp": RandToBest1Exp,
 	"currenttobest1bin": CurrentToBest1Bin, "currenttobest1exp": CurrentToBest1Exp,
@@ -115,6 +141,31 @@ func deOptionsOf(c *deCase) (*DEOptions, []Bound) {
 	}
 	if c.Options.Maxfun != nil {
 		o.MaxFev = *c.Options.Maxfun
+	}
+	o.Integrality = c.Options.Integrality
+	for _, k := range c.Options.Constraints {
+		lim := func(v []*float64, inf float64) []float64 {
+			out := make([]float64, len(v))
+			for i, p := range v {
+				out[i] = inf
+				if p != nil {
+					out[i] = *p
+				}
+			}
+			return out
+		}
+		lb, ub := lim(k.Lb, math.Inf(-1)), lim(k.Ub, math.Inf(1))
+		if k.Type == "linear" {
+			flat := []float64{}
+			for _, row := range k.A {
+				flat = append(flat, row...)
+			}
+			a, _ := ndarray.FromData(flat, len(k.A), len(k.A[0]))
+			o.Constraints = append(o.Constraints, LinearConstraint{A: a, Lb: lb, Ub: ub})
+			continue
+		}
+		fn := deNLConstraints[k.Name]
+		o.Constraints = append(o.Constraints, NonlinearConstraint{M: fn.m, Func: fn.f, Lb: lb, Ub: ub})
 	}
 	if c.Kind == "rng" {
 		o.RNG = NewRNG(c.Seed)
@@ -148,6 +199,10 @@ func deCompare(c *deCase, r *DEResult) string {
 	}
 	if r.Success != c.Success || r.Message != c.Message {
 		return fmt.Sprintf("success %v %q, SciPy %v %q", r.Success, r.Message, c.Success, c.Message)
+	}
+	if (c.ConstrViolation == nil) != (len(r.Constr) == 0) ||
+		(c.ConstrViolation != nil && !sameFloat(r.ConstrViolation, float64(*c.ConstrViolation))) {
+		return fmt.Sprintf("constraint violation %v, SciPy %v", r.ConstrViolation, c.ConstrViolation)
 	}
 	if !sameBitsHex(r.X, c.X) || !sameFloat(r.Fun, float64(c.Fun)) {
 		return fmt.Sprintf("x %v fun %v, SciPy %v %v", r.X, r.Fun, c.X, c.Fun)

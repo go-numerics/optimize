@@ -83,6 +83,20 @@ type DEOptions struct {
 	Updating      string      `json:"updating"`
 	Polish        bool        `json:"polish"`
 	Maxfun        *int        `json:"maxfun"`
+	// Constraints and Integrality are null when absent.
+	Constraints []DEConstraint `json:"constraints"`
+	Integrality []bool         `json:"integrality"`
+}
+
+// DEConstraint is a LinearConstraint (Type "linear": A, Lb, Ub) or a
+// NonlinearConstraint (Type "nonlinear": Name of a function of global.py,
+// Lb, Ub); a null bound is infinite.
+type DEConstraint struct {
+	Type string      `json:"type"`
+	Name string      `json:"name,omitempty"`
+	A    [][]float64 `json:"A,omitempty"`
+	Lb   []*float64  `json:"lb"`
+	Ub   []*float64  `json:"ub"`
 }
 
 // DECase is one run of SciPy's DifferentialEvolutionSolver. Kind is "rng"
@@ -106,6 +120,8 @@ type DECase struct {
 	Message    string    `json:"message"`
 	Population [][]Hex   `json:"population,omitempty"`
 	Energies   []Hex     `json:"population_energies,omitempty"`
+	// ConstrViolation is SciPy's constr_violation (only with constraints).
+	ConstrViolation *Hex `json:"constr_violation,omitempty"`
 }
 
 // Options are the keyword arguments of scipy.optimize.direct, defaults
