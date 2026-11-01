@@ -347,29 +347,25 @@ func (s *deSolver) evalPopulation(members [][]float64, out []float64) {
 	s.nfev += k
 }
 
-// The population arithmetic is plain Go in NumPy's operation order, one
-// small function per operation, each product rounded before it is added so
-// that no fused multiply-add can change a bit (SciPy's wheels do not fuse).
+// The population arithmetic is in NumPy's operation order, one small function
+// per operation; the three mutations that are a + F·(b − c) use go-simd/floats'
+// unfused AxpyDiffNoFMA (SIMD, aliasing allowed), the others are plain Go with
+// each product rounded before it is added, so that no fused multiply-add can
+// change a bit (SciPy's wheels do not fuse).
 
 // deAxDiff: dst = a + F·(b − c).
 func deAxDiff(dst, a []float64, f float64, b, c []float64) {
-	for j := range dst {
-		dst[j] = a[j] + float64(f*(b[j]-c[j]))
-	}
+	floats.AxpyDiffNoFMA(dst, a, f, b, c)
 }
 
 // deRelax: dst += F·(a − dst).
 func deRelax(dst []float64, f float64, a []float64) {
-	for j := range dst {
-		dst[j] = dst[j] + float64(f*(a[j]-dst[j]))
-	}
+	floats.AxpyDiffNoFMA(dst, dst, f, a, dst)
 }
 
 // deAddDiff: dst += F·(a − b).
 func deAddDiff(dst []float64, f float64, a, b []float64) {
-	for j := range dst {
-		dst[j] = dst[j] + float64(f*(a[j]-b[j]))
-	}
+	floats.AxpyDiffNoFMA(dst, dst, f, a, b)
 }
 
 // deCurrentToBest: dst = c + F·(((best − c) + r0) − r1).
