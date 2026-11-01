@@ -24,6 +24,13 @@ func TestMarosMeszarosFixtures(t *testing.T) {
 			r, err := Quadprog(pr, &QPOptions{Method: QPADMM, EpsAbs: 1e-9, EpsRel: 1e-9, MaxIter: 400000, Polish: true})
 			switch {
 			case err != nil || r.Status != QPOptimal || math.Abs(r.Fun-*ref.Obj) > tol:
+				// QSHARE2B: OSQP v1.0.0 with the same settings and the same 400000
+				// iterations also ends at "maximum iterations reached" (primal residual
+				// 0.18 on linux/amd64), so the limit is matching behaviour, not a defect.
+				if long := c.Results["osqp_long"]; c.Name == "QSHARE2B" && long.Status == "maximum iterations reached" && long.Iter == 400000 {
+					t.Logf("%s: both ADMM and OSQP stop at the iteration limit", c.Name)
+					continue
+				}
 				admmBad++
 				t.Logf("%s: ADMM %v status %d f %g (clarabel %g)", c.Name, err, statusOf(r), funOf(r), *ref.Obj)
 			default:
@@ -38,7 +45,7 @@ func TestMarosMeszarosFixtures(t *testing.T) {
 		}
 	}
 	t.Logf("%d problems: ADMM agrees on %d (disagrees %d), active set on %d", total, admmOK, admmBad, asOK)
-	if total != 25 || admmBad > 3 {
+	if total != 25 || admmBad > 0 {
 		t.Errorf("total %d, ADMM disagreements %d", total, admmBad)
 	}
 }

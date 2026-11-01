@@ -163,3 +163,18 @@ func FuzzMMSafeName(f *testing.F) {
 		}
 	})
 }
+
+func TestMMCommandMount(t *testing.T) {
+	argv, d := mmCommand("", "/cache/mm")
+	if d != "/cache/mm" || argv[0] != "uv" {
+		t.Errorf("host: %v %s", argv, d)
+	}
+	argv, d = mmCommand("linux/amd64", "/cache/mm")
+	if d != "/mm" || strings.Join(argv[:7], " ") != "docker run --rm -i -v /cache/mm:/mm:ro --platform" {
+		t.Errorf("container: %v %s", argv[:7], d)
+	}
+	want := command("linux/amd64")
+	if len(argv) != len(want)+2 || argv[len(argv)-1] != want[len(want)-1] {
+		t.Errorf("the container command changed beyond the mount: %v", argv)
+	}
+}

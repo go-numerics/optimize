@@ -318,6 +318,11 @@ for c in CASES:
     qpres = run_quadprog(c)
     if qpres is not None:
         res["quadprog"] = qpres
+    if QP_SET == "mm":
+        # The same settings as the Go solver's Maros-Meszaros test (400000
+        # iterations): says whether a problem OSQP fails at 100000 is also failed by
+        # OSQP at the budget we give ours.
+        res["osqp_long"] = run_osqp(c, eps_abs=1e-9, eps_rel=1e-9, polishing=True, max_iter=400000)
     out.append(dict(name=c["name"], note=c["note"], n=len(c["q"]), p=c["P"].tolist(), q=c["q"].tolist(),
                     a=c["A"].tolist(), l=big(c["l"]), u=big(c["u"]), results=res))
 
