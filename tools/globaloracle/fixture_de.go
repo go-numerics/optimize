@@ -77,6 +77,10 @@ func diffDE(a, b *Fixture, add func(name, format string, args ...any)) {
 		if !sameBits(float64(*ca.Fun), float64(*cb.Fun)) || !sameHexes(ca.X, cb.X) {
 			add(ca.Name, "x or fun differ")
 		}
+		if (ca.ConstrViolation == nil) != (cb.ConstrViolation == nil) ||
+			(ca.ConstrViolation != nil && !sameBits(float64(*ca.ConstrViolation), float64(*cb.ConstrViolation))) {
+			add(ca.Name, "constraint violation differs")
+		}
 		same := len(ca.Population) == len(cb.Population) && sameHexes(ca.Energies, cb.Energies)
 		for i := 0; same && i < len(ca.Population); i++ {
 			same = sameHexes(ca.Population[i], cb.Population[i])

@@ -186,7 +186,7 @@ func TestDEPolish(t *testing.T) {
 		t.Errorf("%+v", r)
 	}
 	// a custom polisher: rejected when worse, error and bad results reported
-	worse := func(f func([]float64) float64, x0 []float64, b []Bound) (*Result, error) {
+	worse := func(f func([]float64) float64, x0 []float64, b []Bound, _ []ConstraintSpec) (*Result, error) {
 		return &Result{X: x0, Fun: f(x0) + 1, Success: true, Nfev: 3}, nil
 	}
 	r, _ = DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(3), Polish: worse})
@@ -195,17 +195,17 @@ func TestDEPolish(t *testing.T) {
 	}
 	boom := errors.New("boom")
 	if _, err := DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(1),
-		Polish: func(func([]float64) float64, []float64, []Bound) (*Result, error) { return nil, boom }}); !errors.Is(err, boom) {
+		Polish: func(func([]float64) float64, []float64, []Bound, []ConstraintSpec) (*Result, error) { return nil, boom }}); !errors.Is(err, boom) {
 		t.Error(err)
 	}
 	for _, res := range []*Result{nil, {X: []float64{1}}} {
 		if _, err := DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(1),
-			Polish: func(func([]float64) float64, []float64, []Bound) (*Result, error) { return res, nil }}); !errors.Is(err, ErrInput) {
+			Polish: func(func([]float64) float64, []float64, []Bound, []ConstraintSpec) (*Result, error) { return res, nil }}); !errors.Is(err, ErrInput) {
 			t.Error(err)
 		}
 	}
 	// outside the bounds: rejected
-	out := func(f func([]float64) float64, x0 []float64, b []Bound) (*Result, error) {
+	out := func(f func([]float64) float64, x0 []float64, b []Bound, _ []ConstraintSpec) (*Result, error) {
 		return &Result{X: []float64{9, 9}, Fun: -1, Success: true}, nil
 	}
 	r, _ = DifferentialEvolution(deSphere, box(2, -5, 5), &DEOptions{RNG: NewRNG(2), MaxIter: Int(1), Polish: out})

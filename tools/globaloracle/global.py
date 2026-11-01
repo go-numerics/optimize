@@ -399,7 +399,27 @@ DE_STRATEGIES = ("best1bin", "best1exp", "rand1bin", "rand1exp", "randtobest1bin
                  "best2exp", "rand2bin", "rand2exp")
 DE_DEFAULTS = dict(strategy="best1bin", maxiter=1000, popsize=15, tol=0.01, atol=0.0,
                    mutation=[0.5, 1.0], recombination=0.7, init="latinhypercube", init_pop=None,
-                   x0=None, updating="immediate", polish=False, maxfun=None)
+                   x0=None, updating="immediate", polish=False, maxfun=None,
+                   constraints=None, integrality=None)
+
+# nonlinear constraint functions by name (arithmetic only; the Go twins are in
+# de_fixture_test.go). Bounds are given in the case, null meaning infinite.
+NL_CONSTRAINTS = {
+    "circle": lambda x: [x[0] * x[0] + x[1] * x[1]],
+    "hyper": lambda x: [x[0] * x[1], x[0] - x[1] * x[1] * x[1]],
+    "impossible": lambda x: [x[0] * x[0] + x[1] * x[1] + 1.0],
+}
+
+
+def make_constraint(spec):
+    from scipy.optimize import LinearConstraint, NonlinearConstraint
+
+    lb = [-INF if v is None else v for v in spec["lb"]]
+    ub = [INF if v is None else v for v in spec["ub"]]
+    if spec["type"] == "linear":
+        return LinearConstraint(np.array(spec["A"], dtype=float), lb, ub)
+    fn = NL_CONSTRAINTS[spec["name"]]
+    return NonlinearConstraint(lambda x, fn=fn: np.array(fn(x.tolist())), lb, ub)
 
 
 def de_one(name, pname, kind, seed, **over):
@@ -419,7 +439,9 @@ def de_one(name, pname, kind, seed, **over):
             maxiter=o["maxiter"], popsize=o["popsize"], tol=o["tol"], atol=o["atol"],
             mutation=mut, recombination=o["recombination"], rng=rng, polish=o["polish"],
             init=init, updating=o["updating"], x0=o["x0"],
-            maxfun=np.inf if o["maxfun"] is None else o["maxfun"])
+            maxfun=np.inf if o["maxfun"] is None else o["maxfun"],
+            constraints=[make_constraint(c) for c in (o["constraints"] or [])],
+            integrality=o["integrality"])
         res = solver.solve()
     except Exception as e:  # recorded, never raised
         case["error"] = "%s: %s" % (type(e).__name__, e)
@@ -429,7 +451,43 @@ def de_one(name, pname, kind, seed, **over):
         success=bool(res.success), message=str(res.message),
         population=[[hx(v) for v in row] for row in res.population],
         population_energies=[hx(v) for v in res.population_energies])
+    if "constr_violation" in res:
+        case["constr_violation"] = hx(res.constr_violation)
     return case
+
+
+LIN = lambda A, lb, ub: dict(type="linear", A=A, lb=lb, ub=ub)  # noqa: E731
+NLC = lambda name, lb, ub: dict(type="nonlinear", name=name, lb=lb, ub=ub)  # noqa: E731
+
+# (problem, constraints, integrality, extra keywords)
+DE_CONSTRAINED = [
+    ("shifted_sphere_2", [LIN([[1.0, 1.0]], [1.0], [None])], None, {}),
+    ("rosenbrock_2", [NLC("circle", [None], [1.5])], None, {}),
+    ("styblinski_tang_2", [LIN([[1.0, -2.0], [2.0, 1.0]], [-1.0, -1.0], [1.0, 2.0])], None, {}),
+    ("booth", [NLC("hyper", [0.5, -1.0], [None, 2.0])], None, {}),
+    ("booth", [NLC("hyper", [0.5, -1.0], [None, 2.0]), LIN([[1.0, 1.0]], [0.0], [3.0])], None, {}),
+    ("matyas", [LIN([[1.0, 1.0]], [0.5], [0.5])], None, {"maxiter": 60}),   # equality
+    ("shifted_sphere_2", [NLC("impossible", [None], [0.5])], None, {"maxiter": 30}),  # infeasible
+    ("beale", [NLC("circle", [None], [1.5])], None, {"x0": [0.5, 0.5]}),
+    ("styblinski_tang_2", None, [True, False], {}),
+    ("styblinski_tang_2", None, [True, True], {}),
+    ("shifted_sphere_5", None, [True, False, True, False, True], {}),
+    ("rosenbrock_2", None, [True, True], {}),
+    ("six_hump_camel", None, [False, True], {}),
+    ("goldstein_price", [LIN([[1.0, 1.0]], [-1.0], [None])], [False, True], {}),
+]
+
+
+def run_de_constrained():
+    cases = []
+    for kind, seed in (("rng", 21), ("seed", 21)):
+        for i, (pname, cons, integ, extra) in enumerate(DE_CONSTRAINED):
+            for upd in ("immediate", "deferred"):
+                for pol in (False, True):
+                    cases.append(de_one("c%d/%s/%s/polish%d/%s" % (i, pname, upd, pol, kind), pname,
+                                        kind, seed, constraints=cons, integrality=integ,
+                                        updating=upd, polish=pol, **extra))
+    return cases
 
 
 def run_de():
@@ -497,7 +555,7 @@ if METHOD == "direct":  # noqa: F821  (prepended by the Go harness)
     reductions = []
 elif METHOD == "de":  # noqa: F821
     cases = []
-    de_cases = run_de()
+    de_cases = run_de() + run_de_constrained()
     reductions = run_reductions()
 else:
     raise SystemExit("unsupported method %r" % METHOD)  # noqa: F821

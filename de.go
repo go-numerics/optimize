@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"math"
+	"slices"
 )
 
 // DEStrategy names one of SciPy's twelve differential-evolution strategies.
@@ -96,11 +97,22 @@ type DEOptions struct {
 	// population) with this many goroutines. The objective must then be safe
 	// for concurrent use.
 	Workers int
-	// NoPolish skips the final L-BFGS-B polish (SciPy polish=False).
+	// Constraints are NonlinearConstraint, LinearConstraint or (an
+	// extension to SciPy) Constraint values, handled by Lampinen's rule. The
+	// constraint functions are evaluated serially.
+	Constraints []ConstraintSpec
+	// Integrality marks the integer variables (nil: none; otherwise one
+	// entry per variable). The limits of an integral axis become
+	// [ceil(Lo)-0.5, floor(Hi)+0.5] (just inside) and values are rounded.
+	Integrality []bool
+	// NoPolish skips the final polish (SciPy polish=False): L-BFGS-B, or
+	// trust-constr with constraints. It is skipped when every variable is
+	// integral.
 	NoPolish bool
 	// Polish replaces the default polisher (SciPy's callable polish). It
-	// receives the bounds the default would use.
-	Polish func(f func([]float64) float64, x0 []float64, bounds []Bound) (*Result, error)
+	// receives the bounds the default would use (integral axes pinned to the
+	// found value) and the constraints.
+	Polish func(f func([]float64) float64, x0 []float64, bounds []Bound, cons []ConstraintSpec) (*Result, error)
 	// Callback is called after each generation; returning true stops the
 	// run. The result it receives is a copy with Convergence set.
 	Callback func(r *DEResult) (stop bool)
@@ -113,13 +125,19 @@ type DEResult struct {
 	Jac  []float64 // from the polisher, when it improved the point
 	Nfev int
 	Nit  int
-	// Status: 0 converged, 1 maxiter, 2 maxfev, 3 callback stop. (SciPy has
-	// no status; these codes are Go-defined.)
+	// Status: 0 converged, 1 maxiter, 2 maxfev, 3 callback stop, 4 the
+	// solution violates the constraints. (SciPy has no status; these codes
+	// are Go-defined.)
 	Status             int
 	Success            bool
 	Message            string
 	Population         [][]float64 // S×N, problem units
 	PopulationEnergies []float64
+	// Constr holds, per constraint, the violation of each component at X, and
+	// ConstrViolation the largest (SciPy's constr_violation and maxcv); both
+	// only with constraints.
+	Constr          [][]float64
+	ConstrViolation float64
 	// Convergence is set only in the result handed to a callback:
 	// Tol/(convergence+eps).
 	Convergence float64
@@ -127,10 +145,11 @@ type DEResult struct {
 
 // Statuses of a DEResult.
 const (
-	DEConverged = 0
-	DEMaxIter   = 1
-	DEMaxFev    = 2
-	DEStopped   = 3
+	DEConverged  = 0
+	DEMaxIter    = 1
+	DEMaxFev     = 2
+	DEStopped    = 3
+	DEInfeasible = 4
 )
 
 // dePopCap bounds S·N (2^27 float64, 1 GiB); SciPy would raise MemoryError.
@@ -263,15 +282,46 @@ func newDESolver(f func([]float64) float64, bounds []Bound, o *DEOptions) (*deSo
 	case o.Updating == DEDeferred || o.Workers > 1:
 		s.deferred = true
 	}
-	// scaling constants
+	// scaling constants: from the bounds as given, before integrality moves
+	// the limits (SciPy computes them first)
 	s.arg1, s.arg2, s.recip = make([]float64, n), make([]float64, n), make([]float64, n)
-	eb := 0
 	for i := range n {
 		s.arg1[i] = 0.5 * (s.lo[i] + s.hi[i])
 		s.arg2[i] = math.Abs(s.lo[i] - s.hi[i])
 		if r := 1 / s.arg2[i]; finite(r) {
 			s.recip[i] = r
 		}
+	}
+	// 5. integrality: the limits of integral axes move inside the integers
+	if o.Integrality != nil {
+		if len(o.Integrality) != n {
+			return nil, fmt.Errorf("%w: Integrality must have %d entries", ErrDimension, n)
+		}
+		if slices.Contains(o.Integrality, true) {
+			s.integral = slices.Clone(o.Integrality)
+			for i, isInt := range s.integral {
+				if !isInt {
+					continue
+				}
+				lb, ub := math.Ceil(s.lo[i]), math.Floor(s.hi[i])
+				if lb > ub {
+					return nil, fmt.Errorf("%w: One of the integrality constraints does not have any possible integer values between the lower/upper bounds.", ErrBounds)
+				}
+				s.lo[i] = math.Nextafter(lb-0.5, math.Inf(1))
+				s.hi[i] = math.Nextafter(ub+0.5, math.Inf(-1))
+			}
+		}
+	}
+	cons, err := generalConstraints(o.Constraints, n)
+	if err != nil {
+		return nil, err
+	}
+	s.cons = cons
+	for _, c := range cons {
+		s.ncv += c.m
+	}
+	eb := 0
+	for i := range n {
 		if s.lo[i] == s.hi[i] {
 			eb++
 		}
