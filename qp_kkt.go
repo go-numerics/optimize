@@ -3,6 +3,7 @@ package optimize
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-sparse/sparse"
@@ -39,9 +40,19 @@ var (
 // The ordering and the symbolic analysis only fail on malformed input, which
 // buildKKT excludes; they are variables so that a test can make them fail.
 var (
-	qpAMD         = order.AMD[float64]
+	qpAMD         = amdPooled
 	qpNewPermuted = ldl.NewPermuted
 )
+
+// amdWorkspaces holds the scratch memory of order.AMD between solves: the
+// ordering of a KKT matrix allocates only the permutation it returns.
+var amdWorkspaces = sync.Pool{New: func() any { return new(order.Workspace) }}
+
+func amdPooled(a *sparse.CSR[float64]) ([]int, error) {
+	w := amdWorkspaces.Get().(*order.Workspace)
+	defer amdWorkspaces.Put(w)
+	return order.AMDWith(w, nil, a)
+}
 
 // admmCSR is the constraint matrix A by rows, the canonical row order.
 type admmCSR struct {
