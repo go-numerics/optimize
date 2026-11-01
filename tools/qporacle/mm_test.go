@@ -118,7 +118,10 @@ func TestMMConvert(t *testing.T) {
 	if _, err := run(t, "mm", "convert", "--tier", "tiny", "--dir", dir, "-o", dst); err == nil {
 		t.Error("runner failure swallowed")
 	}
-	runner = func(_ []string, _ io.Reader, w io.Writer, _ io.Writer) error { _, err := w.Write([]byte("garbage")); return err }
+	runner = func(_ []string, _ io.Reader, w io.Writer, _ io.Writer) error {
+		_, err := w.Write([]byte("garbage"))
+		return err
+	}
 	if _, err := run(t, "mm", "convert", "--tier", "tiny", "--dir", dir, "-o", dst); err == nil {
 		t.Error("garbage output accepted")
 	}
