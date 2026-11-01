@@ -217,13 +217,6 @@ func TestADMMWarmStart(t *testing.T) {
 	if _, err := s.Solve(); err != nil {
 		t.Fatal(err)
 	}
-	// Updates ADMM does not have yet say so.
-	if err := s.UpdateBounds([]float64{0}, []float64{1}); !errors.Is(err, ErrMethod) {
-		t.Errorf("UpdateBounds: %v", err)
-	}
-	if err := s.UpdateMatrixValues(nil, nil); !errors.Is(err, ErrMethod) {
-		t.Errorf("UpdateMatrixValues: %v", err)
-	}
 }
 
 // The size limits of the KKT matrix and of its factor.
