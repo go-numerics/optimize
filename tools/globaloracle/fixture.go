@@ -55,6 +55,53 @@ type Fixture struct {
 	// Reductions are NumPy's np.mean and np.std of arrays chosen so that the
 	// summation order shows (the "de" method's termination test).
 	Reductions []Reduction `json:"reductions,omitempty"`
+	// BH holds the cases of the "bh" method (basin hopping).
+	BH []BHCase `json:"bh,omitempty"`
+}
+
+// BHStep is one callback of scipy.optimize.basinhopping: the minimum of a
+// step, its value and whether the step was accepted (the first entry is the
+// initial minimisation).
+type BHStep struct {
+	X      []Hex `json:"x"`
+	F      Hex   `json:"f"`
+	Accept bool  `json:"accept"`
+}
+
+// BHOptions are the keyword arguments of one basin-hopping case; Accept names
+// the accept test of global.py ("none", "force", "reject", "new").
+type BHOptions struct {
+	NIter            int     `json:"niter"`
+	T                float64 `json:"T"`
+	StepSize         float64 `json:"stepsize"`
+	Interval         int     `json:"interval"`
+	NIterSuccess     *int    `json:"niter_success"`
+	Accept           string  `json:"accept"`
+	TargetAcceptRate float64 `json:"target_accept_rate"`
+	StepwiseFactor   float64 `json:"stepwise_factor"`
+}
+
+// BHCase is one run of scipy.optimize.basinhopping with analytic gradients.
+type BHCase struct {
+	Name       string    `json:"name"`
+	Problem    string    `json:"problem"`
+	Method     string    `json:"method"`
+	X0         []float64 `json:"x0"`
+	Kind       string    `json:"kind"`
+	Seed       uint64    `json:"seed"`
+	Options    BHOptions `json:"options"`
+	Error      *string   `json:"error"`
+	X          []Hex     `json:"x,omitempty"`
+	Fun        *Hex      `json:"fun,omitempty"`
+	Nit        int       `json:"nit"`
+	Nfev       int       `json:"nfev"`
+	Njev       int       `json:"njev"`
+	Nhev       int       `json:"nhev"`
+	Failures   int       `json:"minimization_failures"`
+	Success    bool      `json:"success"`
+	Message    string    `json:"message"`
+	Trace      []BHStep  `json:"trace,omitempty"`
+	LowestNfev int       `json:"lowest_nfev"`
 }
 
 // Reduction is np.mean(values) and np.std(values).
@@ -171,10 +218,13 @@ func Decode(r io.Reader) (*Fixture, error) {
 	if err := dec.Decode(&f); err != nil {
 		return nil, fmt.Errorf("fixture: %w", err)
 	}
-	if len(f.Cases) == 0 && len(f.DE) == 0 {
+	if len(f.Cases) == 0 && len(f.DE) == 0 && len(f.BH) == 0 {
 		return nil, fmt.Errorf("fixture: no cases")
 	}
 	if err := checkDE(f.DE); err != nil {
+		return nil, err
+	}
+	if err := checkBH(f.BH); err != nil {
 		return nil, err
 	}
 	seen := map[string]bool{}
@@ -280,6 +330,7 @@ func Diff(a, b *Fixture) []Disagreement {
 		}
 	}
 	diffDE(a, b, add)
+	diffBH(a, b, add)
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Case < out[j].Case })
 	return out
 }

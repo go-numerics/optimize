@@ -537,6 +537,130 @@ def run_de():
     return cases
 
 
+# ------------------------------------------------------- basin hopping
+
+# objectives with analytic gradients (jac=True), arithmetic only; Go twins in
+# basinhopping_funcs_test.go.
+def bh_himmelblau(v):
+    x, y = v[0], v[1]
+    a = x * x + y - 11.0
+    b = x + y * y - 7.0
+    f = a * a + b * b
+    return f, np.array([4.0 * x * a + 2.0 * b, 2.0 * a + 4.0 * y * b])
+
+
+def bh_rosenbrock(v):
+    x, y = v[0], v[1]
+    t = y - x * x
+    u = 1.0 - x
+    f = 100.0 * (t * t) + u * u
+    return f, np.array([-400.0 * x * t - 2.0 * u, 200.0 * t])
+
+
+def bh_camel(v):
+    x, y = v[0], v[1]
+    x2 = x * x
+    x3 = x2 * x
+    x4 = x2 * x2
+    x5 = x3 * x2
+    y2 = y * y
+    y3 = y2 * y
+    f = (4.0 - 2.1 * x2 + x4 / 3.0) * x2 + x * y + (-4.0 + 4.0 * y2) * y2
+    return f, np.array([8.0 * x - 8.4 * x3 + 2.0 * x5 + y, x - 8.0 * y + 16.0 * y3])
+
+
+def bh_quartic(v):
+    x, y = v[0], v[1]
+    a = x * x - 1.0
+    b = y * y - 1.0
+    f = a * a + b * b + 0.3 * x + 0.2 * y
+    return f, np.array([4.0 * x * a + 0.3, 4.0 * y * b + 0.2])
+
+
+BH_PROBLEMS = {
+    "himmelblau": (bh_himmelblau, [0.0, 0.0]),
+    "rosenbrock": (bh_rosenbrock, [-1.2, 1.0]),
+    "camel": (bh_camel, [0.5, 0.5]),
+    "quartic": (bh_quartic, [0.3, -0.4]),
+}
+
+
+def bh_at_force(f_new, x_new, f_old, x_old):
+    return "force accept" if f_new > f_old + 0.1 else True
+
+
+def bh_at_reject(f_new, x_new, f_old, x_old):
+    return bool(f_new <= f_old + 3.0)
+
+
+def bh_at_new(*, res_new, res_old):  # SciPy detects the new form by keyword-only parameters
+    return bool(res_new.fun < res_old.fun + 3.0)
+
+
+BH_ACCEPT = {"none": None, "force": bh_at_force, "reject": bh_at_reject, "new": bh_at_new}
+
+BH_VARIANTS = [
+    ("default", {}),
+    ("T0", {"T": 0.0}),
+    ("T0.3_s1", {"T": 0.3, "stepsize": 1.0}),
+    ("interval3", {"interval": 3}),
+    ("interval5_target0.3_f0.5", {"interval": 5, "target_accept_rate": 0.3, "stepwise_factor": 0.5}),
+    ("nsuccess3", {"niter_success": 3}),
+    ("force", {"accept": "force"}),
+    ("reject", {"accept": "reject", "T": 2.0}),
+    ("newform", {"accept": "new"}),
+    ("niter0", {"niter": 0}),
+    ("niter1", {"niter": 1}),
+    ("T-1", {"T": -1.0}),
+    ("interval2_T5_s2", {"interval": 2, "T": 5.0, "stepsize": 2.0, "niter": 40}),
+    ("force_T3_s2", {"accept": "force", "T": 3.0, "stepsize": 2.0, "niter": 40}),
+]
+
+
+def bh_one(name, pname, method, kind, seed, kw):
+    from scipy.optimize import basinhopping
+
+    f, x0 = BH_PROBLEMS[pname]
+    o = dict(niter=25, T=1.0, stepsize=0.5, interval=50, niter_success=None, accept="none",
+             target_accept_rate=0.5, stepwise_factor=0.9)
+    o.update(kw)
+    trace = []
+
+    def cb(x, fx, accept):
+        trace.append(dict(x=[hx(v) for v in x], f=hx(fx), accept=bool(accept)))
+
+    rng = np.random.default_rng(seed) if kind == "rng" else np.random.RandomState(seed)
+    case = dict(name=name, problem=pname, method=method, x0=x0, kind=kind, seed=seed, options=o,
+                error=None)
+    try:
+        res = basinhopping(
+            f, np.array(x0), niter=o["niter"], T=o["T"], stepsize=o["stepsize"],
+            minimizer_kwargs=dict(method=method, jac=True), accept_test=BH_ACCEPT[o["accept"]],
+            callback=cb, interval=o["interval"], niter_success=o["niter_success"], rng=rng,
+            target_accept_rate=o["target_accept_rate"], stepwise_factor=o["stepwise_factor"])
+    except Exception as e:  # recorded, never raised
+        case["error"] = "%s: %s" % (type(e).__name__, e)
+        return case
+    low = res.lowest_optimization_result
+    case.update(
+        x=[hx(v) for v in res.x], fun=hx(res.fun), nit=int(res.nit), nfev=int(res.nfev),
+        njev=int(res.njev), nhev=int(getattr(res, "nhev", 0)),
+        minimization_failures=int(res.minimization_failures), success=bool(res.success),
+        message=str(res.message[0]), trace=trace, lowest_nfev=int(low.nfev))
+    return case
+
+
+def run_bh():
+    cases = []
+    for kind, seed in (("rng", 5), ("seed", 5)):
+        for pname in BH_PROBLEMS:
+            for method in ("BFGS", "L-BFGS-B"):
+                for vname, kw in BH_VARIANTS:
+                    cases.append(bh_one("%s/%s/%s/%s" % (pname, method, vname, kind), pname, method,
+                                        kind, seed, kw))
+    return cases
+
+
 def run_reductions():
     # np.mean and np.std of arrays whose plain and pairwise sums differ: the
     # witness of the summation order of DE's termination test.
@@ -549,6 +673,7 @@ def run_reductions():
     return out
 
 
+bh_cases = []
 if METHOD == "direct":  # noqa: F821  (prepended by the Go harness)
     cases = run_direct() + docstring_example()
     de_cases = []
@@ -557,9 +682,14 @@ elif METHOD == "de":  # noqa: F821
     cases = []
     de_cases = run_de() + run_de_constrained()
     reductions = run_reductions()
+elif METHOD == "bh":  # noqa: F821
+    cases = []
+    de_cases = []
+    reductions = []
+    bh_cases = run_bh()
 else:
     raise SystemExit("unsupported method %r" % METHOD)  # noqa: F821
 
 json.dump(dict(method=METHOD, scipy=scipy.__version__, numpy=np.__version__,  # noqa: F821
                python=platform.python_version(), machine=platform.machine(),
-               system=platform.system(), cases=cases, de=de_cases, reductions=reductions), sys.stdout, allow_nan=False)
+               system=platform.system(), cases=cases, de=de_cases, reductions=reductions, bh=bh_cases), sys.stdout, allow_nan=False)

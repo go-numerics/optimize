@@ -39,7 +39,7 @@ const (
 
 // methods lists the methods global.py can run; the others of the design
 // (differential evolution, basin hopping) are added with their ports.
-var methods = []string{"direct", "de"}
+var methods = []string{"direct", "de", "bh"}
 
 // osExit is replaced by tests.
 var osExit = os.Exit
@@ -114,7 +114,7 @@ func genCmd() *cobra.Command {
 			}
 			err = errors.Join(Encode(w, f), w.Close())
 			if err == nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases)+len(f.DE), f.Scipy, f.Machine, out)
+				fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases)+len(f.DE)+len(f.BH), f.Scipy, f.Machine, out)
 			}
 			return err
 		},
