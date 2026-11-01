@@ -185,7 +185,11 @@ func TestKKTTimingCounters(t *testing.T) {
 	}
 	qpTimeKKT = true
 	defer func() { qpTimeKKT = false }()
-	run()
+	// A tiny problem can finish inside one tick of a coarse clock (Windows): run
+	// until every counter has moved.
+	for i := 0; i < 2000 && (qpKKTAnalyseNS <= 0 || qpKKTFactorNS <= 0 || qpKKTSolveNS <= 0); i++ {
+		run()
+	}
 	if qpKKTAnalyseNS <= 0 || qpKKTFactorNS <= 0 || qpKKTSolveNS <= 0 {
 		t.Errorf("analyse %d ns, factor %d ns, solve %d ns after a run", qpKKTAnalyseNS, qpKKTFactorNS, qpKKTSolveNS)
 	}
