@@ -1062,7 +1062,7 @@ function request and compared field by field.
 - Results (Go against SciPy, successes of 100): DE 16/16 functions with equal
   success counts, medians of nfev equal on 13 and within 3 % on the others
   (Rastrigin 2 and 5, Schwefel26: polishing follows another finite-difference
-  path), 1 266 of 1 600 seeds on SciPy's exact path (same success and nfev);
+  path), 1 359 of 1 600 seeds on SciPy's exact path (same success and nfev);
   basin hopping: successes 60/59, 100/100, 100/100, 100/100, 72/72, 0/0, 7/7,
   39/41, all p > 0.4; DIRECT: same status and same success on 21/21, same nfev
   and nit on 19 (Rastrigin/5: 195 against 185; Schwefel26: 615 against 623,
