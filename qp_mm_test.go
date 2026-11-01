@@ -2,6 +2,7 @@ package optimize
 
 import (
 	"math"
+	"os"
 	"testing"
 )
 
@@ -26,7 +27,15 @@ func TestMarosMeszarosFixtures(t *testing.T) {
 				nsparse++
 			}
 			tol := 1e-5 * math.Max(1, math.Abs(*ref.Obj))
-			r, err := Quadprog(prA, &QPOptions{Method: QPADMM, EpsAbs: 1e-9, EpsRel: 1e-9, MaxIter: 400000, Polish: true})
+			// OSQP's 400000-iteration runs that ended at the limit would cost minutes
+			// per problem on a CI runner (the emulated architectures timed out at 10
+			// minutes): there our budget is 20000, which must also end at the limit.
+			// QPORACLE_FULL=1 runs the full 400000.
+			maxIter := 400000
+			if c.Results["osqp_long"].Iter >= 400000 && os.Getenv("QPORACLE_FULL") == "" {
+				maxIter = 20000
+			}
+			r, err := Quadprog(prA, &QPOptions{Method: QPADMM, EpsAbs: 1e-9, EpsRel: 1e-9, MaxIter: maxIter, Polish: true})
 			switch {
 			case err != nil || r.Status != QPOptimal || math.Abs(r.Fun-*ref.Obj) > tol:
 				// OSQP v1.0.0 with the same settings and the same 400000 iterations ends
