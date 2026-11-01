@@ -362,23 +362,28 @@ func (a *admm) step() {
 	a.x, a.xPrev = a.xPrev, a.x
 	a.z, a.zPrev = a.zPrev, a.z
 	// right-hand side: x-part σx_prev − q; ν-part z_prev − ρ⁻¹y (kept in z̃).
-	for i := 0; i < n; i++ {
-		a.rhs[i] = float64(s.sigma*a.xPrev[i]) - a.q[i]
+	// The loops run over re-sliced operands of equal length so that the compiler
+	// drops the bounds checks; float64(...) keeps each product rounded (no FMA), as
+	// OSQP's C does.
+	rx, xp, q := a.rhs[:n], a.xPrev[:n], a.q[:n]
+	for i := range rx {
+		rx[i] = float64(s.sigma*xp[i]) - q[i]
 	}
-	for i := 0; i < m; i++ {
-		t := float64(a.rhoInv[i] * a.y[i])
-		a.zt[i] = a.zPrev[i] - t
-		a.rhs[n+i] = a.zt[i]
+	rz, zt, zp, ri, y := a.rhs[n:n+m], a.zt[:m], a.zPrev[:m], a.rhoInv[:m], a.y[:m]
+	for i := range rz {
+		zt[i] = zp[i] - float64(ri[i]*y[i])
+		rz[i] = zt[i]
 	}
 	a.kkt.solve(a.rhs)
-	copy(a.xt, a.rhs[:n])
-	for i := 0; i < m; i++ {
-		a.zt[i] += float64(a.rhoInv[i] * a.rhs[n+i])
+	copy(a.xt, rx)
+	for i := range rz {
+		zt[i] += float64(ri[i] * rz[i])
 	}
 	// x = αx̃ + (1−α)x_prev
-	for i := 0; i < n; i++ {
-		a.x[i] = float64(s.alpha*a.xt[i]) + float64((1-s.alpha)*a.xPrev[i])
-		a.dx[i] = a.x[i] - a.xPrev[i]
+	xt, x, dx := a.xt[:n], a.x[:n], a.dx[:n]
+	for i := range x {
+		x[i] = float64(s.alpha*xt[i]) + float64((1-s.alpha)*xp[i])
+		dx[i] = x[i] - xp[i]
 	}
 	// z = Π(ρ⁻¹y + αz̃ + (1−α)z_prev)
 	floats.Mul(a.z, a.rhoInv, a.y)
@@ -387,8 +392,9 @@ func (a *admm) step() {
 	// δy = ρ(αz̃ + (1−α)z_prev − z); y += δy
 	floats.Axpby3(a.dy, s.alpha, a.zt, 1-s.alpha, a.zPrev, -1, a.z)
 	floats.Mul(a.dy, a.dy, a.rhoVec)
-	for i := 0; i < m; i++ {
-		a.y[i] += a.dy[i]
+	dy := a.dy[:m]
+	for i := range y {
+		y[i] += dy[i]
 	}
 }
 

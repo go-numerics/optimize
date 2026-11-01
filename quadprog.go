@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/go-ndarray/ndarray"
 	"github.com/go-sparse/sparse"
@@ -633,6 +634,7 @@ func (md *qpModel) addSparse(a *sparse.CSC[float64], lIn, uIn []float64, z *qpSi
 	}
 	md.sp = b.ToCSR()
 	md.nSp = b.Rows
+	md.rows = slices.Grow(md.rows, b.Rows) // one allocation instead of the doubling
 	for i := 0; i < b.Rows; i++ {
 		md.addRow(qpRow{l: l[i], u: u[i], kind: rowSparse, ref: i, blk: blkSparse, src: i})
 	}
