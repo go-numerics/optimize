@@ -100,7 +100,7 @@ func loadBenchInstances(tb testing.TB, dir string) []benchInstance {
 
 // benchAdmmMaxDense is the largest dense instance ADMM is timed on (the reference
 // side stops there too).
-const benchAdmmMaxDense = 500
+const benchAdmmMaxDense = 1000
 
 func BenchmarkQP(b *testing.B) {
 	dir := os.Getenv("QPBENCH_DIR")

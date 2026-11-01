@@ -25,7 +25,7 @@ import osqp  # noqa: E402
 import quadprog  # noqa: E402
 
 BIG = 1e20
-OSQP_DENSE_MAX_N = 500  # a dense KKT of order 3000 is a different experiment
+OSQP_DENSE_MAX_N = 1000  # the dense KKT of order 3100 settles QPAuto's threshold
 
 
 def num(v):
