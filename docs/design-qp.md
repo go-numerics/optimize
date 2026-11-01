@@ -1,6 +1,13 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **tasks 4–9 implemented**. Tasks 8 and 9 (`qp_admm.go`,
+Status: **tasks 4–10 implemented**. Task 10 (`qp_admm_polish.go`): OSQP's
+`polish.c` (read at v1.0.0): active rows `z−l < −y` or `l = u` (lower), `u−z < y`
+(upper), reduced system `[P+δI Aredᵀ; Ared −δI]` through the same
+`ldl.Permuted`, `PolishRefine` passes of refinement against the unregularised
+matrix, y ← y+z, z ← Π(y), y ← y−z, acceptance by the three-way residual rule;
+no active row skips polishing. v1.0.0's qdldl interface regularises the polish
+system with σ, not δ (both 1e-6 by default); δ is used here. On the 35 solved
+fixture cases at default settings 34 polish and match Clarabel to 1e-6. Tasks 8 and 9 (`qp_admm.go`,
 `qp_admm_check.go`, `qp_admm_scale.go`, `qp_kkt.go`; one PR, because the
 unscaled-termination branches of task 8 cannot be covered without the scaling
 of task 9): OSQP v1.0.0's iteration with the KKT of §4.1 factored by go-sparse
