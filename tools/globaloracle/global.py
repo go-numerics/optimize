@@ -309,7 +309,7 @@ TWEAKS = [
 ]
 # the special cases only run a few tweaks
 SPECIAL = ("nan_region", "inf_region", "neginf_region", "nan_center", "nan_all")
-SPECIAL_TWEAKS = ("default", "len1e-3", "iter5", "fev1001", "eps1e-2")
+SPECIAL_TWEAKS = ("default", "len1e-3", "iter5", "fev1001", "eps1e-2", "epsjones")
 BIG = ("shifted_sphere_10", "hartmann_6")
 BIG_TWEAKS = ("default", "len1e-3", "fev1001", "iter5", "fmin", "epsjones", "iter30_nolen")
 

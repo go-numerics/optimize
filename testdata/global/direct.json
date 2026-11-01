@@ -76415,6 +76415,144 @@
    "ncallbacks": 111
   },
   {
+   "name": "nan_region/L/epsjones",
+   "problem": "nan_region",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": true,
+   "options": {
+    "eps": -0.0001,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x3faf99a18aa99200",
+    "0x3fde14906d1110c0"
+   ],
+   "fun": "0x3fad11fc37588a84",
+   "nfev": 2023,
+   "nit": 83,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0xbff1c71c71c71c72"
+    ],
+    [
+     "0x0000000000000000",
+     "0xbfd7b425ed097b42"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3fcf9add3c0ca430"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fa511e8d2b31820",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fa511e8d2b31820",
+     "0x3fdc17e118eecb04"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fdc17e118eecb04"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fdd8e74d23b3ad8"
+    ],
+    [
+     "0x3fae6f33db02b100",
+     "0x3fdd8e74d23b3ad8"
+    ],
+    [
+     "0x3fae6f33db02b100",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3faf36fa1bb3fe00",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3faf36fa1bb3fe00",
+     "0x3fde02fdcd4d524c"
+    ],
+    [
+     "0x3faf79918699c220",
+     "0x3fde02fdcd4d524c"
+    ],
+    [
+     "0x3faf79918699c220",
+     "0x3fde10dd58e7db28"
+    ],
+    [
+     "0x3faf8fc3ff910380",
+     "0x3fde10dd58e7db28"
+    ],
+    [
+     "0x3faf8fc3ff910380",
+     "0x3fde12b6e2fc75f0"
+    ],
+    [
+     "0x3faf972a27e36ea0",
+     "0x3fde12b6e2fc75f0"
+    ],
+    [
+     "0x3faf972a27e36ea0",
+     "0x3fde144180b84c48"
+    ],
+    [
+     "0x3faf8fc3ff910380",
+     "0x3fde088a6b8b22a4"
+    ],
+    [
+     "0x3faf972a27e36ea0",
+     "0x3fde157d321b5e1c"
+    ],
+    [
+     "0x3faf8fc3ff910380",
+     "0x3fde218333a14c44"
+    ],
+    [
+     "0x3faf99a18aa99220",
+     "0x3fde144180b84c48"
+    ],
+    [
+     "0x3faf8fc3ff910380",
+     "0x3fde00377e2e6a20"
+    ],
+    [
+     "0x3faf972a27e36ea0",
+     "0x3fde0ff093dd8dc4"
+    ],
+    [
+     "0x3faf8fc3ff910380",
+     "0x3fde29d620fe04c8"
+    ]
+   ],
+   "ncallbacks": 81
+  },
+  {
    "name": "nan_region/L/fev1001",
    "problem": "nan_region",
    "family": "arith",
@@ -76941,6 +77079,144 @@
    "ncallbacks": 63
   },
   {
+   "name": "nan_region/orig/epsjones",
+   "problem": "nan_region",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": false,
+   "options": {
+    "eps": -0.0001,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x3fb928e01c415080",
+    "0x3fde14906d1110c0"
+   ],
+   "fun": "0x3fa4d5728b707daf",
+   "nfev": 2007,
+   "nit": 59,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0xbff1c71c71c71c72"
+    ],
+    [
+     "0x0000000000000000",
+     "0xbfd7b425ed097b42"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3fcf9add3c0ca430"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fa511e8d2b31820",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fa511e8d2b31820",
+     "0x3fdc17e118eecb04"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fdc17e118eecb04"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fdd8e74d23b3ad8"
+    ],
+    [
+     "0x3fae6f33db02b100",
+     "0x3fdd8e74d23b3ad8"
+    ],
+    [
+     "0x3fae6f33db02b100",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3faf36fa1bb3fe00",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3faf36fa1bb3fe00",
+     "0x3fde02fdcd4d524c"
+    ],
+    [
+     "0x3faf79918699c220",
+     "0x3fde02fdcd4d524c"
+    ],
+    [
+     "0x3faf79918699c220",
+     "0x3fde1bf695637bec"
+    ],
+    [
+     "0x3faf79918699c220",
+     "0x3fddea05053728c0"
+    ],
+    [
+     "0x3f9c17e118eecb40",
+     "0x3fe0ae2da6cdc886"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fd43129c9eba1e4"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fe3506ac1242b94"
+    ],
+    [
+     "0x3f8c17e118eeca00",
+     "0x3fdc17e118eecb04"
+    ],
+    [
+     "0x3f8c17e118eeca00",
+     "0x3fdeba1e33452e08"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fda0b78af1d6170"
+    ],
+    [
+     "0x3fac17e118eecaa0",
+     "0x3fe0f917ff104548"
+    ],
+    [
+     "0x3f9c17e118eecb40",
+     "0x3fe1ff4c33f8fa12"
+    ],
+    [
+     "0x3fae6f33db02b100",
+     "0x3fe088b87aac8a20"
+    ],
+    [
+     "0x3fae6f33db02b100",
+     "0x3fda0b78af1d6170"
+    ]
+   ],
+   "ncallbacks": 57
+  },
+  {
    "name": "nan_region/orig/fev1001",
    "problem": "nan_region",
    "family": "arith",
@@ -77348,6 +77624,132 @@
    "locally_biased": true,
    "options": {
     "eps": 0.01,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x3fd3333b5afb84c0",
+    "0x3fde14761e48cf40"
+   ],
+   "fun": "0x3d964bcc7f06592d",
+   "nfev": 445,
+   "nit": 24,
+   "status": 5,
+   "success": true,
+   "message": "The side length measure of the hyperrectangle containing the lowest function value found is below len_tol=1e-06",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0xbff1c71c71c71c72"
+    ],
+    [
+     "0x0000000000000000",
+     "0xbfd7b425ed097b42"
+    ],
+    [
+     "0xbfd7b425ed097b42",
+     "0x3fd7b425ed097b38"
+    ],
+    [
+     "0x3fd7b425ed097b38",
+     "0x3fcf9add3c0ca430"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fdf9add3c0ca458"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fd26fabb85cb51c",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fd26fabb85cb51c",
+     "0x3fdc17e118eecb04"
+    ],
+    [
+     "0x3fd18eecaf953ecc",
+     "0x3fddd95f2a7db7a4"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fdd8e74d23b3ad8"
+    ],
+    [
+     "0x3fd3058068e1aea0",
+     "0x3fde244982c03470"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fde02fdcd4d524c"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fde13a3a806c354"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fde10dd58e7db28"
+    ],
+    [
+     "0x3fd331e55ad03174",
+     "0x3fde10dd58e7db28"
+    ],
+    [
+     "0x3fd331e55ad03174",
+     "0x3fde12b6e2fc75f0"
+    ],
+    [
+     "0x3fd332d21fda7ed8",
+     "0x3fde12b6e2fc75f0"
+    ],
+    [
+     "0x3fd332d21fda7ed8",
+     "0x3fde144180b84c48"
+    ],
+    [
+     "0x3fd333210c334348",
+     "0x3fde144180b84c48"
+    ],
+    [
+     "0x3fd333210c334348",
+     "0x3fde14761e48cf44"
+    ]
+   ],
+   "ncallbacks": 22
+  },
+  {
+   "name": "inf_region/L/epsjones",
+   "problem": "inf_region",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": true,
+   "options": {
+    "eps": -0.0001,
     "maxfun": 2000,
     "maxiter": 1000,
     "f_min": null,
@@ -77949,6 +78351,128 @@
    "ncallbacks": 21
   },
   {
+   "name": "inf_region/orig/epsjones",
+   "problem": "inf_region",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": false,
+   "options": {
+    "eps": -0.0001,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x3fd333210c334340",
+    "0x3fde14761e48cf40"
+   ],
+   "fun": "0x3db602e6cf617c1b",
+   "nfev": 785,
+   "nit": 23,
+   "status": 5,
+   "success": true,
+   "message": "The side length measure of the hyperrectangle containing the lowest function value found is below len_tol=1e-06",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0xbff1c71c71c71c72"
+    ],
+    [
+     "0x0000000000000000",
+     "0xbfd7b425ed097b42"
+    ],
+    [
+     "0xbfd7b425ed097b42",
+     "0x3fd7b425ed097b38"
+    ],
+    [
+     "0x3fd7b425ed097b38",
+     "0x3fcf9add3c0ca430"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fdf9add3c0ca458"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fd26fabb85cb51c",
+     "0x3fdcf8a021b64154"
+    ],
+    [
+     "0x3fd26fabb85cb51c",
+     "0x3fdc17e118eecb04"
+    ],
+    [
+     "0x3fd18eecaf953ecc",
+     "0x3fddd95f2a7db7a4"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fdd8e74d23b3ad8"
+    ],
+    [
+     "0x3fd3058068e1aea0",
+     "0x3fde244982c03470"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fde0b50baaa0ad0"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fde02fdcd4d524c"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fde13a3a806c354"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fde10dd58e7db28"
+    ],
+    [
+     "0x3fd331e55ad03174",
+     "0x3fde10dd58e7db28"
+    ],
+    [
+     "0x3fd331e55ad03174",
+     "0x3fde12b6e2fc75f0"
+    ],
+    [
+     "0x3fd332d21fda7ed8",
+     "0x3fde12b6e2fc75f0"
+    ],
+    [
+     "0x3fd332d21fda7ed8",
+     "0x3fde144180b84c48"
+    ],
+    [
+     "0x3fd333210c334348",
+     "0x3fde144180b84c48"
+    ]
+   ],
+   "ncallbacks": 21
+  },
+  {
    "name": "inf_region/orig/fev1001",
    "problem": "inf_region",
    "family": "arith",
@@ -78412,6 +78936,144 @@
    "locally_biased": true,
    "options": {
     "eps": 0.01,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x400aaaaaaaaaaaa8",
+    "0x400aaaaaaaaaaaa8"
+   ],
+   "fun": "0xfff0000000000000",
+   "nfev": 2087,
+   "nit": 37,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0xbff1c71c71c71c72"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x40104bda12f684be"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4012c3f35ba78193"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x401396a673e28087"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013dce226a0d582"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013f44b62359c80"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fc1920bc897f"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013feb30ae9832b"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ff9103a32bb8"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffdb013663e8"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fff3ab12214d"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffbe3b0b5c4"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffea13ae740"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffff8b13a269"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffd9068b77"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffff3022e7c"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffbab64d2"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffe8e76f0"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffff84d24f"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffffd6f0c5"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffff25041"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffffb7016"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffffe7ab3"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffffff7e3c"
+    ]
+   ],
+   "ncallbacks": 35
+  },
+  {
+   "name": "neginf_region/L/epsjones",
+   "problem": "neginf_region",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": true,
+   "options": {
+    "eps": -0.0001,
     "maxfun": 2000,
     "maxiter": 1000,
     "f_min": null,
@@ -79133,6 +79795,144 @@
    "ncallbacks": 27
   },
   {
+   "name": "neginf_region/orig/epsjones",
+   "problem": "neginf_region",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": false,
+   "options": {
+    "eps": -0.0001,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x400aaaaaaaaaaaa8",
+    "0x400aaaaaaaaaaaa8"
+   ],
+   "fun": "0xfff0000000000000",
+   "nfev": 2135,
+   "nit": 29,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0xbff1c71c71c71c72"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x40104bda12f684be"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4012c3f35ba78193"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x401396a673e28087"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013dce226a0d582"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013f44b62359c80"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fc1920bc897f"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013feb30ae9832b"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ff9103a32bb8"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffdb013663e8"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fff3ab12214d"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffbe3b0b5c4"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffea13ae740"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffff8b13a269"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffd9068b77"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffff3022e7c"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffbab64d2"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffe8e76f0"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffff84d24f"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffffd6f0c5"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffff25041"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffffb7016"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013fffffffe7ab3"
+    ],
+    [
+     "0x400aaaaaaaaaaaa9",
+     "0x4013ffffffff7e3c"
+    ]
+   ],
+   "ncallbacks": 27
+  },
+  {
    "name": "neginf_region/orig/fev1001",
    "problem": "neginf_region",
    "family": "arith",
@@ -79588,6 +80388,144 @@
    "locally_biased": true,
    "options": {
     "eps": 0.01,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x0000000000000000",
+    "0x0000000000000000"
+   ],
+   "fun": "0x7ff8000000000000",
+   "nfev": 2063,
+   "nit": 60,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0xc00aaaaaaaaaaaaa",
+     "0x400aaaaaaaaaaaa9"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0xbff1c71c71c71c72",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3ffda12f684bda10"
+    ],
+    [
+     "0xbfd7b425ed097b42",
+     "0x3ffda12f684bda10"
+    ],
+    [
+     "0x3fd7b425ed097b38",
+     "0x3ffba781948b0fc8"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3ffba781948b0fc8"
+    ],
+    [
+     "0xbff1c71c71c71c72",
+     "0x3ff1c71c71c71c74"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3fe7b425ed097b4c"
+    ],
+    [
+     "0xbfd7b425ed097b42",
+     "0x3fe7b425ed097b4c"
+    ],
+    [
+     "0x3fd7b425ed097b38",
+     "0x3fe3c0ca4587e6bc"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fe3c0ca4587e6bc"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fe26fabb85cb53a"
+    ],
+    [
+     "0x3fca5663075fde28",
+     "0x3fe26fabb85cb53a"
+    ],
+    [
+     "0x3fd26fabb85cb51c",
+     "0x3fe1ff4c33f8fa12"
+    ],
+    [
+     "0x3fd18eecaf953ecc",
+     "0x3fe1ff4c33f8fa12"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fe1d9d707d7bbac"
+    ],
+    [
+     "0x3fd3058068e1aea0",
+     "0x3fe1d9d707d7bbac"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fe1cd5aa3cca6dc"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fe1cd5aa3cca6dc"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fe1c9312d1e4a9a"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fe1c9312d1e4a9a"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fe1c7ce058ed684"
+    ],
+    [
+     "0x3fd32c58bc92611c",
+     "0x3fe1c7ce058ed684"
+    ],
+    [
+     "0x3fd331e55ad03174",
+     "0x3fe1c757a309afd2"
+    ]
+   ],
+   "ncallbacks": 58
+  },
+  {
+   "name": "nan_center/L/epsjones",
+   "problem": "nan_center",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": true,
+   "options": {
+    "eps": -0.0001,
     "maxfun": 2000,
     "maxiter": 1000,
     "f_min": null,
@@ -80313,6 +81251,144 @@
    "ncallbacks": 39
   },
   {
+   "name": "nan_center/orig/epsjones",
+   "problem": "nan_center",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": false,
+   "options": {
+    "eps": -0.0001,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x0000000000000000",
+    "0x0000000000000000"
+   ],
+   "fun": "0x7ff8000000000000",
+   "nfev": 2139,
+   "nit": 41,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0xc00aaaaaaaaaaaaa",
+     "0x400aaaaaaaaaaaa9"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0xbff1c71c71c71c72",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3ffda12f684bda10"
+    ],
+    [
+     "0xbfd7b425ed097b42",
+     "0x3ffda12f684bda10"
+    ],
+    [
+     "0xbff1c71c71c71c72",
+     "0x3ff1c71c71c71c74"
+    ],
+    [
+     "0x0000000000000000",
+     "0x3fe7b425ed097b4c"
+    ],
+    [
+     "0xbfd7b425ed097b42",
+     "0x3fe7b425ed097b4c"
+    ],
+    [
+     "0x3fd7b425ed097b38",
+     "0x3fe3c0ca4587e6bc"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fe3c0ca4587e6bc"
+    ],
+    [
+     "0x3fcf9add3c0ca430",
+     "0x3fe26fabb85cb53a"
+    ],
+    [
+     "0x3fca5663075fde28",
+     "0x3fe26fabb85cb53a"
+    ],
+    [
+     "0x3fd26fabb85cb51c",
+     "0x3fe1ff4c33f8fa12"
+    ],
+    [
+     "0x3fd18eecaf953ecc",
+     "0x3fe1ff4c33f8fa12"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fe1d9d707d7bbac"
+    ],
+    [
+     "0x3fd3058068e1aea0",
+     "0x3fe1d9d707d7bbac"
+    ],
+    [
+     "0x3fd3506ac1242b6c",
+     "0x3fe1cd5aa3cca6dc"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fe1cd5aa3cca6dc"
+    ],
+    [
+     "0x3fd33771f90e01cc",
+     "0x3fe1c9312d1e4a9a"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fe1c9312d1e4a9a"
+    ],
+    [
+     "0x3fd32f1f0bb14948",
+     "0x3fe1c7ce058ed684"
+    ],
+    [
+     "0x3fd32c58bc92611c",
+     "0x3fe1c7ce058ed684"
+    ],
+    [
+     "0x3fd331e55ad03174",
+     "0x3fe1c757a309afd2"
+    ],
+    [
+     "0x3fd330f895c5e410",
+     "0x3fe1c757a309afd2"
+    ],
+    [
+     "0x3fd332d21fda7ed8",
+     "0x3fe1c7302cdd4d9a"
+    ]
+   ],
+   "ncallbacks": 39
+  },
+  {
    "name": "nan_center/orig/fev1001",
    "problem": "nan_center",
    "family": "arith",
@@ -80839,6 +81915,144 @@
    "ncallbacks": 34
   },
   {
+   "name": "nan_all/L/epsjones",
+   "problem": "nan_all",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": true,
+   "options": {
+    "eps": -0.0001,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x0000000000000000",
+    "0x0000000000000000"
+   ],
+   "fun": "0x7ff8000000000000",
+   "nfev": 2101,
+   "nit": 36,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x40104bda12f684be"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4012c3f35ba78193"
+    ],
+    [
+     "0x0000000000000000",
+     "0x401396a673e28087"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013dce226a0d582"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013f44b62359c80"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fc1920bc897f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013feb30ae9832b"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ff9103a32bb8"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffdb013663e8"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fff3ab12214d"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffbe3b0b5c4"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffea13ae740"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffff8b13a269"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffd9068b77"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffff3022e7c"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffbab64d2"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffe8e76f0"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffff84d24f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffffd6f0c5"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffff25041"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffffb7016"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffffe7ab3"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffffff7e3c"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffffffd4c0"
+    ]
+   ],
+   "ncallbacks": 34
+  },
+  {
    "name": "nan_all/L/fev1001",
    "problem": "nan_all",
    "family": "arith",
@@ -81234,6 +82448,144 @@
    "locally_biased": false,
    "options": {
     "eps": 0.01,
+    "maxfun": 2000,
+    "maxiter": 1000,
+    "f_min": null,
+    "f_min_rtol": 0.0001,
+    "vol_tol": 1e-16,
+    "len_tol": 0.000001
+   },
+   "error": null,
+   "x": [
+    "0x0000000000000000",
+    "0x0000000000000000"
+   ],
+   "fun": "0x7ff8000000000000",
+   "nfev": 2135,
+   "nit": 28,
+   "status": 1,
+   "success": false,
+   "message": "Number of function evaluations done is larger than maxfun=2000",
+   "trace": [
+    [
+     "0x0000000000000000",
+     "0x4001c71c71c71c6f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x40104bda12f684be"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4012c3f35ba78193"
+    ],
+    [
+     "0x0000000000000000",
+     "0x401396a673e28087"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013dce226a0d582"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013f44b62359c80"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fc1920bc897f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013feb30ae9832b"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ff9103a32bb8"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffdb013663e8"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fff3ab12214d"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffbe3b0b5c4"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffea13ae740"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffff8b13a269"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffd9068b77"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffff3022e7c"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffbab64d2"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffe8e76f0"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffff84d24f"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffffd6f0c5"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffff25041"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffffb7016"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013fffffffe7ab3"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffffff7e3c"
+    ],
+    [
+     "0x0000000000000000",
+     "0x4013ffffffffd4c0"
+    ]
+   ],
+   "ncallbacks": 26
+  },
+  {
+   "name": "nan_all/orig/epsjones",
+   "problem": "nan_all",
+   "family": "arith",
+   "dim": 2,
+   "lower": [
+    -5,
+    -5
+   ],
+   "upper": [
+    5,
+    5
+   ],
+   "locally_biased": false,
+   "options": {
+    "eps": -0.0001,
     "maxfun": 2000,
     "maxiter": 1000,
     "f_min": null,
