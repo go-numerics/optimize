@@ -35,6 +35,9 @@ type dirParams struct {
 	volper   float64
 	sigmaper float64
 	workers  int
+	// deepCap lowers MAXDEEP; used by tests to reach the "maximum number of
+	// levels" exit, which MaxIter+1000 puts out of reach of cheap runs.
+	deepCap int
 }
 
 // dirOut is what _directmodule.c returns: x, minf, ret_code, numfunc,
@@ -91,6 +94,9 @@ func directCore(fn func(x []float64) (float64, int), lb, ub []float64, p dirPara
 
 	n := len(lb)
 	maxfunc, maxf64, maxdeep, maxT64 := dirSizes(n, p.maxf, p.maxt)
+	if p.deepCap > 0 && int64(p.deepCap) < maxdeep {
+		maxdeep = int64(p.deepCap)
+	}
 	maxf, maxT := int(maxf64), int(maxT64)
 	d := &dirState{
 		n: n, maxfunc: int(maxfunc), maxdeep: int(maxdeep), fn: fn, workers: p.workers,
@@ -141,14 +147,10 @@ func directCore(fn func(x []float64) (float64, int), lb, ub []float64, p dirPara
 		return dirOut{x: bestX(), fun: d.minf, ierror: ierror, numfunc: d.numfunc, numiter: t}
 	}
 
-	// DIRheader
-	if maxf+20 > d.maxfunc {
-		x := make([]float64, n)
-		for i := range x {
-			x[i] = float64(0.5*d.xs1[i]) + d.xs1[i]*d.xs2[i]
-		}
-		return dirOut{x: x, fun: math.Inf(1), ierror: -2}
-	}
+	// DIRheader's `maxf + 20 > MAXFUNC` error (-2) cannot happen after the
+	// sizing above: maxf is then 2*(MAXFUNC-1000)/3 or MAXFUNC-1000, which
+	// is below MAXFUNC-20 for every MAXFUNC that dirSizes can return, so the
+	// check is not ported.
 	divfactor := 1.0
 	if p.fglobal != 0 {
 		divfactor = math.Abs(p.fglobal)
@@ -183,6 +185,7 @@ func directCore(fn func(x []float64) (float64, int), lb, ub []float64, p dirPara
 	// DIRSamplepoints fails when the 2n new slots would end the free list;
 	// checked here so that the arrays are never grown for a doomed start.
 	if 2*n+2 > d.maxfunc {
+		d.numfunc = 1
 		return fail(-4, 0)
 	}
 	start, _ := d.samplepoints(delta, 1)

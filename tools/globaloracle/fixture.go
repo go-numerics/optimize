@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -127,17 +126,10 @@ func Decode(r io.Reader) (*Fixture, error) {
 
 // Encode writes f as indented JSON with a final newline, the committed form.
 func Encode(w io.Writer, f *Fixture) error {
-	b, err := json.Marshal(f)
-	if err != nil {
-		return err
-	}
-	var out bytes.Buffer
-	if err := json.Indent(&out, b, "", " "); err != nil {
-		return err
-	}
-	out.WriteByte('\n')
-	_, err = w.Write(out.Bytes())
-	return err
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", " ")
+	return enc.Encode(f)
 }
 
 // Disagreement is one difference between two fixtures.

@@ -1,0 +1,10 @@
+go test fuzz v1
+byte('\x03')
+float64(-1)
+float64(1)
+float64(0.0001)
+int32(2147481646)
+int32(2147481646)
+bool(true)
+float64(0.5)
+[]byte("\x00\x01\x02\x03\x04")

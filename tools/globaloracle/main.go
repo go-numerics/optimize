@@ -107,15 +107,15 @@ func genCmd() *cobra.Command {
 			if f.Method != method {
 				return fmt.Errorf("oracle output: method %q, asked for %q", f.Method, method)
 			}
-			var enc bytes.Buffer
-			if err := Encode(&enc, f); err != nil {
+			w, err := os.Create(out)
+			if err != nil {
 				return err
 			}
-			if err := os.WriteFile(out, enc.Bytes(), 0o644); err != nil {
-				return err
+			err = errors.Join(Encode(w, f), w.Close())
+			if err == nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases), f.Scipy, f.Machine, out)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases), f.Scipy, f.Machine, out)
-			return nil
+			return err
 		},
 	}
 	cmd.Flags().StringVarP(&out, "output", "o", "", "fixture file to write (default testdata/global/<method>.json)")

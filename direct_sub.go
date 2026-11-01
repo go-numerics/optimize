@@ -18,8 +18,9 @@ package optimize
 import "math"
 
 // dirMaxDiv is MAXDIV of DIRect.c: the capacity of the list S of
-// potentially optimal rectangles.
-const dirMaxDiv = 5000
+// potentially optimal rectangles. A variable only so that tests can reach
+// the overflow cheaply.
+var dirMaxDiv = 5000
 
 // dirState holds the arrays of DIRect.c. The C code indexes rectangles,
 // dimensions and list slots from 1; the slices below keep that numbering
@@ -248,9 +249,11 @@ func (d *dirState) choose(epsrel, epsabs float64) (maxpos int, ok bool) {
 			if ii > 0 && d.fk[ii] <= 1 {
 				help2 := d.lev(d.s2[i]) - d.lev(d.s2[j])
 				help2 = (d.fv[ii] - d.fv[jj]) / help2
-				if help2 <= 0 {
-					drop = true
-				} else if help2 > helpgreater {
+				// The C code also drops j here when help2 <= 0, but a deeper
+				// survivor i with f_i >= f_j has been dropped by its own pass
+				// (j is then a larger rectangle that is no worse), so that
+				// branch never runs and is not ported.
+				if help2 > helpgreater {
 					helpgreater = help2
 				}
 			}
@@ -322,10 +325,10 @@ func (d *dirState) resortlist(replace int) {
 			d.point[pos] = d.point[replace]
 			break
 		}
+		// (The C code also stops when pos reaches 0, "we went through the
+		// whole list": the rectangle is always in its list, so it is not
+		// ported.)
 		pos = int(d.point[pos])
-		if pos == 0 {
-			break
-		}
 	}
 	if d.fv[start] > d.fv[replace] {
 		d.setAnc(l, replace)

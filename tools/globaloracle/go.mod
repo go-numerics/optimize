@@ -1,4 +1,4 @@
-module github.com/go-numerics/optimize/tools/slsqporacle
+module github.com/go-numerics/optimize/tools/globaloracle
 
 go 1.27.2
 

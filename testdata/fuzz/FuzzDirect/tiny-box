@@ -1,0 +1,10 @@
+go test fuzz v1
+byte('\x0b')
+float64(1e-300)
+float64(2e-300)
+float64(0)
+int32(7)
+int32(3)
+bool(true)
+float64(0)
+[]byte("")
