@@ -1,0 +1,12 @@
+go test fuzz v1
+byte('\x01')
+byte('\x00')
+byte('\a')
+byte('\x01')
+byte('\x00')
+byte('\x03')
+float64(-3)
+float64(0)
+float64(1)
+uint64(9)
+[]byte("2")

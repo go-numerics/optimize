@@ -72,5 +72,11 @@ func parallelFor(n, workers int, body func(worker, i int)) {
 // for concurrent use when workers > 1. A panic in f is re-raised on the
 // calling goroutine.
 func evalBatch(f func([]float64) float64, points [][]float64, out []float64, workers int) {
+	if effectiveWorkers(len(points), workers) == 1 { // no closure: no allocation
+		for i, p := range points {
+			out[i] = f(p)
+		}
+		return
+	}
 	parallelFor(len(points), workers, func(_, i int) { out[i] = f(points[i]) })
 }

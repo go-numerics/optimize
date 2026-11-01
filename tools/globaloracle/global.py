@@ -390,11 +390,118 @@ def docstring_example():
     return out
 
 
+# ------------------------------------------------- differential evolution
+
+DE_PROBLEMS = ("shifted_sphere_2", "shifted_sphere_5", "rosenbrock_2", "goldstein_price",
+               "six_hump_camel", "styblinski_tang_2", "shekel_5", "booth", "matyas", "beale")
+DE_STRATEGIES = ("best1bin", "best1exp", "rand1bin", "rand1exp", "randtobest1bin",
+                 "randtobest1exp", "currenttobest1bin", "currenttobest1exp", "best2bin",
+                 "best2exp", "rand2bin", "rand2exp")
+DE_DEFAULTS = dict(strategy="best1bin", maxiter=1000, popsize=15, tol=0.01, atol=0.0,
+                   mutation=[0.5, 1.0], recombination=0.7, init="latinhypercube", init_pop=None,
+                   x0=None, updating="immediate", polish=False, maxfun=None)
+
+
+def de_one(name, pname, kind, seed, **over):
+    from scipy.optimize._differentialevolution import DifferentialEvolutionSolver
+
+    f, lo, hi, fglob, fam = PROBLEMS[pname]
+    o = dict(DE_DEFAULTS)
+    o.update(over)
+    rng = np.random.default_rng(seed) if kind == "rng" else np.random.RandomState(seed)
+    mut = tuple(o["mutation"]) if len(o["mutation"]) > 1 else o["mutation"][0]
+    init = o["init_pop"] if o["init_pop"] is not None else o["init"]
+    case = dict(name=name, problem=pname, family=fam, dim=len(lo), lower=lo, upper=hi,
+                kind=kind, seed=seed, options=o, error=None)
+    try:
+        solver = DifferentialEvolutionSolver(
+            lambda x: f(x.tolist()), list(zip(lo, hi)), strategy=o["strategy"],
+            maxiter=o["maxiter"], popsize=o["popsize"], tol=o["tol"], atol=o["atol"],
+            mutation=mut, recombination=o["recombination"], rng=rng, polish=o["polish"],
+            init=init, updating=o["updating"], x0=o["x0"],
+            maxfun=np.inf if o["maxfun"] is None else o["maxfun"])
+        res = solver.solve()
+    except Exception as e:  # recorded, never raised
+        case["error"] = "%s: %s" % (type(e).__name__, e)
+        return case
+    case.update(
+        x=[hx(v) for v in res.x], fun=hx(res.fun), nfev=int(res.nfev), nit=int(res.nit),
+        success=bool(res.success), message=str(res.message),
+        population=[[hx(v) for v in row] for row in res.population],
+        population_energies=[hx(v) for v in res.population_energies])
+    return case
+
+
+def run_de():
+    cases = []
+    for kind, seed in (("rng", 7), ("seed", 7)):
+        for pname in ("rosenbrock_2", "styblinski_tang_2"):
+            for st in DE_STRATEGIES:
+                for upd in ("immediate", "deferred"):
+                    cases.append(de_one("%s/%s/%s/%s" % (pname, st, upd, kind), pname, kind, seed,
+                                        strategy=st, updating=upd))
+        for pname in DE_PROBLEMS:
+            for pol in (False, True):
+                cases.append(de_one("%s/default/polish%d/%s" % (pname, pol, kind), pname, kind, 3,
+                                    polish=pol))
+        for pname in ("shifted_sphere_2", "six_hump_camel", "matyas"):
+            lo, hi = PROBLEMS[pname][1], PROBLEMS[pname][2]
+            rows = [[lo[j] + (hi[j] - lo[j]) * [0.1, 0.9, 0.5, 0.3, 0.7, 0.2, 0.8, 0.6][(i * (j + 1)) % 8]
+                     for j in range(len(lo))] for i in range(8)]
+            x0 = [lo[j] + (hi[j] - lo[j]) * 0.3 for j in range(len(lo))]
+            variants = [
+                ("random", dict(init="random")),
+                ("array", dict(init_pop=rows)),
+                ("x0", dict(x0=x0)),
+                ("mut0.6", dict(mutation=[0.6])),
+                ("dither0.2-0.9", dict(mutation=[0.9, 0.2])),
+                ("atol", dict(atol=1e-3, tol=0.0)),
+                ("tol0.1", dict(tol=0.1)),
+                ("maxfun100", dict(maxfun=100)),
+                ("maxfun333_def", dict(maxfun=333, updating="deferred")),
+                ("maxfun30_def", dict(maxfun=30, updating="deferred")),
+                ("maxiter0", dict(maxiter=0)),
+                ("maxiter1", dict(maxiter=1)),
+                ("maxiter3_def", dict(maxiter=3, updating="deferred")),
+                ("cr0", dict(recombination=0.0)),
+                ("cr1", dict(recombination=1.0)),
+                ("pop1", dict(popsize=1)),
+                ("pop1_rand1exp", dict(popsize=1, strategy="rand1exp")),
+                ("pop1_best2bin_def", dict(popsize=1, strategy="best2bin", updating="deferred")),
+                ("pop3", dict(popsize=3)),
+                ("pop30_def", dict(popsize=30, updating="deferred")),
+                ("polish_x0", dict(x0=x0, polish=True)),
+            ]
+            for vname, kw in variants:
+                cases.append(de_one("%s/%s/%s" % (pname, vname, kind), pname, kind, 11, **kw))
+        cases.append(de_one("nan_region/maxiter25/%s" % kind, "nan_region", kind, 5, maxiter=25))
+        cases.append(de_one("nan_all/maxiter5/%s" % kind, "nan_all", kind, 5, maxiter=5))
+    return cases
+
+
+def run_reductions():
+    # np.mean and np.std of arrays whose plain and pairwise sums differ: the
+    # witness of the summation order of DE's termination test.
+    rs = np.random.RandomState(123)
+    out = []
+    for n in list(range(1, 40)) + [63, 64, 65, 127, 128, 129, 130, 255, 256, 300, 1000]:
+        v = rs.standard_normal(n) * 10.0 ** rs.randint(-8, 8, n)
+        out.append(dict(name="n%d" % n, values=[hx(x) for x in v], mean=hx(np.mean(v)),
+                        std=hx(np.std(v))))
+    return out
+
+
 if METHOD == "direct":  # noqa: F821  (prepended by the Go harness)
     cases = run_direct() + docstring_example()
+    de_cases = []
+    reductions = []
+elif METHOD == "de":  # noqa: F821
+    cases = []
+    de_cases = run_de()
+    reductions = run_reductions()
 else:
     raise SystemExit("unsupported method %r" % METHOD)  # noqa: F821
 
 json.dump(dict(method=METHOD, scipy=scipy.__version__, numpy=np.__version__,  # noqa: F821
                python=platform.python_version(), machine=platform.machine(),
-               system=platform.system(), cases=cases), sys.stdout, allow_nan=False)
+               system=platform.system(), cases=cases, de=de_cases, reductions=reductions), sys.stdout, allow_nan=False)

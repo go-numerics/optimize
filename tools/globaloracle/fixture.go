@@ -49,6 +49,63 @@ type Fixture struct {
 	Machine string `json:"machine"`
 	System  string `json:"system"`
 	Cases   []Case `json:"cases"`
+	// DE holds the cases of the "de" method (differential evolution); Cases
+	// holds those of "direct". A fixture carries one kind or the other.
+	DE []DECase `json:"de,omitempty"`
+	// Reductions are NumPy's np.mean and np.std of arrays chosen so that the
+	// summation order shows (the "de" method's termination test).
+	Reductions []Reduction `json:"reductions,omitempty"`
+}
+
+// Reduction is np.mean(values) and np.std(values).
+type Reduction struct {
+	Name   string `json:"name"`
+	Values []Hex  `json:"values"`
+	Mean   Hex    `json:"mean"`
+	Std    Hex    `json:"std"`
+}
+
+// DEOptions are the arguments of SciPy's DifferentialEvolutionSolver of one
+// case, defaults resolved. Mutation holds one value (constant) or two (the
+// dither range, in the order given to SciPy). InitPop is the init=array form,
+// nil otherwise; Maxfun is nil for SciPy's infinity.
+type DEOptions struct {
+	Strategy      string      `json:"strategy"`
+	Maxiter       int         `json:"maxiter"`
+	Popsize       int         `json:"popsize"`
+	Tol           float64     `json:"tol"`
+	Atol          float64     `json:"atol"`
+	Mutation      []float64   `json:"mutation"`
+	Recombination float64     `json:"recombination"`
+	Init          string      `json:"init"`
+	InitPop       [][]float64 `json:"init_pop"`
+	X0            []float64   `json:"x0"`
+	Updating      string      `json:"updating"`
+	Polish        bool        `json:"polish"`
+	Maxfun        *int        `json:"maxfun"`
+}
+
+// DECase is one run of SciPy's DifferentialEvolutionSolver. Kind is "rng"
+// (default_rng(seed), PCG64) or "seed" (RandomState(seed), MT19937).
+type DECase struct {
+	Name       string    `json:"name"`
+	Problem    string    `json:"problem"`
+	Family     string    `json:"family"`
+	Dim        int       `json:"dim"`
+	Lower      []float64 `json:"lower"`
+	Upper      []float64 `json:"upper"`
+	Kind       string    `json:"kind"`
+	Seed       uint64    `json:"seed"`
+	Options    DEOptions `json:"options"`
+	Error      *string   `json:"error"`
+	X          []Hex     `json:"x,omitempty"`
+	Fun        *Hex      `json:"fun,omitempty"`
+	Nfev       int       `json:"nfev"`
+	Nit        int       `json:"nit"`
+	Success    bool      `json:"success"`
+	Message    string    `json:"message"`
+	Population [][]Hex   `json:"population,omitempty"`
+	Energies   []Hex     `json:"population_energies,omitempty"`
 }
 
 // Options are the keyword arguments of scipy.optimize.direct, defaults
@@ -98,8 +155,11 @@ func Decode(r io.Reader) (*Fixture, error) {
 	if err := dec.Decode(&f); err != nil {
 		return nil, fmt.Errorf("fixture: %w", err)
 	}
-	if len(f.Cases) == 0 {
+	if len(f.Cases) == 0 && len(f.DE) == 0 {
 		return nil, fmt.Errorf("fixture: no cases")
+	}
+	if err := checkDE(f.DE); err != nil {
+		return nil, err
 	}
 	seen := map[string]bool{}
 	for _, c := range f.Cases {
@@ -203,6 +263,7 @@ func Diff(a, b *Fixture) []Disagreement {
 			add(cb.Name, "only in the second fixture")
 		}
 	}
+	diffDE(a, b, add)
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Case < out[j].Case })
 	return out
 }

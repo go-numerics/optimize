@@ -89,6 +89,25 @@ func (s *RandomSource) FillUniform(dst []float64, low, high float64) error {
 	return nil
 }
 
+// fillUnit is uniform(size=len(dst)): the range [0, 1) is always valid, so
+// the error of FillUniform cannot happen.
+func (s *RandomSource) fillUnit(dst []float64) {
+	if s.g != nil {
+		_ = s.g.FillUniform(dst, 0, 1)
+		return
+	}
+	_ = s.r.FillUniform(dst, 0, 1)
+}
+
+// fillBelow is integers(0, high, size=len(dst)) for a high >= 1.
+func (s *RandomSource) fillBelow(dst []int64, high int64) {
+	if s.g != nil {
+		_ = s.g.FillIntN(dst, high)
+		return
+	}
+	_ = s.r.FillIntN(dst, high)
+}
+
 // IntN is integers(0, high) with size=None; it panics when high <= 0.
 func (s *RandomSource) IntN(high int64) int64 {
 	if s.g != nil {

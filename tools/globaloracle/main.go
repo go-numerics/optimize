@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,7 @@ const (
 
 // methods lists the methods global.py can run; the others of the design
 // (differential evolution, basin hopping) are added with their ports.
-var methods = []string{"direct"}
+var methods = []string{"direct", "de"}
 
 // osExit is replaced by tests.
 var osExit = os.Exit
@@ -89,7 +90,7 @@ func genCmd() *cobra.Command {
 		ValidArgs:    methods,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			method := args[0]
-			if method != "direct" {
+			if !slices.Contains(methods, method) {
 				return fmt.Errorf("unknown method %q (have %v)", method, methods)
 			}
 			if out == "" {
@@ -113,7 +114,7 @@ func genCmd() *cobra.Command {
 			}
 			err = errors.Join(Encode(w, f), w.Close())
 			if err == nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases), f.Scipy, f.Machine, out)
+				fmt.Fprintf(cmd.OutOrStdout(), "wrote %d cases (SciPy %s, %s) to %s\n", len(f.Cases)+len(f.DE), f.Scipy, f.Machine, out)
 			}
 			return err
 		},
@@ -147,7 +148,7 @@ func diffCmd() *cobra.Command {
 				names[x.Case] = true
 			}
 			fmt.Fprintf(w, "%d cases (%s, %s) against %d (%s, %s): %d disagree\n",
-				len(a.Cases), a.Scipy, a.Machine, len(b.Cases), b.Scipy, b.Machine, len(names))
+				len(a.Cases)+len(a.DE), a.Scipy, a.Machine, len(b.Cases)+len(b.DE), b.Scipy, b.Machine, len(names))
 			if len(d) > 0 {
 				return ErrDisagree
 			}
