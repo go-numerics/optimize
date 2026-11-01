@@ -375,3 +375,37 @@ Everything above the line reproduces the SciPy numbers:
 benchmarks/run.sh 5          # needs uv (https://docs.astral.sh/uv/) for SciPy
 GOWORK=off go test -run '^$' -bench . -benchtime=1s -cpu 1   # Go side only
 ```
+
+## Global optimisation (`DifferentialEvolution`, `Basinhopping`, `Direct`)
+
+**Status: the comparison with SciPy is not measured yet.** `tools/globalbench`
+(interleaved rounds, medians, a 1-minute load check after every round, as
+`tools/qpbench`) is merged and tested without Python, Docker or a quiet machine,
+but the build machine's 1-minute load average was 36–110 all day (other
+sessions), above the tool's refusal threshold of 8, so no number is claimed:
+a Go-only timing taken at that load is not a measurement and is not reported
+here either. Same for the per-generation effect of the go-simd/floats v0.7.0
+`AxpyDiffNoFMA` kernels in DE's mutation (PR #39): the 296 exact-path fixtures
+prove the arithmetic unchanged; the time is for the first quiet run.
+
+Rows (`BenchmarkGlobal` in `global_bench_test.go`, `tools/globalbench/bench.py`
+with the same names and parameters; SciPy 1.18.1, one thread, `workers=1`):
+
+| Row | Go | SciPy |
+|---|---|---|
+| `de.{sphere,rosenbrock,rastrigin}.{2,10,30}` | `DifferentialEvolution`, defaults (popsize 15, polish), `NewRNG(1)`; same random path, so equal nfev on the arithmetic objectives | `differential_evolution(f, bounds, rng=1)`, scalar objective on a NumPy array |
+| `dev.*.10` | `Updating: DEDeferred` | `vectorized=True, updating='deferred'` with a NumPy-vectorised objective (SciPy's fastest form: the honest row) |
+| `deoverhead.trivial.10` | ns per trial, objective `x[0]`, 50 generations, `Tol` -1, no polish | same |
+| `bh.himmelblau.100` | `Basinhopping`, L-BFGS-B, analytic gradient, 100 steps | `basinhopping(..., minimizer_kwargs=dict(method='L-BFGS-B', jac=True))` |
+| `direct.styblinskitang.2` (the documentation example, nfev 2011), `direct.rosenbrock.{2,5}`, `direct.sphere.10` | `Direct`, defaults | `direct(f, bounds)`: compiled C core, Python only in the objective |
+
+A row is flagged "slower" when our time exceeds SciPy's (by the ratio of the
+total times when both sides took the same number of evaluations, by the ratio of
+the times per evaluation otherwise: Rastrigin's `cos` makes the paths diverge).
+A flagged row is an open defect. Targets from design-global.md section 12: no
+row slower than SciPy on one core; DE against `vectorized=True` on a cheap
+objective is the risk row.
+
+```sh
+cd tools/globalbench && GOWORK=off go run . --repo ../.. --rounds 7 --wait 2h   # needs uv and a load below 8
+```
