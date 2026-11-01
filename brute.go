@@ -3,8 +3,12 @@ package optimize
 import (
 	"fmt"
 	"math"
-	"sync"
 )
+
+// bruteMaxPoints bounds the grid (2^27 values, 1 GiB of float64) so that its
+// size can neither overflow an int, even on 32-bit targets, nor exhaust
+// memory; SciPy would raise MemoryError.
+const bruteMaxPoints = 1 << 27
 
 // Range is one axis of a Brute grid. With Step 0 the axis holds Ns points
 // from Lo to Hi inclusive (SciPy's (low, high) tuple, i.e. slice(low, high,
@@ -62,8 +66,8 @@ func Brute(f func([]float64) float64, ranges []Range, o *BruteOptions) (*BruteRe
 	if ns == 0 {
 		ns = 20
 	}
-	if ns < 1 {
-		return nil, fmt.Errorf("%w: Ns must be positive", ErrInput)
+	if ns < 1 || ns > bruteMaxPoints {
+		return nil, fmt.Errorf("%w: Ns must be in [1, %d]", ErrInput, int64(bruteMaxPoints))
 	}
 	axes := make([][]float64, n)
 	total := 1
@@ -83,12 +87,18 @@ func Brute(f func([]float64) float64, ranges []Range, o *BruteOptions) (*BruteRe
 			if !(cnt > 0) || math.IsInf(cnt, 0) {
 				return nil, fmt.Errorf("%w: range %d holds no points", ErrInput, k)
 			}
+			if cnt > bruteMaxPoints {
+				return nil, fmt.Errorf("%w: range %d holds too many points", ErrInput, k)
+			}
 			ax = make([]float64, int(cnt))
 			for i := range ax {
 				ax[i] = float64(float64(i)*r.Step) + r.Lo
 			}
 		}
 		axes[k] = ax
+		if total > bruteMaxPoints/len(ax) {
+			return nil, fmt.Errorf("%w: the grid holds more than %d points", ErrInput, int64(bruteMaxPoints))
+		}
 		total *= len(ax)
 	}
 	jout := make([]float64, total)
@@ -99,20 +109,15 @@ func Brute(f func([]float64) float64, ranges []Range, o *BruteOptions) (*BruteRe
 			idx /= m
 		}
 	}
-	workers := max(opt.Workers, 1)
-	var wg sync.WaitGroup
-	for w := range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			x := make([]float64, n)
-			for i := w; i < total; i += workers {
-				point(i, x)
-				jout[i] = f(x)
-			}
-		}()
+	scratch := make([][]float64, effectiveWorkers(total, opt.Workers))
+	for w := range scratch {
+		scratch[w] = make([]float64, n)
 	}
-	wg.Wait()
+	parallelFor(total, opt.Workers, func(w, i int) {
+		x := scratch[w]
+		point(i, x)
+		jout[i] = f(x)
+	})
 	// numpy.argmin: the first minimum, NaN counting as the minimum.
 	best := 0
 	for i, v := range jout {
