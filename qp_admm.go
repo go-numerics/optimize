@@ -459,4 +459,7 @@ func (a *admm) run() {
 	if a.status == admmUnsolved && !a.checkTermination(true) {
 		a.status = QPIterLimit
 	}
+	if s.polish && a.status == QPOptimal {
+		a.polish()
+	}
 }
