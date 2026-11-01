@@ -177,7 +177,7 @@ func RootCmd() *cobra.Command {
 		Short:        "Oracle fixtures for the quadratic-programming solvers (OSQP, Clarabel, quadprog)",
 		SilenceUsage: true,
 	}
-	cmd.AddCommand(genCmd(), diffCmd())
+	cmd.AddCommand(genCmd(), diffCmd(), mmCmd())
 	return cmd
 }
 

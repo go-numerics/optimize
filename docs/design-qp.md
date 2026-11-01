@@ -1,6 +1,16 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **tasks 4–11 implemented**. Task 11 (`qp_solver.go`, `qp_admm.go`):
+Status: **tasks 4–12 implemented (12 partly)**. Task 12: `qporacle mm fetch`
+(pinned commit, SHA-256 per file, size bound, cache directory outside any
+repository) and `mm convert` (the MAT loader of qpbenchmark's
+`maros_meszaros.py`, read first: A = [C; I], ±1e20 infinity, P symmetric) write
+`testdata/qp/mm/tiny.json` (16 problems) and `small.json` (9 of 17: fixtures
+store dense matrices, so n·(n+m) above 30000 is skipped: PRIMALC2, PRIMALC5,
+QRECIPE, QSC205, QSCAGR7, QSCTAP1, QSHARE1B, VALUES need a sparse fixture
+format). Result: ADMM (1e-9, polish) matches Clarabel's objective to 1e-5 on 24
+of 25; QSHARE2B ends at the iteration limit (open defect, not yet analysed);
+the active set matches on all 13 positive definite problems. Not done: the
+medium tier, the 19-problem dense-PD membership check, the fidelity table. Task 11 (`qp_solver.go`, `qp_admm.go`):
 the ADMM `QPSolver` keeps K's symbolic factor, ρ and the iterates (OSQP's
 warm_starting). `UpdateQ` rescales q; `UpdateBounds` rescales l, u and
 reclassifies the rows (loose / inequality / equality) and refactors numerically

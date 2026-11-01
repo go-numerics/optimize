@@ -1,0 +1,8 @@
+The problems in this directory are the Maros-Meszaros convex QP test set, converted
+from the MAT files of https://github.com/qpsolvers/maros_meszaros_qpbenchmark
+(commit afa738d9a66aca7f5ae223034c72f2e9c6866aff, Apache License 2.0, Copyright the
+qpsolvers authors), which in turn convert the original SIF problems of
+I. Maros and C. Meszaros, "A repository of convex quadratic programming problems",
+Optimization Methods and Software 11:671 (1999).
+
+The reference solutions (OSQP, Clarabel, quadprog) were computed by tools/qporacle.

@@ -206,6 +206,40 @@ if QP_SET == "sparse":
              np.concatenate([np.zeros(_k), [1.0], np.zeros(_n)]),
              np.concatenate([np.zeros(_k), [1.0], np.full(_n, inf)]))
 
+# --- the Maros-Meszaros set: mm convert -------------------------------------
+# tools/qporacle defines MM_DIR and MM_NAMES ahead of the script. The MAT files
+# (qpsolvers/maros_meszaros_qpbenchmark) hold P, q, A = [C; I], l, u with +-1e20 as
+# infinity. Fixtures store dense matrices, so a problem with n*(n+m) above
+# MM_DENSE_CAP entries is skipped (named on stderr).
+if QP_SET == "mm":
+    import scipy.io as spio
+    CASES.clear()
+    MM_DENSE_CAP = 30000
+    for _nm in MM_NAMES.split(","):
+        _d = spio.loadmat(f"{MM_DIR}/{_nm}.mat")
+        _P = _d["P"].astype(float).toarray()
+        if not np.allclose(_P, _P.T):  # an upper triangle only: mirror it
+            _P = _P + np.triu(_P, 1).T
+        _q = _d["q"].T.flatten().astype(float)
+        _A = _d["A"].astype(float).toarray()
+        _l = _d["l"].T.flatten().astype(float)
+        _u = _d["u"].T.flatten().astype(float)
+        _n, _m = len(_q), _A.shape[0]
+        if _n * (_n + _m) > MM_DENSE_CAP:
+            print(f"skipping {_nm}: n={_n} m={_m} is over the dense cap", file=sys.stderr)
+            continue
+        _l[_l > 9e19] = inf
+        _u[_u > 9e19] = inf
+        _l[_l < -9e19] = -inf
+        _u[_u < -9e19] = -inf
+        try:
+            np.linalg.cholesky(_P)
+            _pd = True
+        except np.linalg.LinAlgError:
+            _pd = False
+        case(_nm, f"Maros-Meszaros {_nm}: n={_n} m={_m} nnz(P)={int(np.count_nonzero(_P))} "
+                  f"nnz(A)={int(np.count_nonzero(_A))} positive definite={_pd}", _P, _q, _A, _l, _u)
+
 # --- solvers -----------------------------------------------------------------
 def run_osqp(c, **settings):
     n = len(c["q"])
