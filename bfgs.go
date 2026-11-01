@@ -23,9 +23,10 @@ func hasNaN(v []float64) bool {
 // minimizeBFGS is the quasi-Newton method of Broyden, Fletcher, Goldfarb and
 // Shanno with the inverse-Hessian update and a strong-Wolfe line search
 // (Nocedal & Wright, Algorithm 6.1), following SciPy's _minimize_bfgs step by
-// step. The update is applied in O(n²) as a rank-two correction instead of
-// SciPy's two dense matrix products, which is the same formula in exact
-// arithmetic.
+// step, including the update as two dense n×n products (O(n³) per iteration,
+// as SciPy's): the equivalent O(n²) rank-two form rounds differently and
+// leaves SciPy's path after a few iterations (docs/design-global.md,
+// "BFGS and L-BFGS-B last digits").
 func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	n := len(x0)
 	gtol := o.Gtol
@@ -69,8 +70,10 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	pk := make([]float64, n)
 	sk := make([]float64, n)
 	yk := make([]float64, n)
-	hy := make([]float64, n) // H·y
-	yh := make([]float64, n) // yᵀ·H
+	a1 := make([]float64, n*n)
+	a2 := make([]float64, n*n)
+	tmp := make([]float64, n*n)
+	hnew := make([]float64, n*n)
 	ls := newLineSearch(sf, n)
 	k, warn := 0, 0
 	gnorm := norm(gfk, ord)
@@ -115,27 +118,26 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 		if rhoInv != 0 {
 			rho = 1 / rhoInv
 		}
-		// H ← (I − ρ s yᵀ) H (I − ρ y sᵀ) + ρ s sᵀ
-		//   = H − ρ s (yᵀH) − ρ (Hy) sᵀ + (ρ² yᵀHy + ρ) s sᵀ.
+		// H ← A1 (H A2) + ρ s sᵀ with A1 = I − (s yᵀ)ρ and A2 = I − (y sᵀ)ρ,
+		// SciPy's expression evaluated in its order (two dense products, each
+		// entry a left-to-right sum of rounded products, as reference BLAS
+		// and OpenBLAS's non-FMA kernels do for these sizes).
 		for i := range n {
-			hy[i], yh[i] = 0, 0
-		}
-		for i := range n {
-			row := H[i*n : i*n+n]
-			yi := yk[i]
-			s := 0.0
-			for j, h := range row {
-				s += float64(h * yk[j])
-				yh[j] += float64(yi * h)
+			for j := range n {
+				id := 0.0
+				if i == j {
+					id = 1
+				}
+				a1[i*n+j] = id - float64(float64(sk[i]*yk[j])*rho)
+				a2[i*n+j] = id - float64(float64(yk[i]*sk[j])*rho)
 			}
-			hy[i] = s
 		}
-		c := float64(rho*rho*dot(yk, hy)) + rho
+		matmul(tmp, H, a2, n)
+		matmul(hnew, a1, tmp, n)
 		for i := range n {
-			row := H[i*n : i*n+n]
-			si, hyi := sk[i], hy[i]
-			for j := range row {
-				row[j] += float64(-rho*si*yh[j]) - float64(rho*hyi*sk[j]) + float64(c*si*sk[j])
+			rs := float64(rho * sk[i])
+			for j := range n {
+				H[i*n+j] = hnew[i*n+j] + float64(rs*sk[j])
 			}
 		}
 	}
@@ -152,6 +154,20 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	}
 	r.Success = r.Status == 0
 	return sf.result(r), nil
+}
+
+// matmul sets c = a·b (n×n, row-major); every entry is the sum over k in
+// increasing order of rounded products, never fused.
+func matmul(c, a, b []float64, n int) {
+	for i := range n {
+		for j := range n {
+			s := 0.0
+			for k := range n {
+				s += float64(a[i*n+k] * b[k*n+j])
+			}
+			c[i*n+j] = s
+		}
+	}
 }
 
 func checkC1C2(c1, c2 float64) error {

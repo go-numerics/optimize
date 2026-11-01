@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"math"
+	"math/big"
 )
 
 // This file is a port of L-BFGS-B 3.0 (Byrd, Lu, Nocedal and Zhu 1995; Zhu,
@@ -63,6 +64,8 @@ type lbfgsb struct {
 	// Line-search quantities of lnsrlb.
 	stp, gd, gdold, dnorm, dtd, stpmx float64
 	ls                                dcsrch
+
+	nrmAcc, nrmSq *big.Float // extended-precision scratch of dnrm2
 }
 
 // lbfgsbErrclb checks the arguments the way the reference errclb does and
