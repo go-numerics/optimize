@@ -1,6 +1,13 @@
 # Design: quadratic programming (`Quadprog`)
 
-Status: **tasks 4–9 implemented**. The oracle also has a generated sparse set
+Status: **tasks 4–10 implemented**. Task 10 (`qp_admm_polish.go`): OSQP's
+`polish.c` (read at v1.0.0): active rows `z−l < −y` or `l = u` (lower), `u−z < y`
+(upper), reduced system `[P+δI Aredᵀ; Ared −δI]` through the same
+`ldl.Permuted`, `PolishRefine` passes of refinement against the unregularised
+matrix, y ← y+z, z ← Π(y), y ← y−z, acceptance by the three-way residual rule;
+no active row skips polishing. v1.0.0's qdldl interface regularises the polish
+system with σ, not δ (both 1e-6 by default); δ is used here. On the 35 solved
+fixture cases at default settings 34 polish and match Clarabel to 1e-6. The oracle also has a generated sparse set
 (`qporacle gen --set sparse`, `testdata/qp/sparse.json`: random QP, equality QP,
 Lasso and portfolio in the shape of the OSQP paper's classes, three sizes each,
 sparse P and A): the ADMM solver gives OSQP's iteration count and ρ-update
