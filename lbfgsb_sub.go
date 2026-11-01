@@ -1,6 +1,9 @@
 package optimize
 
-import "math"
+import (
+	"math"
+	"math/big"
+)
 
 // Subroutines of L-BFGS-B 3.0, one method per reference subroutine.
 
@@ -643,9 +646,7 @@ func (s *lbfgsb) formk() bool {
 	if ok {
 		// Then form L⁻¹(-L_a'+R_z') in the (1,2) block.
 		col2 := 2 * col
-		for js := col; js < col2; js++ {
-			dtrsl(wn, m2, col, wn[m2*js:m2*js+col], true)
-		}
+		trsmUT(wn, m2, col, wn[m2*col:], m2, col)
 		// Form S'AA'Sθ + (L⁻¹(-L_a'+R_z'))'L⁻¹(-L_a'+R_z') in the upper
 		// triangle of (2,2).
 		for is := col; is < col2; is++ {
@@ -880,9 +881,26 @@ func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (f
 	}
 }
 
-// dnrm2 returns the Euclidean norm of v.
+// dnrm2 returns the Euclidean norm of v the way OpenBLAS's x86-64 DNRM2
+// kernel (nrm2.S, the BLAS of SciPy's x86-64 wheels) computes it: the squares
+// are summed and the root taken in x87 extended precision (64-bit
+// mantissa), and only the result is rounded to double.
 func (s *lbfgsb) dnrm2(v []float64) float64 {
-	return math.Sqrt(dot(v, v))
+	if s.nrmAcc == nil {
+		s.nrmAcc, s.nrmSq = new(big.Float).SetPrec(64), new(big.Float).SetPrec(64)
+	}
+	acc, sq := s.nrmAcc.SetUint64(0), s.nrmSq
+	for _, x := range v {
+		if math.IsInf(x, 0) || math.IsNaN(x) {
+			return math.Sqrt(dot(v, v))
+		}
+		sq.SetFloat64(x)
+		sq.Mul(sq, sq)
+		acc.Add(acc, sq)
+	}
+	acc.Sqrt(acc)
+	r, _ := acc.Float64()
+	return r
 }
 
 // dpofa factors the n×n symmetric positive definite matrix whose upper
@@ -892,19 +910,50 @@ func (s *lbfgsb) dnrm2(v []float64) float64 {
 func dpofa(a []float64, lda, n int) bool {
 	for j := 0; j < n; j++ {
 		sum := 0.0
-		for k := 0; k < j; k++ {
-			t := a[k+lda*j] - dot(a[lda*k:lda*k+k], a[lda*j:lda*j+k])
-			t /= a[k+lda*k]
-			a[k+lda*j] = t
-			sum += float64(t * t)
-		}
-		sum = a[j+lda*j] - sum
-		if sum <= 0 {
+		_ = sum
+		ajj := a[j+lda*j] - dot(a[lda*j:lda*j+j], a[lda*j:lda*j+j])
+		if ajj <= 0 {
 			return false
 		}
-		a[j+lda*j] = math.Sqrt(sum)
+		ajj = math.Sqrt(ajj)
+		a[j+lda*j] = ajj
+		inv := 1 / ajj
+		for i := j + 1; i < n; i++ {
+			a[j+lda*i] = float64((a[j+lda*i] - dot(a[lda*i:lda*i+j], a[lda*j:lda*j+j])) * inv)
+		}
 	}
 	return true
+}
+
+// trsmUT solves R'X = B for the n×n upper triangular R (column-major, leading
+// dimension ldr) and the n×nrhs B (leading dimension ldb), overwriting B,
+// in the order of OpenBLAS's generic TRSM kernel as found on SciPy's x86-64
+// wheel (established against SciPy's own workspace, see docs/design-global.md
+// "BFGS and L-BFGS-B last digits"): rows are taken in blocks of two; the
+// solved rows above a block are applied to it as one accumulated product
+// (summed in order from zero, no fused multiply-add) subtracted from the
+// right-hand side; inside the block the reciprocal of each diagonal entry is
+// multiplied in and the solved row is eliminated from the next one.
+func trsmUT(r []float64, ldr, n int, b []float64, ldb, nrhs int) {
+	const blk = 2
+	for j := 0; j < nrhs; j++ {
+		c := b[ldb*j : ldb*j+n]
+		for i0 := 0; i0 < n; i0 += blk {
+			i1 := min(i0+blk, n)
+			if i0 > 0 {
+				for i := i0; i < i1; i++ {
+					c[i] -= dot(r[ldr*i:ldr*i+i0], c[:i0])
+				}
+			}
+			for i := i0; i < i1; i++ {
+				bb := float64(c[i] * (1 / r[i+ldr*i]))
+				c[i] = bb
+				for k := i + 1; k < i1; k++ {
+					c[k] -= float64(bb * r[i+ldr*k])
+				}
+			}
+		}
+	}
 }
 
 // dtrsl solves R'x = b (trans) or Rx = b for the n×n upper triangular R

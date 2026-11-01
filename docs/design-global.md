@@ -999,3 +999,41 @@ stay below SciPy's per-point cost there.
 Later slices: `dual_annealing` (wave 2b), a `MultiStart`/`GlobalSearch`-style
 helper, `shgo` and QMC initialisation (wave 3), Gablonsky's hidden-constraint
 option for DIRECT, batching DIRECT's evaluations across rectangles.
+
+## 14. BFGS and L-BFGS-B last digits (v0.6.0 finding)
+
+Cause of the basin-hopping and DE-polish mismatches of the first global slice
+(Rosenbrock from (-1.2, 1): f 2.5353058e-15 against SciPy's 2.5353090e-15).
+Method: every evaluation (x, f, g) of `minimize(..., jac=True)` was recorded
+on SciPy 1.18.1 (linux/amd64 container, `testdata/gen/bfgs_trace.py`,
+`testdata/bfgs_trace.json`) and compared bit for bit; for L-BFGS-B SciPy's
+own workspace (`scipy.optimize._lbfgsb.setulb`, the `ws`, `wy`, `sy`, `ss`,
+`wt`, `wn` arrays and `theta`, `dnorm`, `dtd`, `stp`) was dumped at every
+function request and compared field by field.
+
+- **BFGS: our defect.** The inverse-Hessian update used the O(n²) rank-two
+  form, equal to SciPy's `A1 @ (Hk @ A2) + rho s s'` only in exact
+  arithmetic. First divergence: evaluation 3. Ported SciPy's expression in
+  its order (`A1 = I - (s y')rho`, two dense products, `(rho s) s'`): the
+  39-evaluation trace is now bit-identical.
+- **L-BFGS-B: BLAS/LAPACK summation order, not FMA.** SciPy 1.18.1 ships a C
+  translation of L-BFGS-B 3.0 (`scipy/optimize/src/lbfgsb.c`, BSD-3) that
+  calls `dpotrf`, `dtrtrs`, `dnrm2`, `ddot` from the wheel's OpenBLAS; the
+  port followed the Fortran with LINPACK `dpofa`/`dtrsl`. Differences found,
+  each the first divergence at its time: (1) `dpotrf` scales a row by the
+  reciprocal of the pivot (`x * (1/r)`), not by division; (2) `dtrtrs` with
+  several right-hand sides (formk's L⁻¹(-L_aᵀ+R_zᵀ)) goes through TRSM: the
+  reciprocal diagonal, rows in blocks of two, the rows above a block applied
+  as one accumulated product subtracted from the right-hand side; (3) `dnrm2`
+  sums the squares and takes the root in x87 extended precision (a 64-bit
+  mantissa) before rounding to double. Each was accepted only because the
+  first divergence moved later and the aggregate counts rose (exact basin
+  hopping 95 → 136 of 224; polished DE 56 → 57 of 82; `poly_formt_fail`, a
+  runaway whose end depends on a Cholesky failure, still passes).
+- **Open.** The first remaining divergence is at the ninth function request of
+  the Rosenbrock run: a 5-term `ddot` inside `dpotrf` (an OpenBLAS kernel
+  with a lane/blocking order that no sequential summation order reproduces;
+  a four-lane fold matched one element and made the aggregate worse, so it
+  was not kept). Matching it needs the kernel itself; until then L-BFGS-B
+  results agree with SciPy's to the tolerance of the termination test and the
+  basin-hopping decisions are SciPy's on every fixture.
