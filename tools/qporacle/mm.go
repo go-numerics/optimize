@@ -123,9 +123,25 @@ func fetchMM(names []string, dir string, maxBytes int64, record bool) (map[strin
 	return seen, nil
 }
 
+// mmCommand returns the oracle command for the MAT directory dir and the
+// directory as the script sees it: on the host it is dir itself; in a container
+// of the given platform dir is mounted read-only at /mm.
+func mmCommand(platform, dir string) ([]string, string) {
+	argv := command(platform)
+	if platform == "" {
+		return argv, dir
+	}
+	// command(platform) is docker run --rm -i --platform P image uv ...: the mount
+	// goes right after "-i".
+	out := append([]string{}, argv[:4]...)
+	out = append(out, "-v", dir+":/mm:ro")
+	out = append(out, argv[4:]...)
+	return out, "/mm"
+}
+
 func mmCmd() *cobra.Command {
 	mm := &cobra.Command{Use: "mm", Short: "The Maros–Mészáros problems: fetch the MAT files, convert them into oracle fixtures"}
-	var tier, dir string
+	var tier, dir, platform string
 	var maxBytes int64
 	var record bool
 	fetch := &cobra.Command{
@@ -179,10 +195,11 @@ func mmCmd() *cobra.Command {
 					return fmt.Errorf("%s missing: run mm fetch first: %w", nm, err)
 				}
 			}
-			head := fmt.Sprintf("QP_SET = \"mm\"\nMM_DIR = %q\nMM_NAMES = %q\n", dir, strings.Join(names, ","))
+			argv, pdir := mmCommand(platform, dir)
+			head := fmt.Sprintf("QP_SET = \"mm\"\nMM_DIR = %q\nMM_NAMES = %q\n", pdir, strings.Join(names, ","))
 			var buf bytes.Buffer
 			in := append([]byte(head), script...)
-			if err := runner(command(""), bytes.NewReader(in), &buf, cmd.ErrOrStderr()); err != nil {
+			if err := runner(argv, bytes.NewReader(in), &buf, cmd.ErrOrStderr()); err != nil {
 				return fmt.Errorf("oracle: %w", err)
 			}
 			f, err := Decode(&buf)
@@ -204,6 +221,7 @@ func mmCmd() *cobra.Command {
 	conv.Flags().StringVar(&tier, "tier", "tiny", "tiny, small or all")
 	conv.Flags().StringVar(&dir, "dir", "", "directory of the MAT files (default: the user cache directory)")
 	conv.Flags().StringVarP(&out, "output", "o", "testdata/qp/mm/tiny.json", "fixture file to write")
+	conv.Flags().StringVar(&platform, "platform", "", "run in a container of this platform (e.g. linux/amd64), the MAT directory mounted read-only")
 	mm.AddCommand(fetch, conv)
 	return mm
 }
