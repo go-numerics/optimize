@@ -209,8 +209,9 @@ evaluation is at parity; the gap is in the solver's workspace handling.
   DE `init='sobol'` and `'halton'` (no QMC engine yet), shgo, dual_annealing;
   the L-BFGS-B port reproduces SciPy's BLAS/LAPACK summation orders only in
   part (136 of 224 basin-hopping runs bit-identical, see design-global.md
-  section 14); the comparison of times with SciPy (`tools/globalbench`) is
-  merged but not measured yet ([docs/perf.md](docs/perf.md)). `Direct` does not reproduce SciPy's `maxfun=0`
+  section 14); the comparison of times with SciPy (`tools/globalbench`): no row
+  slower, 2.4 to 66 times faster, from 3 rounds at load below 8
+  ([docs/perf.md](docs/perf.md)). `Direct` does not reproduce SciPy's `maxfun=0`
   or `eps=0`, and ends with status -6 instead of writing out of bounds when
   the list of candidates (5000 levels) overflows.
 
