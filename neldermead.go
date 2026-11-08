@@ -3,7 +3,7 @@ package optimize
 import (
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 )
 
 // maxFunReached unwinds an iteration when the evaluation budget is spent,
@@ -141,13 +141,22 @@ func minimizeNelderMead(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float
 		fsim[i] = math.Inf(1)
 	}
 	idx := make([]int, n+1)
+	ns := make([][]float64, n+1)
+	nf := make([]float64, n+1)
+	byValue := func(a, b int) int { // the order of fsim[a] < fsim[b], NaN included
+		switch {
+		case fsim[a] < fsim[b]:
+			return -1
+		case fsim[b] < fsim[a]:
+			return 1
+		}
+		return 0
+	}
 	order := func() {
 		for i := range idx {
 			idx[i] = i
 		}
-		sort.SliceStable(idx, func(a, b int) bool { return fsim[idx[a]] < fsim[idx[b]] })
-		ns := make([][]float64, n+1)
-		nf := make([]float64, n+1)
+		slices.SortStableFunc(idx, byValue)
 		for i, j := range idx {
 			ns[i], nf[i] = sim[j], fsim[j]
 		}

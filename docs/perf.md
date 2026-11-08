@@ -1,16 +1,85 @@
 # Performance against SciPy
 
-## Method
+## The harness (refbench, `bench/`)
 
-The benchmarks pair `bench_test.go` with `benchmarks/bench_scipy.py`, which
-runs the same problems from the same starting points. `benchmarks/run.sh`
-alternates the two: each round runs every Go benchmark once
-(`-benchtime=300ms`, on one thread: `-test.cpu 1`, as SciPy runs), then the
-whole SciPy script (each case a median of 3 batches of at least 0.2 s).
-Interleaving spreads the load changes of a shared host evenly over both
-sides. `benchmarks/summarize.py` reports the median over rounds. The raw
-numbers are in `benchmarks/results.json`. `benchmarks/run.sh 5 'regexp'`
-runs only the matching benchmarks on both sides.
+`bench/` is a module of its own that measures every public solver against
+scipy.optimize 1.18.1 with [go-scikit/refbench](https://github.com/go-scikit/refbench)
+v0.1.2: one core on both sides, interleaved rounds, gated on the 1-minute load,
+verdict on the median. It replaces the earlier `benchmarks/bench_scipy.py`
+harness. One row (`bench/perf_test.go`) is one solver call posed to both sides.
+
+```sh
+cd bench
+go test -run TestPerf -cpu 1 .                   # CI: allocations, table, inventory (no Python)
+go test -run TestPerf -cpu 1 -perf.run .         # measure; writes docs/perf.json, docs/perf-table.md
+go test -run TestPerf -perf.record .             # allocation counts only (status: deferred)
+go test -run 'TestDataParity|TestCounts' -perf.parity .   # same bytes, same nfev/nit (needs uv)
+```
+
+What makes a row comparable (checked, not assumed):
+
+- **Same data.** `TestDataParity` hashes (SHA-256) the arguments of every row on
+  both sides. The curve-fit and LP data are read from `bench/testdata/data.f64`
+  by both sides (NumPy's `sin`/`exp` differ from Go's in the last bit, and an
+  earlier version of this table generated them on each side).
+- **Same starting point, same tolerances** (the defaults of both).
+- **Same path.** `TestCounts` runs every row once on both sides and compares
+  `nfev` and `nit`; an optimiser that converges in a different number of
+  evaluations is a different computation. Results are in
+  [perf-counts.md](perf-counts.md): 37 of the 43 compared rows are equal; the six
+  `n = 100` Rosenbrock rows take different paths (counts within 11%) and are
+  named in `divergent` with their reason. SciPy's `root`/`fsolve` count two more
+  evaluations than ours on the same path.
+- **Solver overhead, not the Python objective.** The SciPy objective is SciPy's
+  own vectorised `rosen`/`rosen_der`/`rosen_hess` or the cheapest NumPy
+  expression, so its callbacks are as small as they can be; on small problems
+  they still dominate a SciPy call (the "SciPy time in Python callbacks" column of
+  the older table below quantifies it: 30–90%). A row on a small problem
+  therefore times the solver plus one Python call per evaluation against the solver
+  plus one Go call. Read such a row as an upper bound on SciPy's solver cost.
+- **Allocations.** `docs/perf.json` records the exact allocation count per call
+  of every case; CI fails on any difference (an increase is a regression, a
+  decrease must be recorded). The counts are the same on every architecture where
+  CI runs them.
+
+`docs/perf-exempt.md` names the public functions without a row (result
+accessors, constructors, the QP solver, which SciPy does not have, and the random
+sources) with the reason of each.
+
+**Timings in this document predate the harness and were not re-measured with
+it:** the host's 1-minute load was above 8 during this work, and refbench refuses
+to time above it. `refbench` writes the new table when a window opens
+(`go test -run TestPerf -cpu 1 -perf.run .` in `bench/`).
+
+## Allocations found by the harness (2026-11-08)
+
+The allocation counts of the first `perf.json` showed work that no timing had
+flagged. Fixed, with every result unchanged to the last bit (the SciPy fixture
+tests pass unchanged; `TestDnrm2MatchesBigFloat` compares the new norm with the
+old one on 20 000 random vectors and edge cases):
+
+| Row | allocations per call before | after | cause |
+|---|---:|---:|---|
+| L-BFGS-B, Rosenbrock n = 100, gradient | 105 944 | 30 | `dnrm2` summed in `big.Float` (precision 64, to reproduce OpenBLAS's x87 kernel): every addition allocated a temporary, 100 per norm. It now sums in a 64-bit-mantissa integer float and takes the root in integers (`lbfgsb_nrm.go`), 0 allocations |
+| L-BFGS-B, n = 100, finite differences | 25 063 | 34 | the same, and three slices per finite-difference gradient (steps, flags, perturbed point), now a work buffer |
+| BFGS, n = 100, finite differences | 1970 | 24 | the three slices per gradient |
+| BFGS, n = 2, finite differences | 131 | 18 | the same |
+| Basinhopping, himmelblau, 100 hops | 11 160 | 3245 | L-BFGS-B's norm (the rest is 100 L-BFGS-B setups) |
+| Nelder–Mead, n = 2 | 270 | 16 | `sort.SliceStable` (reflect swapper and closure) and two slices per iteration |
+| L-BFGS-B, n = 2 | 455 | 30 | the norm |
+| Newton-CG, n = 2, Hessian | 98 | 16 | a copy of the CG step per iteration (the step is only read by the line search) |
+| Newton-CG, n = 100, Hessian-vector product | 236 | 20 | the same |
+
+Still allocating per iteration, filed as issues: Powell (about 12 per line
+search), trust-constr (1121 for 44 iterations), `least_squares` TRF (SVD of the
+Jacobian through go-ndarray, 62 per iteration), `curve_fit` TRF.
+
+## Method of the earlier timings below
+
+The tables below were taken with `bench_test.go` and a Python script that has
+since been replaced by `bench/`: each round ran every Go benchmark once
+(`-benchtime=300ms`, one thread, `-test.cpu 1`), then the whole SciPy script (each
+case a median of 3 batches of at least 0.2 s), alternating the two.
 
 Setup of the run below:
 
@@ -372,7 +441,7 @@ cd tools/qpbench && GOWORK=off go run . --repo ../.. --rounds 5   # needs uv and
 Everything above the line reproduces the SciPy numbers:
 
 ```sh
-benchmarks/run.sh 5          # needs uv (https://docs.astral.sh/uv/) for SciPy
+cd bench && go test -run TestPerf -cpu 1 -perf.run .   # needs uv (https://docs.astral.sh/uv/) and a load below 8
 GOWORK=off go test -run '^$' -bench . -benchtime=1s -cpu 1   # Go side only
 ```
 

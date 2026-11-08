@@ -165,6 +165,23 @@ jobs:
           # A lane that found nothing to test must not pass.
           test "$n" -ge 3 || { echo "::error::only $n tool modules found"; exit 1; }
 
+  # The performance harness (bench/, a module of its own): the allocation count
+  # of every case equals docs/perf.json (exact, per call), docs/perf-table.md is
+  # what perf.json generates, and every public function has a case or an entry in
+  # docs/perf-exempt.md. No Python and no timing here: timing runs by hand at a
+  # 1-minute load below 8 (cd bench && go test -run TestPerf -cpu 1 -perf.run .).
+  perf:
+    name: perf (refbench CI mode)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Allocation counts, table, public-function inventory
+        working-directory: bench
+        run: go test -count=1 -timeout 20m -run 'TestPerf|TestRowsRun' -cpu 1 .
+
   govulncheck:
     runs-on: ubuntu-latest
     steps:

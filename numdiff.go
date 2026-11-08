@@ -28,8 +28,31 @@ type fdStep struct {
 	buf *fdBuf
 }
 
-// fdBuf holds jacFD's m-sized work vectors.
-type fdBuf struct{ f1, f2 []float64 }
+// fdBuf holds the work vectors of gradFD and jacFD: the m-sized residual
+// buffers, and the n-sized steps, one-sided flags and perturbed point.
+type fdBuf struct {
+	f1, f2, h, x []float64
+	one          []bool
+}
+
+// work returns the steps, the one-sided flags and the perturbed copy of x0 for
+// a gradient or Jacobian at x0: the buffer's when s keeps one (the flags
+// cleared, x a copy of x0), fresh slices otherwise.
+func (s fdStep) work(x0 []float64) (h []float64, one []bool, x []float64) {
+	n := len(x0)
+	b := s.buf
+	if b == nil {
+		h, one = s.steps(x0, make([]float64, n), make([]bool, n))
+		return h, one, clone(x0)
+	}
+	if len(b.h) != n {
+		b.h, b.x, b.one = make([]float64, n), make([]float64, n), make([]bool, n)
+	}
+	clear(b.one)
+	copy(b.x, x0)
+	h, one = s.steps(x0, b.h, b.one)
+	return h, one, b.x
+}
 
 // vectors returns jacFD's work vectors of length m (f2 only for 3-point).
 func (s fdStep) vectors(m int) (f1, f2 []float64) {
@@ -52,10 +75,9 @@ func (s fdStep) vectors(m int) (f1, f2 []float64) {
 // h = rel*sign(x)*|x| for a user relative step, h = abs for an absolute step,
 // and a zero effective step falls back to the default; then the scheme is
 // adjusted so that every evaluation point stays inside the bounds.
-func (s fdStep) steps(x0 []float64) (h []float64, oneSided []bool) {
-	n := len(x0)
-	h = make([]float64, n)
-	oneSided = make([]bool, n)
+func (s fdStep) steps(x0, h []float64, oneSided []bool) ([]float64, []bool) {
+	// h (every element is assigned) and oneSided (all false on entry) have the
+	// length of x0.
 	def := math.Sqrt(epsmch)
 	if s.method == FD3Point {
 		def = math.Cbrt(epsmch)
@@ -129,8 +151,7 @@ func (s fdStep) steps(x0 []float64) (h []float64, oneSided []bool) {
 // gradFD estimates the gradient of f at x0 into g, given f0 = f(x0). It
 // returns the number of evaluations of f.
 func (s fdStep) gradFD(f func([]float64) float64, x0 []float64, f0 float64, g []float64) int {
-	h, one := s.steps(x0)
-	x := clone(x0)
+	h, one, x := s.work(x0)
 	nfev := 0
 	for i := range x0 {
 		xi := x0[i]
@@ -166,8 +187,7 @@ func (s fdStep) gradFD(f func([]float64) float64, x0 []float64, f0 float64, g []
 // It returns the number of evaluations of f.
 func (s fdStep) jacFD(f func(x, out []float64), x0, f0, jac []float64) int {
 	n, m := len(x0), len(f0)
-	h, one := s.steps(x0)
-	x := clone(x0)
+	h, one, x := s.work(x0)
 	f1, f2 := s.vectors(m)
 	nfev := 0
 	for j := range x0 {

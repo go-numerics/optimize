@@ -1,0 +1,918 @@
+{
+  "schema": 1,
+  "status": "deferred",
+  "date": "2026-11-08T14:46:08+01:00",
+  "commit": "",
+  "repo": "go-numerics/optimize",
+  "go_version": "go1.27.3",
+  "machine": "darwin/arm64, 16 CPUs",
+  "max_load": 8,
+  "load": {
+    "min": 0,
+    "median": 0,
+    "max": 0
+  },
+  "valid": true,
+  "rows": [
+    {
+      "name": "Minimize/BFGS/rosen2/grad",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 14,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/BFGS/rosen100/grad",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 20,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/LBFGSB/rosen2/grad",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 30,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/LBFGSB/rosen100/grad",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 30,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/BFGS/rosen2/fd",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 18,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/BFGS/rosen100/fd",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 24,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/LBFGSB/rosen100/fd",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 34,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/NelderMead/rosen2",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='Nelder-Mead') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 16,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/Powell/rosen2",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='Powell') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 600,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/CG/rosen2/grad",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='CG') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 19,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/CG/rosen100/grad",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='CG') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 19,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/NewtonCG/rosen2/hess",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='Newton-CG') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 16,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/NewtonCG/rosen100/hessp",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='Newton-CG') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 20,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/SLSQP/rosen2/grad",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='SLSQP') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 13,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Minimize/TrustConstr/rosen2/hess",
+      "func": "Minimize",
+      "reference": "scipy.optimize.minimize(method='trust-constr') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 1121,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "LeastSquares/TRF/rosen",
+      "func": "LeastSquares",
+      "reference": "scipy.optimize.least_squares(method='trf') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 1116,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "LeastSquares/LM/rosen",
+      "func": "LeastSquares",
+      "reference": "scipy.optimize.least_squares(method='lm') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 83,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Leastsq/rosen",
+      "func": "Leastsq",
+      "reference": "scipy.optimize.leastsq (Python objective, one core)",
+      "parity": "none",
+      "allocs": 12,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CurveFit/LM/1e4",
+      "func": "CurveFit",
+      "reference": "scipy.optimize.curve_fit (Python objective, one core)",
+      "parity": "none",
+      "allocs": 42,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CurveFit/TRF/1e4",
+      "func": "CurveFit",
+      "reference": "scipy.optimize.curve_fit (Python objective, one core)",
+      "parity": "none",
+      "allocs": 443,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CurveFit/TRF/1e4/bounds",
+      "func": "CurveFit",
+      "reference": "scipy.optimize.curve_fit (Python objective, one core)",
+      "parity": "none",
+      "allocs": 607,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CurveFitModel/LM/1e4/jac",
+      "func": "CurveFitModel",
+      "reference": "scipy.optimize.curve_fit(jac=callable) (Python objective, one core)",
+      "parity": "none",
+      "allocs": 33,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Root/hybr/2",
+      "func": "Root",
+      "reference": "scipy.optimize.root(method='hybr') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 10,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Fsolve/2",
+      "func": "Fsolve",
+      "reference": "scipy.optimize.fsolve (Python objective, one core)",
+      "parity": "none",
+      "allocs": 10,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Root/hybr/broyden100",
+      "func": "Root",
+      "reference": "scipy.optimize.root(method='hybr') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 25,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Linprog/simplex/30x50",
+      "func": "Linprog",
+      "reference": "scipy.optimize.linprog(method='highs-ds') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 237,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Linprog/interior/30x50",
+      "func": "Linprog",
+      "reference": "scipy.optimize.linprog(method='highs-ipm') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 401,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Linprog/simplex/2",
+      "func": "Linprog",
+      "reference": "scipy.optimize.linprog(highs) (Python objective, one core)",
+      "parity": "none",
+      "allocs": 67,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Brentq/cubic",
+      "func": "Brentq",
+      "reference": "scipy.optimize.brentq (Python objective, one core)",
+      "parity": "none",
+      "allocs": 4,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Brenth/cubic",
+      "func": "Brenth",
+      "reference": "scipy.optimize.brenth (Python objective, one core)",
+      "parity": "none",
+      "allocs": 4,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Ridder/cubic",
+      "func": "Ridder",
+      "reference": "scipy.optimize.ridder (Python objective, one core)",
+      "parity": "none",
+      "allocs": 4,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Bisect/cubic",
+      "func": "Bisect",
+      "reference": "scipy.optimize.bisect (Python objective, one core)",
+      "parity": "none",
+      "allocs": 4,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Newton/fprime",
+      "func": "Newton",
+      "reference": "scipy.optimize.newton (Python objective, one core)",
+      "parity": "none",
+      "allocs": 1,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Newton/secant",
+      "func": "Newton",
+      "reference": "scipy.optimize.newton (Python objective, one core)",
+      "parity": "none",
+      "allocs": 1,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Newton/halley",
+      "func": "Newton",
+      "reference": "scipy.optimize.newton (Python objective, one core)",
+      "parity": "none",
+      "allocs": 1,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "RootScalar/brentq",
+      "func": "RootScalar",
+      "reference": "scipy.optimize.root_scalar(method='brentq') (Python objective, one core)",
+      "parity": "none",
+      "allocs": 5,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "MinimizeScalar/brent",
+      "func": "MinimizeScalar",
+      "reference": "scipy.optimize.minimize_scalar (Python objective, one core)",
+      "parity": "none",
+      "allocs": 5,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "MinimizeScalar/golden",
+      "func": "MinimizeScalar",
+      "reference": "scipy.optimize.minimize_scalar (Python objective, one core)",
+      "parity": "none",
+      "allocs": 5,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "MinimizeScalar/bounded",
+      "func": "MinimizeScalar",
+      "reference": "scipy.optimize.minimize_scalar (Python objective, one core)",
+      "parity": "none",
+      "allocs": 1,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Fminbound/cos",
+      "func": "Fminbound",
+      "reference": "scipy.optimize.fminbound (Python objective, one core)",
+      "parity": "none",
+      "allocs": 1,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Bracket/scalarF",
+      "func": "Bracket",
+      "reference": "scipy.optimize.bracket (Python objective, one core)",
+      "parity": "none",
+      "allocs": 0,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Brute/50x50/nofinish",
+      "func": "Brute",
+      "reference": "scipy.optimize.brute (Python objective, one core)",
+      "parity": "none",
+      "allocs": 10,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Brute/20x20/finish",
+      "func": "Brute",
+      "reference": "scipy.optimize.brute (Python objective, one core)",
+      "parity": "none",
+      "allocs": 26,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "ApproxFprime/rosen100",
+      "func": "ApproxFprime",
+      "reference": "scipy.optimize.approx_fprime (Python objective, one core)",
+      "parity": "none",
+      "allocs": 4,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CheckGrad/rosen100",
+      "func": "CheckGrad",
+      "reference": "scipy.optimize.check_grad (Python objective, one core)",
+      "parity": "none",
+      "allocs": 5,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "DifferentialEvolution/sphere/2",
+      "func": "DifferentialEvolution",
+      "reference": "scipy.optimize.differential_evolution(rng=1) (Python objective, one core)",
+      "parity": "none",
+      "allocs": 81,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "DifferentialEvolution/rosenbrock/2",
+      "func": "DifferentialEvolution",
+      "reference": "scipy.optimize.differential_evolution(rng=1) (Python objective, one core)",
+      "parity": "none",
+      "allocs": 81,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Basinhopping/himmelblau/100",
+      "func": "Basinhopping",
+      "reference": "scipy.optimize.basinhopping(rng=1) (Python objective, one core)",
+      "parity": "none",
+      "allocs": 3245,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Direct/rosenbrock/2",
+      "func": "Direct",
+      "reference": "scipy.optimize.direct (Python objective, one core)",
+      "parity": "none",
+      "allocs": 86,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "Direct/sphere/10",
+      "func": "Direct",
+      "reference": "scipy.optimize.direct (Python objective, one core)",
+      "parity": "none",
+      "allocs": 72,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    }
+  ]
+}
