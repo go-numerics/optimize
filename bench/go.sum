@@ -1,0 +1,12 @@
+github.com/go-fleettools/fleettools v0.81.0 h1:UnMflmNw5b82Z+7Ums7UVaW5RrGuACCVmSwytwT1hxw=
+github.com/go-fleettools/fleettools v0.81.0/go.mod h1:y/o3p2HZAvto9J5G5gtPxhN45zgvaYFAXCY9RCK/lQw=
+github.com/go-ndarray/ndarray v0.34.0 h1:UYGXAB4DUB0tk3c2+B8I1+hOgzzjvVNUrph7PfkV184=
+github.com/go-ndarray/ndarray v0.34.0/go.mod h1:OVccdl+ajDh+zTtEvkE/Xai2LTzdYigdPG/5XtzWFqk=
+github.com/go-scikit/refbench v0.1.2 h1:bzD0LhsC1UA6HzG1FK8TvQdIYnPib4rEibdUkgVeOfA=
+github.com/go-scikit/refbench v0.1.2/go.mod h1:PhJxvLwXiQeKLP2f5ndcb9k5k4PTvU1rSFJ/MKRCrU0=
+github.com/go-simd/floats v0.7.0 h1:6puR4IJ5EXl7m0Fg1PYERcN40h+xLL8AuAeXItdlJ1k=
+github.com/go-simd/floats v0.7.0/go.mod h1:Aq5a6oY5pUqm9Hpi+iV2nrNmaaUb0rwHvUHIerXWSvA=
+github.com/go-sparse/sparse v0.3.0 h1:y++tCTIdQsGwUavxCHKfDt4AX8T2zUnwyDQ3Vix3uP8=
+github.com/go-sparse/sparse v0.3.0/go.mod h1:Ds5+sYeB78IUtIe83Xi3km+wMbD7sW2u1q64eLS8bhI=
+golang.org/x/sys v0.49.0 h1:XbzkgYJHdqh/8m2Uu0W/dQv8nktxx4BFHp1M0gROTXA=
+golang.org/x/sys v0.49.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=

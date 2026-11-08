@@ -311,6 +311,9 @@ type scalarFunc struct {
 
 func newScalarFunc(p Problem, method Method, o *Options, lb, ub []float64) *scalarFunc {
 	fd := fdStep{method: o.FDMethod, lb: lb, ub: ub}
+	if p.Grad == nil && p.FuncGrad == nil {
+		fd.buf = &fdBuf{} // finite-difference gradients keep their work vectors
+	}
 	switch {
 	case o.FiniteDiffRelStep != 0:
 		fd.rel = o.FiniteDiffRelStep

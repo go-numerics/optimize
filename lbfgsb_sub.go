@@ -886,20 +886,33 @@ func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (f
 // are summed and the root taken in x87 extended precision (64-bit
 // mantissa), and only the result is rounded to double.
 func (s *lbfgsb) dnrm2(v []float64) float64 {
-	if s.nrmAcc == nil {
-		s.nrmAcc, s.nrmSq = new(big.Float).SetPrec(64), new(big.Float).SetPrec(64)
-	}
-	acc, sq := s.nrmAcc.SetUint64(0), s.nrmSq
+	// The sum is accumulated in a 64-bit-mantissa software float (ext64): each
+	// square and each addition rounds to nearest even at 64 bits, exactly as
+	// big.Float at precision 64 did, without its allocation per addition (a
+	// temporary for the aligned operand: 100 per call at n = 100); the root is
+	// rounded to 64 bits and then to 53, in integers.
+	var acc ext64
 	for _, x := range v {
 		if math.IsInf(x, 0) || math.IsNaN(x) {
 			return math.Sqrt(dot(v, v))
 		}
-		sq.SetFloat64(x)
-		sq.Mul(sq, sq)
-		acc.Add(acc, sq)
+		acc = acc.add(square64(x))
 	}
-	acc.Sqrt(acc)
-	r, _ := acc.Float64()
+	if acc.m == 0 {
+		return 0
+	}
+	if r, ok := acc.sqrtFloat64(); ok {
+		return r
+	}
+	// The root falls outside the normal range of float64 (rounding twice would
+	// need care there): big.Float does it.
+	if s.nrmAcc == nil {
+		s.nrmAcc, s.nrmSq = new(big.Float).SetPrec(64), new(big.Float).SetPrec(64)
+	}
+	sq := s.nrmSq.SetUint64(acc.m)
+	s.nrmAcc.SetMantExp(sq, acc.e)
+	s.nrmAcc.Sqrt(s.nrmAcc)
+	r, _ := s.nrmAcc.Float64()
 	return r
 }
 

@@ -146,7 +146,7 @@ func minimizeNewtonCG(sf *scalarFunc, x0 []float64, o *Options) (*Result, error)
 		if !converged {
 			return finish(3, "Warning: CG iterations didn't converge. The Hessian is not positive definite.")
 		}
-		pk := clone(xsupi)
+		pk := xsupi // read-only below; the next iteration rewrites it from zero
 		alpha, fNew, ok := ls.wolfe12(xk, pk, gfk, oldF, oldOld, haveOld, c1, c2, 1e-8, 50, math.Inf(1))
 		if !ok {
 			return finish(2, "Warning: "+msgPrLoss)

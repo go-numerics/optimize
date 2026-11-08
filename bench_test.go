@@ -7,8 +7,9 @@ import (
 	"github.com/go-ndarray/ndarray"
 )
 
-// Benchmarks mirrored by benchmarks/bench_scipy.py; benchmarks/run.sh runs
-// both interleaved and reports medians (docs/perf.md).
+// Go-side benchmarks for profiling (`go test -bench . -benchmem -cpu 1`). The
+// comparison with SciPy is bench/ (refbench, docs/perf.md), whose rows pose the
+// same problems; this file is not a measurement against a reference.
 
 func benchMinimize(b *testing.B, n int, m Method, withGrad bool) {
 	x0 := altStart(n)
@@ -34,7 +35,7 @@ func BenchmarkRosen100LBFGSBFD(b *testing.B) { benchMinimize(b, 100, LBFGSB, fal
 func BenchmarkRosen2NelderMead(b *testing.B) { benchMinimize(b, 2, NelderMead, false) }
 
 // curveFitData is a decaying exponential with deterministic pseudo-noise
-// (benchmarks/bench_scipy.py builds the same data).
+// (bench/perf_test.go reads the same data from bench/testdata/data.f64).
 func curveFitData(m int) (x, y *ndarray.Array) {
 	xs := make([]float64, m)
 	ys := make([]float64, m)
@@ -78,8 +79,8 @@ func BenchmarkBrentq(b *testing.B) {
 	}
 }
 
-// The rest of the public operations, each on a problem that
-// benchmarks/bench_scipy.py poses to SciPy in the same form.
+// The rest of the public operations, each on a problem that bench/perf_test.go
+// poses to SciPy in the same form.
 
 func BenchmarkRosen2Powell(b *testing.B)   { benchMinimize(b, 2, Powell, false) }
 func BenchmarkRosen2CG(b *testing.B)       { benchMinimize(b, 2, CG, true) }
@@ -209,8 +210,7 @@ func BenchmarkRootBroyden100(b *testing.B) {
 }
 
 // lpDense is a feasible, bounded LP with m inequality rows on n variables
-// whose data come from the same deterministic formulas as in
-// benchmarks/bench_scipy.py.
+// whose data come from the same deterministic formulas as bench/testdata/data.f64.
 func lpDense(m, n int) ([]float64, LPConstraints) {
 	A := make([]float64, m*n)
 	for i := range m {
