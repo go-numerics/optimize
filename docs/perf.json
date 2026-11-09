@@ -1,16 +1,24 @@
 {
   "schema": 1,
-  "status": "deferred",
-  "date": "2026-11-09T14:45:49+01:00",
+  "status": "measured",
+  "date": "2026-11-09T15:09:04+01:00",
   "commit": "",
   "repo": "go-numerics/optimize",
   "go_version": "go1.27.3",
   "machine": "darwin/arm64, 16 CPUs",
+  "ref_versions": {
+    "blas": "accelerate unknown",
+    "mpmath": "1.4.1",
+    "numpy": "2.5.4",
+    "python": "3.12.12",
+    "scipy": "1.18.1",
+    "statsmodels": "0.15.0"
+  },
   "max_load": 8,
   "load": {
-    "min": 0,
-    "median": 0,
-    "max": 0
+    "min": 5.38525390625,
+    "median": 5.68017578125,
+    "max": 7.828125
   },
   "valid": true,
   "rows": [
@@ -20,17 +28,71 @@
       "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
       "parity": "none",
       "allocs": 14,
+      "go_iters": 23923,
+      "ref_iters": 67,
+      "rounds": [
+        {
+          "load_before": 7.828125,
+          "load_after": 7.828125,
+          "go_first": true,
+          "go_ns": 3986.3607825105546,
+          "ref_ns": 1184103.223880597
+        },
+        {
+          "load_before": 7.828125,
+          "load_after": 7.828125,
+          "go_first": false,
+          "go_ns": 3673.1597207708064,
+          "ref_ns": 1178837.6865671643
+        },
+        {
+          "load_before": 7.828125,
+          "load_after": 7.828125,
+          "go_first": true,
+          "go_ns": 3752.715336705263,
+          "ref_ns": 1205019.2835820895
+        },
+        {
+          "load_before": 7.828125,
+          "load_after": 7.828125,
+          "go_first": false,
+          "go_ns": 3682.6972787693853,
+          "ref_ns": 1183331.462686567
+        },
+        {
+          "load_before": 7.828125,
+          "load_after": 7.828125,
+          "go_first": true,
+          "go_ns": 3672.9315721272415,
+          "ref_ns": 1173935.9402985075
+        },
+        {
+          "load_before": 7.828125,
+          "load_after": 7.828125,
+          "go_first": false,
+          "go_ns": 3731.0189775529825,
+          "ref_ns": 1179705.8507462686
+        },
+        {
+          "load_before": 7.828125,
+          "load_after": 7.828125,
+          "go_first": true,
+          "go_ns": 3657.888475525645,
+          "ref_ns": 1171057.8358208956
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 3682.6972787693853,
+        "q1": 3673.045646449024,
+        "q3": 3741.8671571291225
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1179705.8507462686,
+        "q1": 1176386.813432836,
+        "q3": 1183717.343283582
       },
-      "ratio": 0
+      "ratio": 0.0031217080736183115,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/BFGS/rosen100/grad",
@@ -38,17 +100,71 @@
       "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
       "parity": "none",
       "allocs": 20,
+      "go_iters": 1,
+      "ref_iters": 4,
+      "rounds": [
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": true,
+          "go_ns": 170244750,
+          "ref_ns": 46166021
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": false,
+          "go_ns": 170357125,
+          "ref_ns": 46174125
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": true,
+          "go_ns": 169814250,
+          "ref_ns": 46376583.25
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": false,
+          "go_ns": 169027417,
+          "ref_ns": 46362187.5
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": true,
+          "go_ns": 169991792,
+          "ref_ns": 47018729.25
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": false,
+          "go_ns": 171128125,
+          "ref_ns": 46557145.75
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": true,
+          "go_ns": 171430334,
+          "ref_ns": 46958614.75
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 170244750,
+        "q1": 169903021,
+        "q3": 170742625
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 46376583.25,
+        "q1": 46268156.25,
+        "q3": 46757880.25
       },
-      "ratio": 0
+      "ratio": 3.670920496283003,
+      "verdict": "slower"
     },
     {
       "name": "Minimize/LBFGSB/rosen2/grad",
@@ -56,17 +172,71 @@
       "reference": "scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core)",
       "parity": "none",
       "allocs": 30,
+      "go_iters": 1502,
+      "ref_iters": 144,
+      "rounds": [
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": true,
+          "go_ns": 71016.81091877497,
+          "ref_ns": 736974.25
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": false,
+          "go_ns": 71063.77629826897,
+          "ref_ns": 739583.6180555555
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": true,
+          "go_ns": 71086.96737683089,
+          "ref_ns": 742424.7708333334
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": false,
+          "go_ns": 71302.06990679094,
+          "ref_ns": 736548.3194444445
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 7.2392578125,
+          "go_first": true,
+          "go_ns": 73279.54394141145,
+          "ref_ns": 737844.3263888889
+        },
+        {
+          "load_before": 7.2392578125,
+          "load_after": 6.9794921875,
+          "go_first": false,
+          "go_ns": 71298.85153129161,
+          "ref_ns": 734577.5486111111
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 70799.65579227696,
+          "ref_ns": 733502.8958333334
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 71086.96737683089,
+        "q1": 71040.29360852197,
+        "q3": 71300.46071904128
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 736974.25,
+        "q1": 735562.9340277778,
+        "q3": 738713.9722222222
       },
-      "ratio": 0
+      "ratio": 0.09645787132566828,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/LBFGSB/rosen100/grad",
@@ -74,17 +244,71 @@
       "reference": "scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core)",
       "parity": "none",
       "allocs": 30,
+      "go_iters": 22,
+      "ref_iters": 9,
+      "rounds": [
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4654225.363636363,
+          "ref_ns": 12093055.555555556
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": false,
+          "go_ns": 4693587.090909091,
+          "ref_ns": 12229680.555555556
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4634729.181818182,
+          "ref_ns": 12014972.222222222
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": false,
+          "go_ns": 4700151.545454546,
+          "ref_ns": 12009032.333333334
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4699297.363636363,
+          "ref_ns": 12234935.222222222
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": false,
+          "go_ns": 4753812.5,
+          "ref_ns": 11898138.888888888
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4766013.2727272725,
+          "ref_ns": 12204231.444444444
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 4699297.363636363,
+        "q1": 4673906.227272727,
+        "q3": 4726982.022727273
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 12093055.555555556,
+        "q1": 12012002.277777778,
+        "q3": 12216956
       },
-      "ratio": 0
+      "ratio": 0.38859470561825904,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/BFGS/rosen2/fd",
@@ -92,17 +316,71 @@
       "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
       "parity": "none",
       "allocs": 18,
+      "go_iters": 20952,
+      "ref_iters": 76,
+      "rounds": [
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4736.367649866361,
+          "ref_ns": 2386595.947368421
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": false,
+          "go_ns": 4729.089108438336,
+          "ref_ns": 2389601.4342105263
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4716.990024818633,
+          "ref_ns": 2379199.013157895
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": false,
+          "go_ns": 4785.794100801832,
+          "ref_ns": 2411533.986842105
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4718.549112256586,
+          "ref_ns": 2355782.8947368423
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": false,
+          "go_ns": 4691.690148911798,
+          "ref_ns": 2349639.802631579
+        },
+        {
+          "load_before": 6.9794921875,
+          "load_after": 6.9794921875,
+          "go_first": true,
+          "go_ns": 4728.108724704086,
+          "ref_ns": 2415558.1184210526
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 4728.108724704086,
+        "q1": 4717.769568537609,
+        "q3": 4732.728379152348
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 2386595.947368421,
+        "q1": 2367490.9539473685,
+        "q3": 2400567.7105263155
       },
-      "ratio": 0
+      "ratio": 0.0019811098438835164,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/BFGS/rosen100/fd",
@@ -110,17 +388,71 @@
       "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
       "parity": "none",
       "allocs": 24,
+      "go_iters": 1,
+      "ref_iters": 1,
+      "rounds": [
+        {
+          "load_before": 6.68115234375,
+          "load_after": 6.94677734375,
+          "go_first": true,
+          "go_ns": 175164833,
+          "ref_ns": 586099375
+        },
+        {
+          "load_before": 6.94677734375,
+          "load_after": 6.94677734375,
+          "go_first": false,
+          "go_ns": 176325250,
+          "ref_ns": 557872708
+        },
+        {
+          "load_before": 6.94677734375,
+          "load_after": 6.94677734375,
+          "go_first": true,
+          "go_ns": 175820333,
+          "ref_ns": 550688042
+        },
+        {
+          "load_before": 6.94677734375,
+          "load_after": 6.94677734375,
+          "go_first": false,
+          "go_ns": 174257542,
+          "ref_ns": 555518042
+        },
+        {
+          "load_before": 6.94677734375,
+          "load_after": 6.94677734375,
+          "go_first": true,
+          "go_ns": 174329667,
+          "ref_ns": 553260292
+        },
+        {
+          "load_before": 6.94677734375,
+          "load_after": 6.94677734375,
+          "go_first": false,
+          "go_ns": 175517875,
+          "ref_ns": 566842250
+        },
+        {
+          "load_before": 6.94677734375,
+          "load_after": 6.94677734375,
+          "go_first": true,
+          "go_ns": 176865458,
+          "ref_ns": 564102833
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 175517875,
+        "q1": 174747250,
+        "q3": 176072791.5
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 557872708,
+        "q1": 554389167,
+        "q3": 565472541.5
       },
-      "ratio": 0
+      "ratio": 0.31461993476834504,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/LBFGSB/rosen100/fd",
@@ -128,17 +460,71 @@
       "reference": "scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core)",
       "parity": "none",
       "allocs": 34,
+      "go_iters": 56,
+      "ref_iters": 1,
+      "rounds": [
+        {
+          "load_before": 6.94677734375,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 1917386.9107142857,
+          "ref_ns": 119247125
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": false,
+          "go_ns": 1919798.375,
+          "ref_ns": 118213542
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 1892748.5,
+          "ref_ns": 117780542
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": false,
+          "go_ns": 2039436,
+          "ref_ns": 116825667
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 2080056.5357142857,
+          "ref_ns": 132188792
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": false,
+          "go_ns": 2056012.6607142857,
+          "ref_ns": 138590000
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 2023175.5892857143,
+          "ref_ns": 121757375
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 2023175.5892857143,
+        "q1": 1918592.6428571427,
+        "q3": 2047724.3303571427
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 119247125,
+        "q1": 117997042,
+        "q3": 126973083.5
       },
-      "ratio": 0
+      "ratio": 0.01696624207322159,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/NelderMead/rosen2",
@@ -146,17 +532,71 @@
       "reference": "scipy.optimize.minimize(method='Nelder-Mead') (Python objective, one core)",
       "parity": "none",
       "allocs": 16,
+      "go_iters": 21463,
+      "ref_iters": 140,
+      "rounds": [
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 6060.025811862274,
+          "ref_ns": 1524806.25
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": false,
+          "go_ns": 5418.487629874668,
+          "ref_ns": 1454084.8214285714
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 5382.963285654382,
+          "ref_ns": 1336342.2642857144
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": false,
+          "go_ns": 5284.794390346177,
+          "ref_ns": 1375495.5357142857
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 5253.026557331221,
+          "ref_ns": 1344251.7857142857
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": false,
+          "go_ns": 5400.423612728882,
+          "ref_ns": 1351831.25
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 5488.616083492522,
+          "ref_ns": 1362347.9214285715
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 5400.423612728882,
+        "q1": 5333.87883800028,
+        "q3": 5453.551856683594
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1362347.9214285715,
+        "q1": 1348041.5178571427,
+        "q3": 1414790.1785714286
       },
-      "ratio": 0
+      "ratio": 0.0039640561179599,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/Powell/rosen2",
@@ -164,17 +604,71 @@
       "reference": "scipy.optimize.minimize(method='Powell') (Python objective, one core)",
       "parity": "none",
       "allocs": 600,
+      "go_iters": 4943,
+      "ref_iters": 25,
+      "rounds": [
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 23423.46085373255,
+          "ref_ns": 4137338.36
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": false,
+          "go_ns": 23819.5427877807,
+          "ref_ns": 4155658.32
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.71044921875,
+          "go_first": true,
+          "go_ns": 23518.38458426057,
+          "ref_ns": 4139006.68
+        },
+        {
+          "load_before": 6.71044921875,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 24357.80396520332,
+          "ref_ns": 4180590
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 23603.058264212017,
+          "ref_ns": 4140581.64
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 23486.791017600648,
+          "ref_ns": 4146843.32
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 23426.11612381145,
+          "ref_ns": 4127908.36
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 23518.38458426057,
+        "q1": 23456.45357070605,
+        "q3": 23711.30052599636
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 4140581.64,
+        "q1": 4138172.52,
+        "q3": 4151250.82
       },
-      "ratio": 0
+      "ratio": 0.0056799712284529595,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/CG/rosen2/grad",
@@ -182,17 +676,71 @@
       "reference": "scipy.optimize.minimize(method='CG') (Python objective, one core)",
       "parity": "none",
       "allocs": 19,
+      "go_iters": 17254,
+      "ref_iters": 102,
+      "rounds": [
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 5846.465573200418,
+          "ref_ns": 1911975.9019607843
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 5737.370117074302,
+          "ref_ns": 1894003.2647058824
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 5818.414048916194,
+          "ref_ns": 1895985.705882353
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 5734.619508519763,
+          "ref_ns": 1890014.294117647
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 5749.8961979830765,
+          "ref_ns": 1905768.7843137255
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 5937.260925002898,
+          "ref_ns": 1881533.9019607843
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 5767.21577605193,
+          "ref_ns": 1932606.6176470588
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 5767.21577605193,
+        "q1": 5743.6331575286895,
+        "q3": 5832.439811058306
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1895985.705882353,
+        "q1": 1892008.7794117648,
+        "q3": 1908872.343137255
       },
-      "ratio": 0
+      "ratio": 0.003041803405035686,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/CG/rosen100/grad",
@@ -200,17 +748,71 @@
       "reference": "scipy.optimize.minimize(method='CG') (Python objective, one core)",
       "parity": "none",
       "allocs": 19,
+      "go_iters": 87,
+      "ref_iters": 2,
+      "rounds": [
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 1263040.712643678,
+          "ref_ns": 51704500
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 1283820.4022988505,
+          "ref_ns": 51478562.5
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 1259419.5402298851,
+          "ref_ns": 53179625
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 1266333.3333333333,
+          "ref_ns": 51770104.5
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": true,
+          "go_ns": 1277354.4022988505,
+          "ref_ns": 51783208.5
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 6.4931640625,
+          "go_first": false,
+          "go_ns": 1283067.528735632,
+          "ref_ns": 51517333.5
+        },
+        {
+          "load_before": 6.4931640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 1308288.7931034483,
+          "ref_ns": 54144979.5
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1277354.4022988505,
+        "q1": 1264687.0229885057,
+        "q3": 1283443.9655172413
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 51770104.5,
+        "q1": 51610916.75,
+        "q3": 52481416.75
       },
-      "ratio": 0
+      "ratio": 0.02467359134457321,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/NewtonCG/rosen2/hess",
@@ -218,17 +820,71 @@
       "reference": "scipy.optimize.minimize(method='Newton-CG') (Python objective, one core)",
       "parity": "none",
       "allocs": 16,
+      "go_iters": 13930,
+      "ref_iters": 42,
+      "rounds": [
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 9047.439626704954,
+          "ref_ns": 4710483.142857143
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": false,
+          "go_ns": 8882.642354630294,
+          "ref_ns": 4634317.476190476
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 9035.20279971285,
+          "ref_ns": 4569216.261904762
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": false,
+          "go_ns": 8895.803374012921,
+          "ref_ns": 4566969.238095238
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 8834.754127781765,
+          "ref_ns": 4603685.5
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": false,
+          "go_ns": 8699.90423546303,
+          "ref_ns": 4503255.952380952
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 8727.039985642497,
+          "ref_ns": 4492035.714285715
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 8882.642354630294,
+        "q1": 8780.897056712132,
+        "q3": 8965.503086862886
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 4569216.261904762,
+        "q1": 4535112.595238095,
+        "q3": 4619001.488095238
       },
-      "ratio": 0
+      "ratio": 0.0019440188088027596,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/NewtonCG/rosen100/hessp",
@@ -236,17 +892,71 @@
       "reference": "scipy.optimize.minimize(method='Newton-CG') (Python objective, one core)",
       "parity": "none",
       "allocs": 20,
+      "go_iters": 146,
+      "ref_iters": 8,
+      "rounds": [
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 748900.9726027397,
+          "ref_ns": 25098843.75
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": false,
+          "go_ns": 750426.6506849315,
+          "ref_ns": 25270645.875
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 757677.801369863,
+          "ref_ns": 24842010.375
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": false,
+          "go_ns": 754204.6232876712,
+          "ref_ns": 25078609.375
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 7.17431640625,
+          "go_first": true,
+          "go_ns": 751357.5890410959,
+          "ref_ns": 25348838.5
+        },
+        {
+          "load_before": 7.17431640625,
+          "load_after": 6.759765625,
+          "go_first": false,
+          "go_ns": 749105.5890410959,
+          "ref_ns": 25204072.875
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 757837.0479452055,
+          "ref_ns": 25791401
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 751357.5890410959,
+        "q1": 749766.1198630137,
+        "q3": 755941.2123287672
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 25204072.875,
+        "q1": 25088726.5625,
+        "q3": 25309742.1875
       },
-      "ratio": 0
+      "ratio": 0.029810959235337314,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/SLSQP/rosen2/grad",
@@ -254,17 +964,71 @@
       "reference": "scipy.optimize.minimize(method='SLSQP') (Python objective, one core)",
       "parity": "none",
       "allocs": 13,
+      "go_iters": 13858,
+      "ref_iters": 220,
+      "rounds": [
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 7752.477485928705,
+          "ref_ns": 776911.1772727272
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": false,
+          "go_ns": 7630.772838793477,
+          "ref_ns": 774586.740909091
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 7596.96861018906,
+          "ref_ns": 765834.4681818181
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": false,
+          "go_ns": 7613.724924231491,
+          "ref_ns": 763954.3545454545
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 7550.001154567759,
+          "ref_ns": 772528.5954545455
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": false,
+          "go_ns": 7722.143094241594,
+          "ref_ns": 765281.0590909091
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 7630.418097849618,
+          "ref_ns": 761965.3409090909
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 7630.418097849618,
+        "q1": 7605.346767210276,
+        "q3": 7676.457966517535
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 765834.4681818181,
+        "q1": 764617.7068181818,
+        "q3": 773557.6681818182
       },
-      "ratio": 0
+      "ratio": 0.009963534438408257,
+      "verdict": "faster"
     },
     {
       "name": "Minimize/TrustConstr/rosen2/hess",
@@ -272,17 +1036,71 @@
       "reference": "scipy.optimize.minimize(method='trust-constr') (Python objective, one core)",
       "parity": "none",
       "allocs": 862,
+      "go_iters": 4928,
+      "ref_iters": 12,
+      "rounds": [
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 28022.94724025974,
+          "ref_ns": 14506868.083333334
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": false,
+          "go_ns": 28273.428977272728,
+          "ref_ns": 14668954.833333334
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 28205.813717532466,
+          "ref_ns": 14401135.416666666
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": false,
+          "go_ns": 28549.479099025975,
+          "ref_ns": 14485781.25
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.759765625,
+          "go_first": true,
+          "go_ns": 28100.158887987014,
+          "ref_ns": 14385659.75
+        },
+        {
+          "load_before": 6.759765625,
+          "load_after": 6.45849609375,
+          "go_first": false,
+          "go_ns": 28191.101866883117,
+          "ref_ns": 14358444.416666666
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 28272.96408279221,
+          "ref_ns": 14300913.166666666
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 28205.813717532466,
+        "q1": 28145.630377435067,
+        "q3": 28273.196530032466
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 14401135.416666666,
+        "q1": 14372052.083333332,
+        "q3": 14496324.666666668
       },
-      "ratio": 0
+      "ratio": 0.0019585826326505773,
+      "verdict": "faster"
     },
     {
       "name": "LeastSquares/TRF/rosen",
@@ -290,17 +1108,71 @@
       "reference": "scipy.optimize.least_squares(method='trf') (Python objective, one core)",
       "parity": "none",
       "allocs": 1116,
+      "go_iters": 4320,
+      "ref_iters": 110,
+      "rounds": [
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 23993.24837962963,
+          "ref_ns": 1352446.5909090908
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": false,
+          "go_ns": 24361.419907407406,
+          "ref_ns": 1341642.8
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 24148.81365740741,
+          "ref_ns": 1323256.8181818181
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": false,
+          "go_ns": 24129.96712962963,
+          "ref_ns": 1326387.8727272728
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 24125.675,
+          "ref_ns": 1327527.2727272727
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": false,
+          "go_ns": 24268.335416666665,
+          "ref_ns": 1309592.0454545454
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 23283.854166666668,
+          "ref_ns": 1330466.2818181817
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 24129.96712962963,
+        "q1": 24059.461689814816,
+        "q3": 24208.574537037035
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1327527.2727272727,
+        "q1": 1324822.3454545455,
+        "q3": 1336054.540909091
       },
-      "ratio": 0
+      "ratio": 0.01817662629262374,
+      "verdict": "faster"
     },
     {
       "name": "LeastSquares/LM/rosen",
@@ -308,17 +1180,71 @@
       "reference": "scipy.optimize.least_squares(method='lm') (Python objective, one core)",
       "parity": "none",
       "allocs": 83,
+      "go_iters": 22372,
+      "ref_iters": 224,
+      "rounds": [
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 7587.9242803504385,
+          "ref_ns": 502176.52678571426
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": false,
+          "go_ns": 7512.811773645629,
+          "ref_ns": 495102.12053571426
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 7516.91475952083,
+          "ref_ns": 497484.375
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": false,
+          "go_ns": 7573.939120328982,
+          "ref_ns": 488994.23214285716
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 7559.577820489898,
+          "ref_ns": 498143.97321428574
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": false,
+          "go_ns": 7575.682415519399,
+          "ref_ns": 489668.8973214286
+        },
+        {
+          "load_before": 6.45849609375,
+          "load_after": 6.45849609375,
+          "go_first": true,
+          "go_ns": 7578.172492401216,
+          "ref_ns": 496368.48660714284
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 7573.939120328982,
+        "q1": 7538.246290005363,
+        "q3": 7576.9274539603075
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 496368.48660714284,
+        "q1": 492385.5089285714,
+        "q3": 497814.17410714284
       },
-      "ratio": 0
+      "ratio": 0.015258702606403522,
+      "verdict": "faster"
     },
     {
       "name": "Leastsq/rosen",
@@ -326,17 +1252,71 @@
       "reference": "scipy.optimize.leastsq (Python objective, one core)",
       "parity": "none",
       "allocs": 12,
+      "go_iters": 16000,
+      "ref_iters": 2869,
+      "rounds": [
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 6584.29425,
+          "ref_ns": 39073.92227256884
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": false,
+          "go_ns": 6502.346375,
+          "ref_ns": 39592.55559428372
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 6597.69275,
+          "ref_ns": 39045.7769257581
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": false,
+          "go_ns": 6677.666625,
+          "ref_ns": 38408.30149878006
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 6654.19275,
+          "ref_ns": 39310.82258626699
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": false,
+          "go_ns": 6708.0390625,
+          "ref_ns": 39388.0707563611
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 6670.6745,
+          "ref_ns": 40307.133495991635
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 6654.19275,
+        "q1": 6590.9935000000005,
+        "q3": 6674.1705624999995
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 39310.82258626699,
+        "q1": 39059.84959916347,
+        "q3": 39490.313175322415
       },
-      "ratio": 0
+      "ratio": 0.16927126710201693,
+      "verdict": "faster"
     },
     {
       "name": "CurveFit/LM/1e4",
@@ -344,17 +1324,71 @@
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
       "allocs": 24,
+      "go_iters": 86,
+      "ref_iters": 69,
+      "rounds": [
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 1341312.9767441861,
+          "ref_ns": 1400065.2173913044
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": false,
+          "go_ns": 1336702.034883721,
+          "ref_ns": 1404663.652173913
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 1315152.1395348837,
+          "ref_ns": 1421967.9855072463
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": false,
+          "go_ns": 1323860.953488372,
+          "ref_ns": 1434097.2173913044
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 1325191.8604651163,
+          "ref_ns": 1420944.4347826086
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": false,
+          "go_ns": 1353958.8139534884,
+          "ref_ns": 1412641.3043478262
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 1346101.7441860465,
+          "ref_ns": 1419443.2318840579
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1336702.034883721,
+        "q1": 1324526.406976744,
+        "q3": 1343707.3604651163
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1419443.2318840579,
+        "q1": 1408652.4782608696,
+        "q3": 1421456.2101449275
       },
-      "ratio": 0
+      "ratio": 0.9417086959578421,
+      "verdict": "faster"
     },
     {
       "name": "CurveFit/TRF/1e4",
@@ -362,17 +1396,71 @@
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
       "allocs": 422,
+      "go_iters": 55,
+      "ref_iters": 76,
+      "rounds": [
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 1911312.1272727272,
+          "ref_ns": 2385507.1184210526
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": false,
+          "go_ns": 1902620.4545454546,
+          "ref_ns": 2367631.0263157897
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.26123046875,
+          "go_first": true,
+          "go_ns": 1895670.4545454546,
+          "ref_ns": 2370240.6842105263
+        },
+        {
+          "load_before": 6.26123046875,
+          "load_after": 6.080078125,
+          "go_first": false,
+          "go_ns": 1904775,
+          "ref_ns": 2364504.3947368423
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 1906590.9090909092,
+          "ref_ns": 2369682.013157895
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": false,
+          "go_ns": 1894122.7272727273,
+          "ref_ns": 2372665.5657894737
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 1907940.9090909092,
+          "ref_ns": 2393916.6578947366
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1904775,
+        "q1": 1899145.4545454546,
+        "q3": 1907265.9090909092
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 2370240.6842105263,
+        "q1": 2368656.5197368423,
+        "q3": 2379086.342105263
       },
-      "ratio": 0
+      "ratio": 0.8036209203093809,
+      "verdict": "faster"
     },
     {
       "name": "CurveFit/TRF/1e4/bounds",
@@ -380,17 +1468,71 @@
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
       "allocs": 578,
+      "go_iters": 40,
+      "ref_iters": 54,
+      "rounds": [
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 2583819.775,
+          "ref_ns": 3641195.9814814813
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": false,
+          "go_ns": 2534391.675,
+          "ref_ns": 3607327.925925926
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 2546196.875,
+          "ref_ns": 3618658.185185185
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": false,
+          "go_ns": 2583767.7,
+          "ref_ns": 3547224.537037037
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 2545672.925,
+          "ref_ns": 3554514.6666666665
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": false,
+          "go_ns": 2587265.625,
+          "ref_ns": 3555146.611111111
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 2515222.925,
+          "ref_ns": 3555424.3703703703
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 2546196.875,
+        "q1": 2540032.3,
+        "q3": 2583793.7375
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 3555424.3703703703,
+        "q1": 3554830.638888889,
+        "q3": 3612993.0555555555
       },
-      "ratio": 0
+      "ratio": 0.7161442938342579,
+      "verdict": "faster"
     },
     {
       "name": "CurveFitVec/LM/1e4",
@@ -398,17 +1540,71 @@
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
       "allocs": 24,
+      "go_iters": 121,
+      "ref_iters": 142,
+      "rounds": [
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 875103.9917355372,
+          "ref_ns": 1397459.5070422536
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": false,
+          "go_ns": 878485.1900826446,
+          "ref_ns": 1398751.7605633803
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 6.080078125,
+          "go_first": true,
+          "go_ns": 886282.0247933884,
+          "ref_ns": 1395708.6267605633
+        },
+        {
+          "load_before": 6.080078125,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 885564.0495867769,
+          "ref_ns": 1396224.7605633803
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 880563.3636363636,
+          "ref_ns": 1401312.2112676057
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 878630.8595041322,
+          "ref_ns": 1398072.1830985916
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 874665.9834710744,
+          "ref_ns": 1408411.971830986
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 878630.8595041322,
+        "q1": 876794.5909090908,
+        "q3": 883063.7066115702
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1398072.1830985916,
+        "q1": 1396842.133802817,
+        "q3": 1400031.985915493
       },
-      "ratio": 0
+      "ratio": 0.6284588665206076,
+      "verdict": "faster"
     },
     {
       "name": "CurveFitVec/TRF/1e4",
@@ -416,17 +1612,71 @@
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
       "allocs": 422,
+      "go_iters": 81,
+      "ref_iters": 43,
+      "rounds": [
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1349266.4567901234,
+          "ref_ns": 2326551.3720930233
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 1337378.086419753,
+          "ref_ns": 2340664.7441860465
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1343297.3209876544,
+          "ref_ns": 2334058.1395348837
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 1347005.148148148,
+          "ref_ns": 2335775.1860465114
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1341022.111111111,
+          "ref_ns": 2331006.7906976743
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 1351817.9012345679,
+          "ref_ns": 2354101.7441860465
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1341576.6543209876,
+          "ref_ns": 2330625.976744186
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1343297.3209876544,
+        "q1": 1341299.3827160494,
+        "q3": 1348135.8024691357
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 2334058.1395348837,
+        "q1": 2330816.38372093,
+        "q3": 2338219.965116279
       },
-      "ratio": 0
+      "ratio": 0.575520077342777,
+      "verdict": "faster"
     },
     {
       "name": "CurveFitVec/TRF/1e4/bounds",
@@ -434,17 +1684,71 @@
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
       "allocs": 578,
+      "go_iters": 60,
+      "ref_iters": 28,
+      "rounds": [
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1848329.1666666667,
+          "ref_ns": 3638904.75
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 1851872.2333333334,
+          "ref_ns": 3627564
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1890381.25,
+          "ref_ns": 3659791.6785714286
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 1850372.9166666667,
+          "ref_ns": 3625619.0714285714
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1858765.2833333334,
+          "ref_ns": 3688203.8571428573
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": false,
+          "go_ns": 1908052.7833333334,
+          "ref_ns": 3601883.9285714286
+        },
+        {
+          "load_before": 5.9130859375,
+          "load_after": 5.9130859375,
+          "go_first": true,
+          "go_ns": 1884368.75,
+          "ref_ns": 3677674.1071428573
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1858765.2833333334,
+        "q1": 1851122.5750000002,
+        "q3": 1887375
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 3638904.75,
+        "q1": 3626591.5357142854,
+        "q3": 3668732.8928571427
       },
-      "ratio": 0
+      "ratio": 0.5108035002381783,
+      "verdict": "faster"
     },
     {
       "name": "CurveFitModel/LM/1e4/jac",
@@ -452,17 +1756,71 @@
       "reference": "scipy.optimize.curve_fit(jac=callable) (Python objective, one core)",
       "parity": "none",
       "allocs": 26,
+      "go_iters": 94,
+      "ref_iters": 146,
+      "rounds": [
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1197831.5638297873,
+          "ref_ns": 1305627.2808219178
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": false,
+          "go_ns": 1284387.414893617,
+          "ref_ns": 1362165.8150684931
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1142992.914893617,
+          "ref_ns": 1308711.7602739725
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": false,
+          "go_ns": 1174291.670212766,
+          "ref_ns": 1769396.9726027397
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1151580.670212766,
+          "ref_ns": 1308090.4726027397
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": false,
+          "go_ns": 1154710.5425531915,
+          "ref_ns": 1300606.4520547944
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1158668.4361702127,
+          "ref_ns": 1315161.2465753425
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1158668.4361702127,
+        "q1": 1153145.6063829786,
+        "q3": 1186061.6170212766
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1308711.7602739725,
+        "q1": 1306858.8767123288,
+        "q3": 1338663.5308219178
       },
-      "ratio": 0
+      "ratio": 0.8853503661705088,
+      "verdict": "faster"
     },
     {
       "name": "Root/hybr/2",
@@ -470,17 +1828,71 @@
       "reference": "scipy.optimize.root(method='hybr') (Python objective, one core)",
       "parity": "none",
       "allocs": 10,
+      "go_iters": 125714,
+      "ref_iters": 8890,
+      "rounds": [
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1107.3435178261768,
+          "ref_ns": 12503.890101237344
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": false,
+          "go_ns": 1129.58481155639,
+          "ref_ns": 12524.59696287964
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1116.050121704822,
+          "ref_ns": 12559.069178852644
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": false,
+          "go_ns": 1113.1636094627488,
+          "ref_ns": 12579.255680539933
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1098.8520212545939,
+          "ref_ns": 12459.38785151856
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": false,
+          "go_ns": 1109.9171532208027,
+          "ref_ns": 12315.36366704162
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1109.605596830902,
+          "ref_ns": 12646.559842519686
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1109.9171532208027,
+        "q1": 1108.4745573285395,
+        "q3": 1114.6068655837853
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 12524.59696287964,
+        "q1": 12481.638976377952,
+        "q3": 12569.162429696287
       },
-      "ratio": 0
+      "ratio": 0.08861899161389158,
+      "verdict": "faster"
     },
     {
       "name": "Fsolve/2",
@@ -488,17 +1900,71 @@
       "reference": "scipy.optimize.fsolve (Python objective, one core)",
       "parity": "none",
       "allocs": 10,
+      "go_iters": 99169,
+      "ref_iters": 8644,
+      "rounds": [
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.759765625,
+          "go_first": true,
+          "go_ns": 1107.6268793675442,
+          "ref_ns": 12761.843475242944
+        },
+        {
+          "load_before": 5.759765625,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 1161.5293892244551,
+          "ref_ns": 12856.403285515964
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 1118.1081386320323,
+          "ref_ns": 12659.412077741787
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 1125.383597696861,
+          "ref_ns": 12665.567677001389
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 1115.9850860652018,
+          "ref_ns": 12647.559000462748
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 1109.7364902338431,
+          "ref_ns": 12669.2984729292
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 1115.088465145358,
+          "ref_ns": 13065.17040721888
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1115.9850860652018,
+        "q1": 1112.4124776896006,
+        "q3": 1121.7458681644466
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 12669.2984729292,
+        "q1": 12662.489877371587,
+        "q3": 12809.123380379453
       },
-      "ratio": 0
+      "ratio": 0.08808578379061432,
+      "verdict": "faster"
     },
     {
       "name": "Root/hybr/broyden100",
@@ -506,17 +1972,71 @@
       "reference": "scipy.optimize.root(method='hybr') (Python objective, one core)",
       "parity": "none",
       "allocs": 25,
+      "go_iters": 204,
+      "ref_iters": 117,
+      "rounds": [
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 1853981.6176470588,
+          "ref_ns": 901352.2136752136
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 641842.318627451,
+          "ref_ns": 859535.2564102564
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 631738.5637254902,
+          "ref_ns": 877488.6068376069
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 589560.6617647059,
+          "ref_ns": 869923.0769230769
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 595653.7990196078,
+          "ref_ns": 859358.9743589744
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 583893.7941176471,
+          "ref_ns": 868053.7777777778
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 581396.2401960784,
+          "ref_ns": 861257.4786324786
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 595653.7990196078,
+        "q1": 586727.2279411765,
+        "q3": 636790.4411764706
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 868053.7777777778,
+        "q1": 860396.3675213675,
+        "q3": 873705.8418803419
       },
-      "ratio": 0
+      "ratio": 0.6861945817970918,
+      "verdict": "faster"
     },
     {
       "name": "Linprog/simplex/30x50",
@@ -524,17 +2044,71 @@
       "reference": "scipy.optimize.linprog(method='highs-ds') (Python objective, one core)",
       "parity": "none",
       "allocs": 237,
+      "go_iters": 4098,
+      "ref_iters": 146,
+      "rounds": [
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 40154.49609565642,
+          "ref_ns": 722566.7808219178
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 40165.23304050756,
+          "ref_ns": 691652.6780821917
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": true,
+          "go_ns": 39293.93411420205,
+          "ref_ns": 714629
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.61865234375,
+          "go_first": false,
+          "go_ns": 40477.580527086386,
+          "ref_ns": 712516.2671232877
+        },
+        {
+          "load_before": 5.61865234375,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 39555.04709614446,
+          "ref_ns": 695034.2465753425
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": false,
+          "go_ns": 40127.88750610054,
+          "ref_ns": 687186.0684931506
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 39729.776720351394,
+          "ref_ns": 707323.6301369863
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 40127.88750610054,
+        "q1": 39642.41190824793,
+        "q3": 40159.86456808199
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 707323.6301369863,
+        "q1": 693343.4623287672,
+        "q3": 713572.6335616438
       },
-      "ratio": 0
+      "ratio": 0.05673200469540235,
+      "verdict": "faster"
     },
     {
       "name": "Linprog/interior/30x50",
@@ -542,17 +2116,71 @@
       "reference": "scipy.optimize.linprog(method='highs-ipm') (Python objective, one core)",
       "parity": "none",
       "allocs": 401,
+      "go_iters": 542,
+      "ref_iters": 92,
+      "rounds": [
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 307815.26752767526,
+          "ref_ns": 1236308.4239130435
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": false,
+          "go_ns": 309102.8597785978,
+          "ref_ns": 1231859.152173913
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 306497.92435424356,
+          "ref_ns": 1227888.1304347827
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": false,
+          "go_ns": 309657.5959409594,
+          "ref_ns": 1207114.1304347827
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 311909.5184501845,
+          "ref_ns": 1309982.3369565217
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": false,
+          "go_ns": 304899.5221402214,
+          "ref_ns": 1185865.0326086956
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 317069.64944649447,
+          "ref_ns": 1200289.847826087
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 309102.8597785978,
+        "q1": 307156.5959409594,
+        "q3": 310783.55719557195
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1227888.1304347827,
+        "q1": 1203701.9891304348,
+        "q3": 1234083.7880434783
       },
-      "ratio": 0
+      "ratio": 0.25173535936791536,
+      "verdict": "faster"
     },
     {
       "name": "Linprog/simplex/2",
@@ -560,17 +2188,71 @@
       "reference": "scipy.optimize.linprog(highs) (Python objective, one core)",
       "parity": "none",
       "allocs": 67,
+      "go_iters": 146666,
+      "ref_iters": 304,
+      "rounds": [
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 1141.1574598066354,
+          "ref_ns": 364407.6217105263
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": false,
+          "go_ns": 1125.1670462138463,
+          "ref_ns": 345600.46710526315
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 1172.576636711985,
+          "ref_ns": 348898.0263157895
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": false,
+          "go_ns": 1150.82539920636,
+          "ref_ns": 341690.65460526315
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.64892578125,
+          "go_first": true,
+          "go_ns": 1136.906304119564,
+          "ref_ns": 339455.86513157893
+        },
+        {
+          "load_before": 5.64892578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 1142.7515034159246,
+          "ref_ns": 352423.24342105264
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 1149.3895994981795,
+          "ref_ns": 338162.69407894736
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1142.7515034159246,
+        "q1": 1139.0318819630997,
+        "q3": 1150.1074993522698
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 345600.46710526315,
+        "q1": 340573.259868421,
+        "q3": 350660.63486842107
       },
-      "ratio": 0
+      "ratio": 0.0033065681681149605,
+      "verdict": "faster"
     },
     {
       "name": "Brentq/cubic",
@@ -578,17 +2260,71 @@
       "reference": "scipy.optimize.brentq (Python objective, one core)",
       "parity": "none",
       "allocs": 4,
+      "go_iters": 840740,
+      "ref_iters": 28827,
+      "rounds": [
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 134.77576301829342,
+          "ref_ns": 3853.232212856003
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 132.12789685277255,
+          "ref_ns": 3908.940992819232
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 128.89493184575494,
+          "ref_ns": 3902.3484927325076
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 134.25900516211908,
+          "ref_ns": 3921.6258715787285
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 141.13157218640723,
+          "ref_ns": 4091.5041801089255
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 130.48341342150962,
+          "ref_ns": 3796.11270683734
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 128.42446297309513,
+          "ref_ns": 3862.842716897353
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 132.12789685277255,
+        "q1": 129.68917263363227,
+        "q3": 134.51738409020624
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 3902.3484927325076,
+        "q1": 3858.0374648766783,
+        "q3": 3915.2834321989803
       },
-      "ratio": 0
+      "ratio": 0.033858559044339424,
+      "verdict": "faster"
     },
     {
       "name": "Brenth/cubic",
@@ -596,17 +2332,71 @@
       "reference": "scipy.optimize.brenth (Python objective, one core)",
       "parity": "none",
       "allocs": 4,
+      "go_iters": 833014,
+      "ref_iters": 30414,
+      "rounds": [
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 135.3540180597205,
+          "ref_ns": 3686.950614848425
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 135.62237129267936,
+          "ref_ns": 3803.449891497337
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 133.42512850924473,
+          "ref_ns": 3809.0586243177486
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 139.4543885216815,
+          "ref_ns": 3823.848951140922
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 136.75890561263077,
+          "ref_ns": 3835.4348655224567
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 135.9981644966351,
+          "ref_ns": 3805.658315249556
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 135.1388356018026,
+          "ref_ns": 3775.9488393502993
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 135.62237129267936,
+        "q1": 135.24642683076155,
+        "q3": 136.37853505463295
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 3805.658315249556,
+        "q1": 3789.699365423818,
+        "q3": 3816.453787729335
       },
-      "ratio": 0
+      "ratio": 0.035637033085505976,
+      "verdict": "faster"
     },
     {
       "name": "Ridder/cubic",
@@ -614,17 +2404,71 @@
       "reference": "scipy.optimize.ridder (Python objective, one core)",
       "parity": "none",
       "allocs": 4,
+      "go_iters": 719598,
+      "ref_iters": 18139,
+      "rounds": [
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": true,
+          "go_ns": 158.20899307669004,
+          "ref_ns": 5956.5439109101935
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.6767578125,
+          "go_first": false,
+          "go_ns": 155.38119894718997,
+          "ref_ns": 5990.864546005844
+        },
+        {
+          "load_before": 5.6767578125,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 152.4714145953713,
+          "ref_ns": 5907.379624014554
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 167.58795605324084,
+          "ref_ns": 5845.048459121231
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 155.8857056300879,
+          "ref_ns": 5916.18198357131
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 156.64046731647392,
+          "ref_ns": 5823.11367771101
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 153.80462424853877,
+          "ref_ns": 5910.207288163625
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 155.8857056300879,
+        "q1": 154.59291159786437,
+        "q3": 157.42473019658198
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 5910.207288163625,
+        "q1": 5876.214041567892,
+        "q3": 5936.362947240752
       },
-      "ratio": 0
+      "ratio": 0.02637567483331427,
+      "verdict": "faster"
     },
     {
       "name": "Bisect/cubic",
@@ -632,17 +2476,71 @@
       "reference": "scipy.optimize.bisect (Python objective, one core)",
       "parity": "none",
       "allocs": 4,
+      "go_iters": 684326,
+      "ref_iters": 6707,
+      "rounds": [
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 165.32501760856667,
+          "ref_ns": 16187.25451021321
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 160.78740249530193,
+          "ref_ns": 16146.954674220964
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 161.66009913403846,
+          "ref_ns": 16406.82630087968
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 163.9116444501597,
+          "ref_ns": 16335.71895035038
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 163.33936603314794,
+          "ref_ns": 16158.068585060384
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 162.85519036248806,
+          "ref_ns": 16386.996123453107
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 216.60071369493488,
+          "ref_ns": 16374.664529595944
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 163.33936603314794,
+        "q1": 162.25764474826326,
+        "q3": 164.6183310293632
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 16335.71895035038,
+        "q1": 16172.661547636797,
+        "q3": 16380.830326524527
       },
-      "ratio": 0
+      "ratio": 0.009998908926481288,
+      "verdict": "faster"
     },
     {
       "name": "Newton/fprime",
@@ -650,17 +2548,71 @@
       "reference": "scipy.optimize.newton (Python objective, one core)",
       "parity": "none",
       "allocs": 1,
+      "go_iters": 3703219,
+      "ref_iters": 4797,
+      "rounds": [
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 28.970549945871415,
+          "ref_ns": 22936.079841567647
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 28.107134630709123,
+          "ref_ns": 22514.0712945591
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 27.652507453650458,
+          "ref_ns": 23067.186158015425
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 29.085090295767007,
+          "ref_ns": 22814.484886387327
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 28.34866990042987,
+          "ref_ns": 22802.949760266834
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": false,
+          "go_ns": 29.54237246028388,
+          "ref_ns": 23080.414842609964
+        },
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.62255859375,
+          "go_first": true,
+          "go_ns": 31.344284526515985,
+          "ref_ns": 26149.146966854285
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 28.970549945871415,
+        "q1": 28.227902265569497,
+        "q3": 29.313731378025444
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 22936.079841567647,
+        "q1": 22808.71732332708,
+        "q3": 23073.800500312696
       },
-      "ratio": 0
+      "ratio": 0.0012630994549193773,
+      "verdict": "faster"
     },
     {
       "name": "Newton/secant",
@@ -668,17 +2620,71 @@
       "reference": "scipy.optimize.newton (Python objective, one core)",
       "parity": "none",
       "allocs": 1,
+      "go_iters": 2520625,
+      "ref_iters": 3314,
+      "rounds": [
+        {
+          "load_before": 5.62255859375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 42.82995288866849,
+          "ref_ns": 33240.77157513579
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 42.75158264319365,
+          "ref_ns": 32785.98370549185
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 42.126605504587154,
+          "ref_ns": 33184.69613759807
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 37.13020897594843,
+          "ref_ns": 29358.994568497284
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 36.62593602777089,
+          "ref_ns": 28395.657211828606
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 36.67645246714604,
+          "ref_ns": 28148.725105612553
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 36.55090503347384,
+          "ref_ns": 28573.86572118286
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 37.13020897594843,
+        "q1": 36.65119424745846,
+        "q3": 42.4390940738904
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 29358.994568497284,
+        "q1": 28484.761466505734,
+        "q3": 32985.33992154496
       },
-      "ratio": 0
+      "ratio": 0.0012646962037245579,
+      "verdict": "faster"
     },
     {
       "name": "Newton/halley",
@@ -686,17 +2692,71 @@
       "reference": "scipy.optimize.newton (Python objective, one core)",
       "parity": "none",
       "allocs": 1,
+      "go_iters": 2879135,
+      "ref_iters": 5896,
+      "rounds": [
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 37.58164344499303,
+          "ref_ns": 18583.46065128901
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 37.19810811233235,
+          "ref_ns": 18482.438602442333
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 37.525000390742356,
+          "ref_ns": 18624.929274084127
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 37.48760478407577,
+          "ref_ns": 18241.887211668927
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 38.39210075248295,
+          "ref_ns": 18336.612449118045
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 37.071420756581404,
+          "ref_ns": 18620.75983717775
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 36.91489214642592,
+          "ref_ns": 18188.142978290365
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 37.48760478407577,
+        "q1": 37.134764434456876,
+        "q3": 37.55332191786769
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 18482.438602442333,
+        "q1": 18289.249830393484,
+        "q3": 18602.11024423338
       },
-      "ratio": 0
+      "ratio": 0.0020282823922987106,
+      "verdict": "faster"
     },
     {
       "name": "RootScalar/brentq",
@@ -704,17 +2764,71 @@
       "reference": "scipy.optimize.root_scalar(method='brentq') (Python objective, one core)",
       "parity": "none",
       "allocs": 5,
+      "go_iters": 755971,
+      "ref_iters": 17195,
+      "rounds": [
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 146.30240445731383,
+          "ref_ns": 6370.209363186973
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 149.1862783096177,
+          "ref_ns": 6960.099854608898
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 147.30668636759876,
+          "ref_ns": 6513.448676940971
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 146.9009723917981,
+          "ref_ns": 6417.032567606862
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 145.37964022429432,
+          "ref_ns": 6439.267694097121
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": false,
+          "go_ns": 151.19258278426025,
+          "ref_ns": 6493.898400697877
+        },
+        {
+          "load_before": 5.65234375,
+          "load_after": 5.65234375,
+          "go_first": true,
+          "go_ns": 148.41359655330695,
+          "ref_ns": 6420.59226519337
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 147.30668636759876,
+        "q1": 146.60168842455596,
+        "q3": 148.79993743146233
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 6439.267694097121,
+        "q1": 6418.8124164001165,
+        "q3": 6503.673538819425
       },
-      "ratio": 0
+      "ratio": 0.02287631037650987,
+      "verdict": "faster"
     },
     {
       "name": "MinimizeScalar/brent",
@@ -722,17 +2836,71 @@
       "reference": "scipy.optimize.minimize_scalar (Python objective, one core)",
       "parity": "none",
       "allocs": 5,
+      "go_iters": 352398,
+      "ref_iters": 4996,
+      "rounds": [
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 321.39382743375387,
+          "ref_ns": 21798.021617293834
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 313.16603102174247,
+          "ref_ns": 21895.93354683747
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 310.4881894902922,
+          "ref_ns": 21760.516613290634
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 310.4887797320076,
+          "ref_ns": 21997.114491593275
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 310.10758006572115,
+          "ref_ns": 21700.735588470776
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 313.09958058785804,
+          "ref_ns": 21873.81565252202
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 312.19435694867735,
+          "ref_ns": 21818.36309047238
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 312.19435694867735,
+        "q1": 310.4884846111499,
+        "q3": 313.1328058048002
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 21818.36309047238,
+        "q1": 21779.269115292234,
+        "q3": 21884.874599679744
       },
-      "ratio": 0
+      "ratio": 0.014308789144910971,
+      "verdict": "faster"
     },
     {
       "name": "MinimizeScalar/golden",
@@ -740,17 +2908,71 @@
       "reference": "scipy.optimize.minimize_scalar (Python objective, one core)",
       "parity": "none",
       "allocs": 5,
+      "go_iters": 342475,
+      "ref_iters": 4466,
+      "rounds": [
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 318.49295569019637,
+          "ref_ns": 25452.754142409314
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 317.4860675961749,
+          "ref_ns": 25161.14352888491
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 314.17378202788524,
+          "ref_ns": 24579.536274070757
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 310.4766771297175,
+          "ref_ns": 24532.06627854904
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 311.5072866632601,
+          "ref_ns": 24799.79287953426
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 311.5524228045843,
+          "ref_ns": 24913.289296909985
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 317.8663902474633,
+          "ref_ns": 24908.08329601433
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 314.17378202788524,
+        "q1": 311.5298547339222,
+        "q3": 317.6762289218191
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 24908.08329601433,
+        "q1": 24689.66457680251,
+        "q3": 25037.216412897447
       },
-      "ratio": 0
+      "ratio": 0.012613326296293453,
+      "verdict": "faster"
     },
     {
       "name": "MinimizeScalar/bounded",
@@ -758,17 +2980,71 @@
       "reference": "scipy.optimize.minimize_scalar (Python objective, one core)",
       "parity": "none",
       "allocs": 1,
+      "go_iters": 583972,
+      "ref_iters": 4007,
+      "rounds": [
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 188.0615988437802,
+          "ref_ns": 26815.791115547792
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 187.89428260259052,
+          "ref_ns": 27382.705265784876
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 188.19324042933565,
+          "ref_ns": 27309.396056900423
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": false,
+          "go_ns": 189.3797271102039,
+          "ref_ns": 27239.56001996506
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.68017578125,
+          "go_first": true,
+          "go_ns": 188.0960611125191,
+          "ref_ns": 27203.934614424757
+        },
+        {
+          "load_before": 5.68017578125,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 188.52673244607618,
+          "ref_ns": 27699.91040678812
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 188.52159521346914,
+          "ref_ns": 27633.859495882207
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 188.19324042933565,
+        "q1": 188.07882997814966,
+        "q3": 188.52416382977265
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 27309.396056900423,
+        "q1": 27221.74731719491,
+        "q3": 27508.28238083354
       },
-      "ratio": 0
+      "ratio": 0.00689115350765085,
+      "verdict": "faster"
     },
     {
       "name": "Fminbound/cos",
@@ -776,17 +3052,71 @@
       "reference": "scipy.optimize.fminbound (Python objective, one core)",
       "parity": "none",
       "allocs": 1,
+      "go_iters": 592457,
+      "ref_iters": 6411,
+      "rounds": [
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 186.04570964643847,
+          "ref_ns": 16786.14880673842
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 185.64687563823196,
+          "ref_ns": 16793.051006083293
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 185.07967666851772,
+          "ref_ns": 16691.370301045077
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 185.15921830613868,
+          "ref_ns": 16584.080798627358
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 186.55770123401362,
+          "ref_ns": 16391.813601622212
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 186.26049316659268,
+          "ref_ns": 16658.659647480894
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 187.2023336714732,
+          "ref_ns": 16825.215878958043
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 186.04570964643847,
+        "q1": 185.40304697218534,
+        "q3": 186.40909720030317
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 16691.370301045077,
+        "q1": 16621.370223054124,
+        "q3": 16789.599906410855
       },
-      "ratio": 0
+      "ratio": 0.011146221448025139,
+      "verdict": "faster"
     },
     {
       "name": "Bracket/scalarF",
@@ -794,17 +3124,71 @@
       "reference": "scipy.optimize.bracket (Python objective, one core)",
       "parity": "none",
       "allocs": 0,
+      "go_iters": 8441916,
+      "ref_iters": 58150,
+      "rounds": [
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 13.241089700489795,
+          "ref_ns": 1912.808116938951
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 13.25030455171551,
+          "ref_ns": 1862.8374892519346
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 13.242377915155753,
+          "ref_ns": 1914.9161650902838
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 13.320416123543518,
+          "ref_ns": 1882.060034393809
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 13.679793307585625,
+          "ref_ns": 1924.3443680137575
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 13.344285112526588,
+          "ref_ns": 1879.759965606191
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 13.349817979709819,
+          "ref_ns": 1996.2009114359416
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 13.320416123543518,
+        "q1": 13.246341233435633,
+        "q3": 13.347051546118204
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1912.808116938951,
+        "q1": 1880.9099999999999,
+        "q3": 1919.6302665520207
       },
-      "ratio": 0
+      "ratio": 0.00696380154683788,
+      "verdict": "faster"
     },
     {
       "name": "Brute/50x50/nofinish",
@@ -812,17 +3196,71 @@
       "reference": "scipy.optimize.brute (Python objective, one core)",
       "parity": "none",
       "allocs": 10,
+      "go_iters": 8543,
+      "ref_iters": 132,
+      "rounds": [
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": true,
+          "go_ns": 13310.127238674939,
+          "ref_ns": 1523650.25
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.38525390625,
+          "go_first": false,
+          "go_ns": 13344.214561629404,
+          "ref_ns": 1505002.2121212122
+        },
+        {
+          "load_before": 5.38525390625,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 13237.031253657966,
+          "ref_ns": 1510261.3636363635
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": false,
+          "go_ns": 13524.401030083109,
+          "ref_ns": 1536067.2348484849
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 13338.66908580124,
+          "ref_ns": 1524599.4318181819
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": false,
+          "go_ns": 13294.13461313356,
+          "ref_ns": 1506327.9696969697
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 13261.934683366499,
+          "ref_ns": 1513179.9242424243
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 13310.127238674939,
+        "q1": 13278.034648250028,
+        "q3": 13341.441823715322
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 1513179.9242424243,
+        "q1": 1508294.6666666665,
+        "q3": 1524124.8409090908
       },
-      "ratio": 0
+      "ratio": 0.008796129941611983,
+      "verdict": "faster"
     },
     {
       "name": "Brute/20x20/finish",
@@ -830,17 +3268,71 @@
       "reference": "scipy.optimize.brute (Python objective, one core)",
       "parity": "none",
       "allocs": 26,
+      "go_iters": 25142,
+      "ref_iters": 324,
+      "rounds": [
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 4119.201296635112,
+          "ref_ns": 514075.10185185185
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": false,
+          "go_ns": 4073.5157505369502,
+          "ref_ns": 507379.8888888889
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 4026.0602975101424,
+          "ref_ns": 513756.3024691358
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": false,
+          "go_ns": 4039.9398218121073,
+          "ref_ns": 510499.22839506174
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 4055.029114628908,
+          "ref_ns": 509699.4598765432
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": false,
+          "go_ns": 4061.046615225519,
+          "ref_ns": 508984.56790123455
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 4051.8256304192187,
+          "ref_ns": 508173.0987654321
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 4055.029114628908,
+        "q1": 4045.882726115663,
+        "q3": 4067.2811828812346
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 509699.4598765432,
+        "q1": 508578.8333333333,
+        "q3": 512127.76543209876
       },
-      "ratio": 0
+      "ratio": 0.007955725743972922,
+      "verdict": "faster"
     },
     {
       "name": "ApproxFprime/rosen100",
@@ -848,17 +3340,71 @@
       "reference": "scipy.optimize.approx_fprime (Python objective, one core)",
       "parity": "none",
       "allocs": 4,
+      "go_iters": 17033,
+      "ref_iters": 266,
+      "rounds": [
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": true,
+          "go_ns": 6237.387189573182,
+          "ref_ns": 738062.3421052631
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.43408203125,
+          "go_first": false,
+          "go_ns": 6250.8145951975575,
+          "ref_ns": 731071.7443609022
+        },
+        {
+          "load_before": 5.43408203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 6217.744026301884,
+          "ref_ns": 735277.8796992481
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": false,
+          "go_ns": 6231.988434215934,
+          "ref_ns": 724840.6954887218
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 6206.62584394998,
+          "ref_ns": 732044.484962406
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": false,
+          "go_ns": 6376.917865320261,
+          "ref_ns": 732471.962406015
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 6414.416133388129,
+          "ref_ns": 728286.8082706766
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 6237.387189573182,
+        "q1": 6224.866230258909,
+        "q3": 6313.866230258909
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 732044.484962406,
+        "q1": 729679.2763157894,
+        "q3": 733874.9210526316
       },
-      "ratio": 0
+      "ratio": 0.008520502944426255,
+      "verdict": "faster"
     },
     {
       "name": "CheckGrad/rosen100",
@@ -866,17 +3412,71 @@
       "reference": "scipy.optimize.check_grad (Python objective, one core)",
       "parity": "none",
       "allocs": 5,
+      "go_iters": 25632,
+      "ref_iters": 248,
+      "rounds": [
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 6601.967267478152,
+          "ref_ns": 746185.1451612903
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": false,
+          "go_ns": 6582.2604556804,
+          "ref_ns": 735227.6572580645
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 6756.926576154807,
+          "ref_ns": 746315.3588709678
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": false,
+          "go_ns": 6796.494616104869,
+          "ref_ns": 734759.7419354839
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 6795.389200998751,
+          "ref_ns": 760545.0282258064
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": false,
+          "go_ns": 6780.354322721598,
+          "ref_ns": 756636.7580645161
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 6722.342501560549,
+          "ref_ns": 750198.7580645161
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 6756.926576154807,
+        "q1": 6662.15488451935,
+        "q3": 6787.871761860175
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 746315.3588709678,
+        "q1": 740706.4012096773,
+        "q3": 753417.7580645161
       },
-      "ratio": 0
+      "ratio": 0.00905371502252981,
+      "verdict": "faster"
     },
     {
       "name": "DifferentialEvolution/sphere/2",
@@ -884,17 +3484,71 @@
       "reference": "scipy.optimize.differential_evolution(rng=1) (Python objective, one core)",
       "parity": "none",
       "allocs": 81,
+      "go_iters": 190,
+      "ref_iters": 3,
+      "rounds": [
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.55908203125,
+          "go_first": true,
+          "go_ns": 580798.4631578948,
+          "ref_ns": 34929791.666666664
+        },
+        {
+          "load_before": 5.55908203125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 576706.5789473684,
+          "ref_ns": 35029875
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 569173.4631578948,
+          "ref_ns": 33917305.333333336
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 571285.9631578948,
+          "ref_ns": 34329166.666666664
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 571006.1421052632,
+          "ref_ns": 34731278
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 583772.3684210526,
+          "ref_ns": 34096972
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 576516.0105263158,
+          "ref_ns": 34504625
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 576516.0105263158,
+        "q1": 571146.052631579,
+        "q3": 578752.5210526315
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 34504625,
+        "q1": 34213069.33333333,
+        "q3": 34830534.83333333
       },
-      "ratio": 0
+      "ratio": 0.016708369110700835,
+      "verdict": "faster"
     },
     {
       "name": "DifferentialEvolution/rosenbrock/2",
@@ -902,17 +3556,71 @@
       "reference": "scipy.optimize.differential_evolution(rng=1) (Python objective, one core)",
       "parity": "none",
       "allocs": 81,
+      "go_iters": 138,
+      "ref_iters": 2,
+      "rounds": [
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 798430.8550724637,
+          "ref_ns": 53604208.5
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 796258.4565217391,
+          "ref_ns": 52799208
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 797732.7898550725,
+          "ref_ns": 53065958.5
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 790645.5289855072,
+          "ref_ns": 52476812.5
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 794045.5942028986,
+          "ref_ns": 52132625
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 781342.9927536232,
+          "ref_ns": 51746917
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 779256.036231884,
+          "ref_ns": 52492166.5
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 794045.5942028986,
+        "q1": 785994.2608695652,
+        "q3": 796995.6231884058
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 52492166.5,
+        "q1": 52304718.75,
+        "q3": 52932583.25
       },
-      "ratio": 0
+      "ratio": 0.015126935067595248,
+      "verdict": "faster"
     },
     {
       "name": "Basinhopping/himmelblau/100",
@@ -920,17 +3628,71 @@
       "reference": "scipy.optimize.basinhopping(rng=1) (Python objective, one core)",
       "parity": "none",
       "allocs": 3245,
+      "go_iters": 185,
+      "ref_iters": 18,
+      "rounds": [
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 621246.8486486486,
+          "ref_ns": 10880143.5
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 612066.4432432433,
+          "ref_ns": 10598502.277777778
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 636330.6324324324,
+          "ref_ns": 10921875
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": false,
+          "go_ns": 620074.1027027027,
+          "ref_ns": 10934768.555555556
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.59423828125,
+          "go_first": true,
+          "go_ns": 617621.8486486486,
+          "ref_ns": 12663925.888888888
+        },
+        {
+          "load_before": 5.59423828125,
+          "load_after": 5.54638671875,
+          "go_first": false,
+          "go_ns": 637686.9351351351,
+          "ref_ns": 10933625
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 606721.3945945946,
+          "ref_ns": 10747634.277777778
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 620074.1027027027,
+        "q1": 614844.145945946,
+        "q3": 628788.7405405405
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 10921875,
+        "q1": 10813888.888888888,
+        "q3": 10934196.777777778
       },
-      "ratio": 0
+      "ratio": 0.056773594524997105,
+      "verdict": "faster"
     },
     {
       "name": "Direct/rosenbrock/2",
@@ -938,17 +3700,71 @@
       "reference": "scipy.optimize.direct (Python objective, one core)",
       "parity": "none",
       "allocs": 86,
+      "go_iters": 1653,
+      "ref_iters": 42,
+      "rounds": [
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 76222.5499092559,
+          "ref_ns": 2607454.3571428573
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": false,
+          "go_ns": 73699.30913490623,
+          "ref_ns": 2393076.380952381
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 73247.9836660617,
+          "ref_ns": 2412248
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": false,
+          "go_ns": 73326.30066545674,
+          "ref_ns": 2425560.523809524
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 72647.73623714459,
+          "ref_ns": 2509637.904761905
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": false,
+          "go_ns": 76378.70538415003,
+          "ref_ns": 2508251.976190476
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 75016.00665456745,
+          "ref_ns": 2504112.095238095
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 73699.30913490623,
+        "q1": 73287.14216575923,
+        "q3": 75619.27828191168
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 2504112.095238095,
+        "q1": 2418904.261904762,
+        "q3": 2508944.9404761903
       },
-      "ratio": 0
+      "ratio": 0.029431313907654272,
+      "verdict": "faster"
     },
     {
       "name": "Direct/sphere/10",
@@ -956,17 +3772,71 @@
       "reference": "scipy.optimize.direct (Python objective, one core)",
       "parity": "none",
       "allocs": 72,
+      "go_iters": 6054,
+      "ref_iters": 680,
+      "rounds": [
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 25711.45110670631,
+          "ref_ns": 258524.87794117647
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": false,
+          "go_ns": 26252.615295672284,
+          "ref_ns": 260776.34705882354
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 25753.0903534853,
+          "ref_ns": 260517.89264705882
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": false,
+          "go_ns": 26702.662206805417,
+          "ref_ns": 260444.05735294116
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": true,
+          "go_ns": 26104.180376610504,
+          "ref_ns": 260556.61764705883
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.54638671875,
+          "go_first": false,
+          "go_ns": 26936.67409976875,
+          "ref_ns": 263823.3455882353
+        },
+        {
+          "load_before": 5.54638671875,
+          "load_after": 5.42236328125,
+          "go_first": true,
+          "go_ns": 27815.72101090188,
+          "ref_ns": 260961.275
+        }
+      ],
       "go": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 26252.615295672284,
+        "q1": 25928.6353650479,
+        "q3": 26819.668153287083
       },
       "ref": {
-        "median": 0,
-        "q1": 0,
-        "q3": 0
+        "median": 260556.61764705883,
+        "q1": 260480.97499999998,
+        "q3": 260868.81102941177
       },
-      "ratio": 0
+      "ratio": 0.10075589533186675,
+      "verdict": "faster"
     }
   ]
 }

@@ -177,18 +177,22 @@ made the suite fail, and each was then reverted:
 
 ## Performance
 
-Medians of 7 rounds, with Go and SciPy interleaved on a loaded host.
-[docs/perf.md](docs/perf.md) has the method and caveats.
+refbench (`bench/`), v0.7.1, 2026-11-09: one core on both sides, SciPy
+1.18.1, medians of 7 interleaved rounds, started at a 1-minute load below 8
+(Apple M4 Max). The SLSQP and trust-constr rows are `tools/slsqpbench`,
+2026-10-30. [docs/perf.md](docs/perf.md) and
+[docs/perf-table.md](docs/perf-table.md) have every row and the method.
 
 | Benchmark | Go | SciPy | Speed-up |
 |---|---|---|---|
-| Rosenbrock n=2, BFGS | 5.7 µs | 2.58 ms | 449× |
-| Rosenbrock n=100, BFGS | 14.8 ms | 87.9 ms | 5.9× |
-| Rosenbrock n=2, L-BFGS-B | 126 µs | 1.47 ms | 11.7× |
-| Rosenbrock n=100, L-BFGS-B | 6.36 ms | 23.2 ms | 3.7× |
-| `curve_fit`, 10⁴ points, LM | 4.13 ms | 2.78 ms | **0.67× (SciPy faster)** |
-| `curve_fit`, 10⁴ points, TRF | 5.97 ms | 4.61 ms | **0.77× (SciPy faster)** |
-| `brentq` | 0.27 µs | 8.6 µs | 32× |
+| Rosenbrock n=2, BFGS | 3.68 µs | 1.18 ms | 320× |
+| Rosenbrock n=100, BFGS | 170 ms | 46.4 ms | **0.27× (SciPy faster, #53)** |
+| Rosenbrock n=2, L-BFGS-B | 71.1 µs | 737 µs | 10.4× |
+| Rosenbrock n=100, L-BFGS-B | 4.70 ms | 12.1 ms | 2.6× |
+| `curve_fit`, 10⁴ points, LM (model per point / `Model.Vec`) | 1.34 / 0.88 ms | 1.42 ms | 1.06× / 1.59× |
+| `curve_fit`, 10⁴ points, TRF (model per point / `Model.Vec`) | 1.91 / 1.34 ms | 2.37 ms | 1.24× / 1.74× |
+| `curve_fit`, 10⁴ points, TRF with bounds (per point / `Model.Vec`) | 2.55 / 1.86 ms | 3.56 ms | 1.40× / 1.96× |
+| `brentq` | 0.13 µs | 3.9 µs | 30× |
 | SLSQP, HS71 (analytic / finite differences) | 5.6 / 6.9 µs | 114 / 648 µs | 20× / 94× |
 | SLSQP, n = 50 with 100 bounds | 3.35 ms | 4.59 ms | 1.4× |
 | trust-constr, HS71 (analytic / finite differences) | 496 / 438 µs | 32.7 / 34.1 ms | 66× / 78× |
@@ -198,14 +202,13 @@ Most of SciPy's time on small problems is Python overhead around the
 callbacks. Even after subtracting SciPy's time spent in its own callbacks, the
 Go algorithms remain 2–300× faster, depending on the problem.
 
-The two `curve_fit` rows above predate the MINPACK kernel work of PR #7 (1.07× and
-1.27× in the 2026-10-17 table of [docs/perf.md](docs/perf.md)) and have not
-been re-timed since: the host's load has stayed above refbench's limit of 8
-(issue #46). Most of that time was the model, not the solver: SciPy calls its
-NumPy expression once per sweep over the 10⁴ points, `CurveFit` calls a Go
-closure once per point. `Model.Vec` (v0.7.0) takes the model over arrays, so it
-can use a vector `exp` (go-simd/floats); the solver and its results are
-unchanged, and docs/perf.md has the profile and the counts.
+In `curve_fit` most of the time is the model: SciPy calls its NumPy expression
+once per sweep over the 10⁴ points; `CurveFit` calls a Go closure once per
+point. `Model.Vec` (v0.7.0) takes the model over arrays, so it can use a
+vector `exp` (go-simd/floats), with the same solver and the same counts as
+SciPy. BFGS at n = 100 follows SciPy's update bit for bit with two dense
+n×n products; SciPy's go to BLAS `dgemm`, ours to `AxpyNoFMA` in the same
+summation order. That row is an open defect (#53, go-simd/floats#43).
 
 ## Not done
 
