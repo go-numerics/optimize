@@ -34,6 +34,9 @@ path (the wrapper's initial and final calls; the `+2` is `row.extra`).
 | CurveFit/LM/1e4 | 21 / 21 | - | same |
 | CurveFit/TRF/1e4 | 6 / 6 | - | same |
 | CurveFit/TRF/1e4/bounds | 8 / 8 | - | same |
+| CurveFitVec/LM/1e4 | 21 / 21 | - | same |
+| CurveFitVec/TRF/1e4 | 6 / 6 | - | same |
+| CurveFitVec/TRF/1e4/bounds | 8 / 8 | - | same |
 | CurveFitModel/LM/1e4/jac | 6 / 6 | - | same |
 | Root/hybr/2 | 12 / 14 | - | same (+2) |
 | Fsolve/2 | 12 / 14 | - | same (+2) |
@@ -47,7 +50,8 @@ path (the wrapper's initial and final calls; the `+2` is `row.extra`).
 | Basinhopping/himmelblau/100 | 871 / 871 | 100 / 100 | same |
 | Direct rosenbrock/2, sphere/10 | 835, 181 / equal | 44, 4 / equal | same |
 
-Of the 43 rows compared, 37 take the same path. The six that do not are all
+Of the 46 rows compared, 40 take the same path (the three `CurveFitVec` rows
+were added on 2026-11-09, run then with the same result for every other row). The six that do not are all
 `n = 100` Rosenbrock rows, and every `n = 2` row is equal. The cause of the
 divergence is not isolated; it is consistent with the last bit of a length-100
 reduction (NumPy sums pairwise and calls BLAS, the Go side sums in its own

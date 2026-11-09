@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-ndarray/ndarray"
 	"github.com/go-numerics/optimize"
+	"github.com/go-simd/floats"
 )
 
 // scipy.optimize.minimize(rosen, x0, jac=rosen_der, method='BFGS')
@@ -86,6 +87,30 @@ func ExampleCurveFit() {
 	y := x.Map(func(v float64) float64 { return 2.5*math.Exp(-1.3*v) + 0.5 + 0.01*math.Sin(37*v) })
 	model := func(x float64, p []float64) float64 { return p[0]*math.Exp(-p[1]*x) + p[2] }
 	r, err := optimize.CurveFit(model, x, y, []float64{1, 1, 1}, nil)
+	if err != nil {
+		panic(err)
+	}
+	perr := r.Perr()
+	fmt.Printf("a = %.3f ± %.3f, b = %.3f ± %.3f, c = %.3f ± %.3f\n",
+		r.Popt[0], perr[0], r.Popt[1], perr[1], r.Popt[2], perr[2])
+	// Output: a = 2.500 ± 0.004, b = 1.300 ± 0.005, c = 0.500 ± 0.002
+}
+
+// The same fit with the model written over arrays, called once per sweep as
+// SciPy calls f(xdata, *p): it can then use a vector exp.
+func ExampleCurveFitModel_vec() {
+	x, _ := ndarray.Linspace(0, 4, 50)
+	y := x.Map(func(v float64) float64 { return 2.5*math.Exp(-1.3*v) + 0.5 + 0.01*math.Sin(37*v) })
+	model := optimize.Model{Vec: func(xs, p, out []float64) {
+		for j, v := range xs {
+			out[j] = -p[1] * v
+		}
+		floats.Exp(out, out) // github.com/go-simd/floats
+		for j, e := range out {
+			out[j] = p[0]*e + p[2]
+		}
+	}}
+	r, err := optimize.CurveFitModel(model, x, y, []float64{1, 1, 1}, nil)
 	if err != nil {
 		panic(err)
 	}

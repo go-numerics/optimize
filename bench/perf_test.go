@@ -22,6 +22,7 @@ import (
 	opt "github.com/go-numerics/optimize"
 	"github.com/go-scikit/refbench"
 	"github.com/go-scikit/refbench/rbtest"
+	"github.com/go-simd/floats"
 )
 
 // The speed comparison with scipy.optimize (docs/perf.md).
@@ -433,6 +434,35 @@ func rows() []row {
 		cf("CurveFit/LM/1e4", &opt.CurveFitOptions{Method: opt.LM}, []float64{1, 1, 1}, ", method='lm'", "[1, 1, 1]"),
 		cf("CurveFit/TRF/1e4", &opt.CurveFitOptions{Method: opt.TRF}, []float64{1, 1, 1}, ", method='trf'", "[1, 1, 1]"),
 		cf("CurveFit/TRF/1e4/bounds", &opt.CurveFitOptions{Bounds: []opt.Bound{{Lo: 0, Hi: 10}, {Lo: 0, Hi: 3}, {Lo: -1, Hi: 1}}},
+			[]float64{1, 1, 0}, ", bounds=([0, 0, -1], [10, 3, 1])", "[1, 1, 0]"),
+	)
+	// The same fits with the model written over arrays (Model.Vec), as the
+	// SciPy side evaluates its NumPy expression: −b·x, exp, a·e, +c, each
+	// rounded in turn, the exp from go-simd/floats (0.511 ULP; NumPy's exp
+	// differs from it, and from math.Exp, in the last bit).
+	vecf := func(xs, p, out []float64) {
+		nb := -p[1]
+		for j, x := range xs {
+			out[j] = float64(nb * x)
+		}
+		floats.Exp(out, out)
+		for j, e := range out {
+			out[j] = float64(p[0]*e) + p[2]
+		}
+	}
+	cfv := func(name string, o *opt.CurveFitOptions, p0 []float64, kw, p0s string) row {
+		return row{name: name, fn: "CurveFitModel", n: m, setup: curveSetup, data: []any{xs, ys},
+			call: py("x, y", "so.curve_fit(model, x, y, p0="+p0s+kw+"%FO%)", "model", pyModel), ref: "scipy.optimize.curve_fit",
+			run: func() (int, int) {
+				r := must(opt.CurveFitModel(opt.Model{Vec: vecf}, xa, ya, p0, o))
+				sink = r.Popt[0]
+				return r.Nfev, -1
+			}}
+	}
+	rs = append(rs,
+		cfv("CurveFitVec/LM/1e4", &opt.CurveFitOptions{Method: opt.LM}, []float64{1, 1, 1}, ", method='lm'", "[1, 1, 1]"),
+		cfv("CurveFitVec/TRF/1e4", &opt.CurveFitOptions{Method: opt.TRF}, []float64{1, 1, 1}, ", method='trf'", "[1, 1, 1]"),
+		cfv("CurveFitVec/TRF/1e4/bounds", &opt.CurveFitOptions{Bounds: []opt.Bound{{Lo: 0, Hi: 10}, {Lo: 0, Hi: 3}, {Lo: -1, Hi: 1}}},
 			[]float64{1, 1, 0}, ", bounds=([0, 0, -1], [10, 3, 1])", "[1, 1, 0]"),
 	)
 	model := opt.Model{

@@ -26,7 +26,7 @@ What makes a row comparable (checked, not assumed):
 - **Same path.** `TestCounts` runs every row once on both sides and compares
   `nfev` and `nit`; an optimiser that converges in a different number of
   evaluations is a different computation. Results are in
-  [perf-counts.md](perf-counts.md): 37 of the 43 compared rows are equal; the six
+  [perf-counts.md](perf-counts.md): 40 of the 46 compared rows are equal; the six
   `n = 100` Rosenbrock rows take different paths (counts within 11%) and are
   named in `divergent` with their reason. SciPy's `root`/`fsolve` count two more
   evaluations than ours on the same path.
@@ -73,6 +73,49 @@ old one on 20 000 random vectors and edge cases):
 Still allocating per iteration, filed as issues: Powell (about 12 per line
 search), trust-constr (1121 for 44 iterations), `least_squares` TRF (SVD of the
 Jacobian through go-ndarray, 62 per iteration), `curve_fit` TRF.
+
+## `curve_fit` on 10⁴ points: the model call (2026-11-09)
+
+**What the rows compared.** Same data (SHA-256, `TestDataParity`), same `p0`,
+the default tolerances of both, the same forward-difference Jacobian (MINPACK
+`fdjac2` with `epsfcn` = machine ε for LM, `2-point` with step √ε for TRF, one
+model sweep per parameter) and the same counts (21 evaluations for LM, 6 for
+TRF, 8 for TRF with bounds; [perf-counts.md](perf-counts.md)). One thing
+differed: SciPy calls its model **once per sweep** on the whole array
+(`a*np.exp(-b*x)+c`, four vectorised NumPy passes), while `CurveFit` takes a
+scalar model and calls it **once per sample**, 10⁴ Go calls of a closure that
+calls `math.Exp`.
+
+**Where the time went** (pprof, `BenchmarkCurveFit1e4LM`/`TRF`, one core):
+the model sweeps were 65% of LM and 54% of TRF. The solver (MINPACK's
+`qrfac`/`lmpar`/`enorm` in their original order of operations, TRF's
+`householderR` and 3×3 SVD) was the rest, with 10% of TRF in allocation and
+garbage collection, mostly the SVD through go-ndarray (issue #47).
+
+**The fix: `Model.Vec`.** A model can now be given over arrays,
+`Vec(xs, p, out)`, called once per sweep as SciPy calls `f(xdata, *p)`, so it
+can use vector kernels: the new `CurveFitVec/*` rows write the NumPy expression
+as three passes with go-simd/floats' `Exp` (about 1.35 ns per element on the
+M4 Max, against 2.7 ns for `math.Exp` and 3.2 ns per sample for the closure).
+Each evaluation of the residuals also stopped allocating (a closure per call,
+which escaped through the `Workers` goroutines): allocations per call went
+from 42 to 24 (LM), 443 to 422 (TRF), 607 to 578 (TRF with bounds) and 33 to
+26 (`CurveFitModel` with a Jacobian). `TestCurveFitEvaluationAllocs` holds the
+count independent of the number of evaluations.
+
+**Exactness.** The solvers are unchanged: with the same arithmetic per sample,
+`Vec` and `F` give the same fit to the last bit (`TestCurveFitVecSameBits` on
+every SciPy fixture, 1-D and (2, m) xdata, sigma, bounds, both methods, and with
+`Workers`). The vector `Exp` is a 0.511-ULP exp, not NumPy's bits nor
+`math.Exp`'s, so the `CurveFitVec` rows agree with SciPy within the fixture
+tolerance (1e-6 relative on `popt`), as the scalar rows always did, and take the
+same 21 / 6 / 8 evaluations.
+
+**Timing: unmeasured.** The 1-minute load was 13–32 during this work, so
+refbench was not run and no ratio is claimed. `go test -bench` on the loaded
+host (indicative only): LM 1.36 ms → 0.91 ms and TRF 1.93 ms → 1.35 ms from the
+scalar to the vector model, against SciPy's 1.47 ms and 2.58 ms in the
+2026-10-17 table below.
 
 ## Method of the earlier timings below
 
