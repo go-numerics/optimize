@@ -46,10 +46,12 @@ What makes a row comparable (checked, not assumed):
 accessors, constructors, the QP solver, which SciPy does not have, and the random
 sources) with the reason of each.
 
-**Timings in this document predate the harness and were not re-measured with
-it:** the host's 1-minute load was above 8 during this work, and refbench refuses
-to time above it. `refbench` writes the new table when a window opens
-(`go test -run TestPerf -cpu 1 -perf.run .` in `bench/`).
+**The current timings are [perf-table.md](perf-table.md)**: refbench on v0.7.1,
+2026-11-09, started at a 1-minute load below 8 (it was 5.4 when the run ended),
+one core, 7 interleaved rounds per row, Apple M4 Max. One row is slower than
+SciPy: BFGS on Rosenbrock n = 100 (3.67× SciPy's time, issue #53). The tables
+further down are older (2026-10-17, the earlier script) and are kept for the
+history of the changes they describe.
 
 ## Allocations found by the harness (2026-11-08)
 
@@ -111,11 +113,14 @@ every SciPy fixture, 1-D and (2, m) xdata, sigma, bounds, both methods, and with
 tolerance (1e-6 relative on `popt`), as the scalar rows always did, and take the
 same 21 / 6 / 8 evaluations.
 
-**Timing: unmeasured.** The 1-minute load was 13–32 during this work, so
-refbench was not run and no ratio is claimed. `go test -bench` on the loaded
-host (indicative only): LM 1.36 ms → 0.91 ms and TRF 1.93 ms → 1.35 ms from the
-scalar to the vector model, against SciPy's 1.47 ms and 2.58 ms in the
-2026-10-17 table below.
+**Timing** (refbench, v0.7.1, 2026-11-09, [perf-table.md](perf-table.md)):
+
+| Row | Go, model per point | Go, `Model.Vec` | SciPy | Speed-up |
+|---|---:|---:|---:|---:|
+| `curve_fit` LM | 1.34 ms | 0.88 ms | 1.42 ms | 1.06× / 1.59× |
+| `curve_fit` TRF | 1.91 ms | 1.34 ms | 2.37 ms | 1.24× / 1.74× |
+| `curve_fit` TRF with bounds | 2.55 ms | 1.86 ms | 3.56–3.64 ms | 1.40× / 1.96× |
+| `curve_fit` LM, analytic Jacobian | 1.16 ms | — | 1.31 ms | 1.13× |
 
 ## go-simd/floats kernels in the solvers (2026-11-09)
 
@@ -145,7 +150,8 @@ BLAS `dgemm` (about 50–90 ms for the 544 iterations in the earlier tables); ou
 take 172 ms on `AxpyNoFMA`, one row of `b` at a time. A kernel that updates a
 row of `c` from four rows of `b` in one pass, still in k order and unfused,
 would cut the loads and stores of `c` by four; it belongs in go-simd/floats
-and is filed there (go-simd/floats issue #43). Timings: unmeasured against SciPy (1-minute load 9–12).
+and is filed there (go-simd/floats issue #43). refbench on v0.7.1 (2026-11-09): BFGS n = 100 170 ms against SciPy's
+46.4 ms (3.67×, issue #53); CG n = 100 1.28 ms against 51.8 ms.
 
 ## Method of the earlier timings below
 
