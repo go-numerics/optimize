@@ -32,7 +32,7 @@ have `…Array()` accessors.
 | `Minimize(p, x0, NelderMead, opts)` | `minimize(method='Nelder-Mead')` | downhill simplex, adaptive option, bounds |
 | `Minimize(…, Powell, …)` | `minimize(method='Powell')` | conjugate directions, bounds |
 | `Minimize(…, CG, …)` | `minimize(method='CG')` | Polak–Ribière+, strong Wolfe |
-| `Minimize(…, BFGS, …)` | `minimize(method='BFGS')` | inverse-Hessian BFGS, O(n²) update |
+| `Minimize(…, BFGS, …)` | `minimize(method='BFGS')` | inverse-Hessian BFGS, O(n²) update (tolerance-validated, not bit-identical to SciPy); `Options.SciPyExactUpdate` gives SciPy's dense update bit for bit |
 | `Minimize(…, NewtonCG, …)` | `minimize(method='Newton-CG')` | truncated Newton (Hess, HessP or FD) |
 | `Minimize(…, LBFGSB, …)` | `minimize(method='L-BFGS-B')` | L-BFGS-B 3.0 with bounds |
 | `Minimize(…, SLSQP, …)` with `Options.Constraints` | `minimize(method='SLSQP', constraints=…)`, MATLAB `fmincon` `'sqp'` | Kraft's SLSQP: bounds, equality and inequality constraints as `Constraint`, `NonlinearConstraint` or `LinearConstraint`; Lagrange multipliers in `Result.Multipliers` |
@@ -206,9 +206,13 @@ In `curve_fit` most of the time is the model: SciPy calls its NumPy expression
 once per sweep over the 10⁴ points; `CurveFit` calls a Go closure once per
 point. `Model.Vec` (v0.7.0) takes the model over arrays, so it can use a
 vector `exp` (go-simd/floats), with the same solver and the same counts as
-SciPy. BFGS at n = 100 follows SciPy's update bit for bit with two dense
-n×n products; SciPy's go to BLAS `dgemm`, ours to `AxpyNoFMA` in the same
-summation order. That row is an open defect (#53, go-simd/floats#43).
+SciPy. BFGS updates the inverse Hessian in O(n²) by default (rank-two form,
+FMA kernels): **tolerance-validated, not bit-identical to SciPy** (same
+minimiser within tolerance, iteration counts within a few percent: n = 100
+takes 542 iterations against 544). `Options.SciPyExactUpdate` selects SciPy's
+update, two dense n×n products summed in SciPy's order (bit for bit, O(n³),
+about 90 ms at n = 100 on `floats.AxpyRowsNoFMA`). Rows to be re-measured
+with refbench (#53).
 
 ## Not done
 

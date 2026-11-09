@@ -123,6 +123,14 @@ type Options struct {
 	C1, C2 float64
 	// HessInv0 is BFGS's initial inverse Hessian, n*n row-major (identity).
 	HessInv0 []float64
+	// SciPyExactUpdate makes BFGS update the inverse Hessian as SciPy does,
+	// bit for bit: two dense n×n products, O(n³) per iteration (about 2× SciPy's
+	// time at n = 100 on one core). The default is the equivalent rank-two
+	// update, H − ρ(s uᵀ + u sᵀ) + (ρ² yᵀu + ρ) s sᵀ with u = H y, in O(n²)
+	// with FMA kernels: the same minimiser within tolerance and comparable
+	// iteration counts, validated against SciPy by tolerance, NOT bit-identical
+	// to it. An asymmetric HessInv0 always takes the dense update.
+	SciPyExactUpdate bool
 	// XRtol is BFGS's relative step tolerance (0: disabled).
 	XRtol float64
 	// Callback is called after each iteration with a copy of the current
