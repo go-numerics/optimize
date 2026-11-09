@@ -19,8 +19,21 @@ var ErrNotConverged = errors.New("optimize: optimal parameters not found")
 // 1-D xdata x has one element; for xdata of shape (k, m) — k independent
 // variables, m samples, SciPy's layout — x holds the k values of one sample.
 type Model struct {
-	// F returns the model value at sample x for parameters p. Required.
+	// F returns the model value at sample x for parameters p. Required
+	// unless Vec is set.
 	F func(x, p []float64) float64
+	// Vec evaluates the model at every sample in one call, as SciPy calls
+	// f(xdata, *p) once on the whole array: out[j] is the model value at
+	// sample j. xs holds xdata's values in row-major order: m values for
+	// 1-D xdata, k·m for 2-D xdata of shape (k, m), where xs[i*m+j] is
+	// variable i of sample j. xs is a private copy of xdata that Vec must
+	// not modify. When Vec is set it is used instead of F. A model written
+	// over arrays can use vector kernels (go-simd/floats' Exp, for
+	// example), which a call per sample cannot; with the same arithmetic
+	// per sample, Vec and F give the same result to the last bit. With
+	// Workers > 1 and 1-D xdata, Vec is called concurrently on contiguous
+	// chunks of the samples (xs and out are then sub-slices).
+	Vec func(xs, p, out []float64)
 	// Grad writes ∂f/∂p at sample x into grad (len(p) values). Optional:
 	// finite differences are used when it is nil (SciPy's jac=callable).
 	Grad func(x, p, grad []float64)
@@ -119,7 +132,7 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 	if o != nil {
 		opt = *o
 	}
-	if model.F == nil || xdata == nil || ydata == nil {
+	if (model.F == nil && model.Vec == nil) || xdata == nil || ydata == nil {
 		return nil, fmt.Errorf("%w: CurveFit needs a model, xdata and ydata", ErrInput)
 	}
 	// y is only read; xs reaches the model only through samples, which are
@@ -245,29 +258,55 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 		}
 		wg.Wait()
 	}
-	resid := func(p, f []float64) {
-		over(func(lo, hi int) {
-			if f1 := model.f1; f1 != nil && k == 1 {
-				x, y, f := xs[lo:hi], y[lo:hi], f[lo:hi]
-				for j, xj := range x {
-					f[j] = f1(xj, p) - y[j]
-				}
-				return
+	// The bodies are built once and read the current p and output from
+	// curP and curOut, so that an evaluation allocates nothing (a closure
+	// capturing p would escape to the heap through over's goroutines).
+	var curP, curOut []float64
+	residBody := func(lo, hi int) {
+		p, f := curP, curOut
+		switch {
+		case model.Vec != nil:
+			if k == 1 {
+				model.Vec(xs[lo:hi], p, f[lo:hi])
+			} else {
+				model.Vec(xs, p, f)
 			}
+			y, f := y[lo:hi], f[lo:hi]
+			for j := range f {
+				f[j] -= y[j]
+			}
+		case model.f1 != nil && k == 1:
+			x, y, f := xs[lo:hi], y[lo:hi], f[lo:hi]
+			for j, xj := range x {
+				f[j] = model.f1(xj, p) - y[j]
+			}
+		default:
 			for j := lo; j < hi; j++ {
 				f[j] = model.F(sample(j), p) - y[j]
 			}
-		})
+		}
+	}
+	resid := func(p, f []float64) {
+		curP, curOut = p, f
+		if model.Vec != nil && k > 1 {
+			// The (k, m) layout cannot be cut into chunks of samples.
+			residBody(0, m)
+		} else {
+			over(residBody)
+		}
 		weigh(f, 1)
 	}
 	var jac func(p, J []float64)
 	if model.Grad != nil {
+		jacBody := func(lo, hi int) {
+			p, J := curP, curOut
+			for j := lo; j < hi; j++ {
+				model.Grad(sample(j), p, J[j*n:j*n+n])
+			}
+		}
 		jac = func(p, J []float64) {
-			over(func(lo, hi int) {
-				for j := lo; j < hi; j++ {
-					model.Grad(sample(j), p, J[j*n:j*n+n])
-				}
-			})
+			curP, curOut = p, J
+			over(jacBody)
 			weigh(J, n)
 		}
 	}

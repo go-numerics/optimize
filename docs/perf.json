@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "deferred",
-  "date": "2026-11-08T14:46:08+01:00",
+  "date": "2026-11-09T13:54:32+01:00",
   "commit": "",
   "repo": "go-numerics/optimize",
   "go_version": "go1.27.3",
@@ -343,7 +343,7 @@
       "func": "CurveFit",
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
-      "allocs": 42,
+      "allocs": 24,
       "go": {
         "median": 0,
         "q1": 0,
@@ -361,7 +361,7 @@
       "func": "CurveFit",
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
-      "allocs": 443,
+      "allocs": 422,
       "go": {
         "median": 0,
         "q1": 0,
@@ -379,7 +379,61 @@
       "func": "CurveFit",
       "reference": "scipy.optimize.curve_fit (Python objective, one core)",
       "parity": "none",
-      "allocs": 607,
+      "allocs": 578,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CurveFitVec/LM/1e4",
+      "func": "CurveFitModel",
+      "reference": "scipy.optimize.curve_fit (Python objective, one core)",
+      "parity": "none",
+      "allocs": 24,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CurveFitVec/TRF/1e4",
+      "func": "CurveFitModel",
+      "reference": "scipy.optimize.curve_fit (Python objective, one core)",
+      "parity": "none",
+      "allocs": 422,
+      "go": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ref": {
+        "median": 0,
+        "q1": 0,
+        "q3": 0
+      },
+      "ratio": 0
+    },
+    {
+      "name": "CurveFitVec/TRF/1e4/bounds",
+      "func": "CurveFitModel",
+      "reference": "scipy.optimize.curve_fit (Python objective, one core)",
+      "parity": "none",
+      "allocs": 578,
       "go": {
         "median": 0,
         "q1": 0,
@@ -397,7 +451,7 @@
       "func": "CurveFitModel",
       "reference": "scipy.optimize.curve_fit(jac=callable) (Python objective, one core)",
       "parity": "none",
-      "allocs": 33,
+      "allocs": 26,
       "go": {
         "median": 0,
         "q1": 0,

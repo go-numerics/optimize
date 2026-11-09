@@ -68,6 +68,22 @@ func BenchmarkCurveFit1e4TRFW4(b *testing.B) {
 	benchCurveFit(b, 10000, TRF, 4)
 }
 
+// benchCurveFitVec is benchCurveFit with the model written over arrays
+// (Model.Vec), as SciPy evaluates its NumPy expression.
+func benchCurveFitVec(b *testing.B, m int, method LSMethod) {
+	x, y := curveFitData(m)
+	b.ReportAllocs()
+	for b.Loop() {
+		r, err := CurveFitModel(Model{Vec: expVec}, x, y, []float64{1, 1, 1}, &CurveFitOptions{Method: method})
+		if err != nil || math.Abs(r.Popt[1]-1.3) > 0.1 {
+			b.Fatal(err, r)
+		}
+	}
+}
+
+func BenchmarkCurveFitVec1e4LM(b *testing.B)  { benchCurveFitVec(b, 10000, LM) }
+func BenchmarkCurveFitVec1e4TRF(b *testing.B) { benchCurveFitVec(b, 10000, TRF) }
+
 func BenchmarkBrentq(b *testing.B) {
 	f := func(x float64) float64 { return x*x*x - 2*x - 5 }
 	b.ReportAllocs()
