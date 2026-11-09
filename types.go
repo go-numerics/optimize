@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/go-ndarray/ndarray"
+	"github.com/go-simd/floats"
 )
 
 // Errors returned for invalid input. Failure to converge is not an error: it
@@ -162,11 +163,10 @@ func dot(a, b []float64) float64 {
 func norm(v []float64, ord float64) float64 {
 	switch {
 	case math.IsInf(ord, 1):
-		m := 0.0
-		for _, x := range v {
-			m = math.Max(m, math.Abs(x))
-		}
-		return m
+		// numpy.linalg.norm(v, inf): max |v[i]|, 0 when empty, NaN if any
+		// element is NaN (also beside an Inf, where a math.Max loop would
+		// give +Inf); exact in any order.
+		return floats.MaxAbs(v)
 	case math.IsInf(ord, -1):
 		m := math.Inf(1)
 		for _, x := range v {
