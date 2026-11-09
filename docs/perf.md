@@ -117,6 +117,36 @@ host (indicative only): LM 1.36 ms → 0.91 ms and TRF 1.93 ms → 1.35 ms from 
 scalar to the vector model, against SciPy's 1.47 ms and 2.58 ms in the
 2026-10-17 table below.
 
+## go-simd/floats kernels in the solvers (2026-11-09)
+
+A profile of every `n = 100` row and of the `curve_fit`, `root` (100
+equations), SLSQP and trust-constr `n = 50` rows ranked the hot loops. Each
+site's rule depends on how it is validated:
+
+| Site | Profile weight | Validated | Change |
+|---|---|---|---|
+| BFGS update `A1·(H·A2)` (`matmul`) | 97% of BFGS n = 100 | bit for bit against SciPy (each entry a left-to-right sum of rounded products, as reference BLAS / OpenBLAS's non-FMA kernels) | loops reordered i-k-j, the row update on `floats.AxpyNoFMA`: every entry still receives its products in increasing k, each rounded before the add, so **the same bits** (`TestMatmulSameBitsAsDotProducts` against the i-j-k loop, signed zeros, NaN, Inf, n up to 129). `go test -bench`, loaded host: 530 ms → 172 ms per call |
+| infinity norm (`norm(v, inf)`, CG/BFGS stopping test) | 53% of CG n = 100 (`math.Max` per element) | exact in any order | `floats.MaxAbs`; CG n = 100 2.50 ms → 1.24 ms (loaded host). It now returns NaN for a vector holding both NaN and +Inf, as `numpy.linalg.norm(v, inf)`; the `math.Max` loop returned +Inf there |
+| L-BFGS-B `formk`, `subsm`, `dnrm2` | 40% of L-BFGS-B n = 100 | bit for bit against SciPy's C code with OpenBLAS's x87 `dnrm2` and TRSM order | **left**: no kernel keeps that order |
+| MINPACK `qrfac`/`qform` (LM, `root`) | most of `root` n = 100 | bit for bit (MINPACK order, `enorm`'s three sums) | **left** (already fused in order, PR #7) |
+| SLSQP `trsm`, `ldp` | Quad50 | bit for bit against SciPy's Fortran | **left** |
+| trust-constr projections | Quad50 | tolerance | already on `floats.Dot`/`Axpy` (lane-blocked order, labelled in `trustconstr_linalg.go`) |
+| Newton-CG inner CG (n = 100, Hessian-vector product) | its own loop and the Hessian product | path compared with SciPy (perf-counts.md) | **left** for now: 33× faster than SciPy in the earlier table |
+
+No reordered kernel was introduced: both changes keep the reference's bits.
+`floats` stubs lacked `//go:noescape`, so these calls first moved callers'
+work vectors to the heap (BFGS n = 2: 14 → 17 allocations); fixed in
+go-simd/floats v0.12.1 (`TestKernelsKeepCallerSlicesOnStack`), which also
+takes trust-constr on Rosenbrock n = 2 from 1121 to 862 allocations per call
+(its `floats.Dot`/`Axpy` work vectors now stay on the stack).
+
+**Still slower than SciPy:** BFGS n = 100. SciPy's two `n×n` products go to
+BLAS `dgemm` (about 50–90 ms for the 544 iterations in the earlier tables); ours
+take 172 ms on `AxpyNoFMA`, one row of `b` at a time. A kernel that updates a
+row of `c` from four rows of `b` in one pass, still in k order and unfused,
+would cut the loads and stores of `c` by four; it belongs in go-simd/floats
+and is filed there (go-simd/floats issue #43). Timings: unmeasured against SciPy (1-minute load 9–12).
+
 ## Method of the earlier timings below
 
 The tables below were taken with `bench_test.go` and a Python script that has

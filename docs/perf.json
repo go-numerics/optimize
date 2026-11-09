@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "deferred",
-  "date": "2026-11-09T13:54:32+01:00",
+  "date": "2026-11-09T14:45:49+01:00",
   "commit": "",
   "repo": "go-numerics/optimize",
   "go_version": "go1.27.3",
@@ -271,7 +271,7 @@
       "func": "Minimize",
       "reference": "scipy.optimize.minimize(method='trust-constr') (Python objective, one core)",
       "parity": "none",
-      "allocs": 1121,
+      "allocs": 862,
       "go": {
         "median": 0,
         "q1": 0,

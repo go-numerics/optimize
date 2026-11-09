@@ -1,6 +1,10 @@
 package optimize
 
-import "math"
+import (
+	"math"
+
+	"github.com/go-simd/floats"
+)
 
 // Status messages shared by the methods ported from SciPy's _optimize.py.
 const (
@@ -157,15 +161,18 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 }
 
 // matmul sets c = a·b (n×n, row-major); every entry is the sum over k in
-// increasing order of rounded products, never fused.
+// increasing order of rounded products, never fused. The loops run in i-k-j
+// order: row i of c accumulates a[i][k]·(row k of b) for k = 0, 1, …, so
+// each entry c[i][j] still receives its products in increasing k, each
+// rounded before the addition (floats.AxpyNoFMA, element-wise and unfused):
+// the same bits as the i-j-k dot products, with rows of b read contiguously
+// and the inner loop on SIMD lanes.
 func matmul(c, a, b []float64, n int) {
 	for i := range n {
-		for j := range n {
-			s := 0.0
-			for k := range n {
-				s += float64(a[i*n+k] * b[k*n+j])
-			}
-			c[i*n+j] = s
+		ci := c[i*n : i*n+n]
+		clear(ci)
+		for k, aik := range a[i*n : i*n+n] {
+			floats.AxpyNoFMA(aik, b[k*n:k*n+n], ci)
 		}
 	}
 }
