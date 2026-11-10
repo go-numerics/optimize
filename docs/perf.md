@@ -47,9 +47,9 @@ accessors, constructors, the QP solver, which SciPy does not have, and the rando
 sources) with the reason of each.
 
 **The current timings are [perf-table.md](perf-table.md)**: refbench on v0.8.0,
-2026-11-10, 1-minute load 5.09 to 6.59 (gate 8), one core, interleaved rounds
+2026-11-10, 1-minute load 4.81 to 6.91 (gate 8), one core, interleaved rounds
 per row, Apple M4 Max. No row is slower than SciPy. BFGS on Rosenbrock n = 100
-(issue #53) is 5.74 ms against 48.1 ms (8.4×) with the default O(n²) update,
+(issue #53) is 5.62 ms against 47.1 ms (8.4×) with the default O(n²) update,
 which is tolerance-validated, not bit-identical to SciPy;
 `Options.SciPyExactUpdate` keeps the bit-exact path. The tables
 further down are older (2026-10-17, the earlier script) and are kept for the
@@ -119,10 +119,10 @@ same 21 / 6 / 8 evaluations.
 
 | Row | Go, model per point | Go, `Model.Vec` | SciPy | Speed-up |
 |---|---:|---:|---:|---:|
-| `curve_fit` LM | 1.34 ms | 0.90 ms | 1.41 / 1.43 ms | 1.06× / 1.59× |
-| `curve_fit` TRF | 1.91 ms | 1.75 ms (tie, wide spread) | 2.37 / 2.44 ms | 1.24× / 1.39× |
-| `curve_fit` TRF with bounds | 2.57 ms | 1.88 ms | 3.61 / 3.66 ms | 1.40× / 1.95× |
-| `curve_fit` LM, analytic Jacobian | 1.15 ms | — | 1.31 ms | 1.14× |
+| `curve_fit` LM | 1.33 ms | 0.89 ms | 1.43 / 1.44 ms | 1.07× / 1.62× |
+| `curve_fit` TRF | 1.87 ms | 1.34 ms | 2.35 / 2.36 ms | 1.26× / 1.76× |
+| `curve_fit` TRF with bounds | 2.53 ms | 1.85 ms | 3.61 / 3.63 ms | 1.43× / 1.96× |
+| `curve_fit` LM, analytic Jacobian | 1.13 ms | — | 1.29 ms | 1.14× |
 
 ## go-simd/floats kernels in the solvers (2026-11-09)
 
@@ -160,8 +160,8 @@ kernels `Dot` and `Axpy`, upper triangle mirrored so H stays exactly
 symmetric: **tolerance-validated, not bit-identical to SciPy** (542 against 544
 iterations at n = 100; `TestBFGSDefaultUpdateAgainstExact`). About 6–12 ms per
 call at n = 100 under load (`go test -bench`, indicative). Refbench v0.8.0
-(2026-11-10, load below 8): **5.74 ms against SciPy's 48.1 ms (8.4×)**. CG
-n = 100 1.29 ms against 53.4 ms; L-BFGS-B n = 100 4.81 ms against 12.4 ms.
+(2026-11-10, load below 8): **5.62 ms against SciPy's 47.1 ms (8.4×)**. CG
+n = 100 1.26 ms against 51.2 ms; L-BFGS-B n = 100 4.75 ms against 12.1 ms.
 
 ## Method of the earlier timings below
 
