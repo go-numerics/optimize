@@ -177,7 +177,7 @@ made the suite fail, and each was then reverted:
 
 ## Performance
 
-refbench (`bench/`), v0.7.1, 2026-11-09: one core on both sides, SciPy
+refbench (`bench/`), v0.8.0, 2026-11-10: one core on both sides, SciPy
 1.18.1, medians of 7 interleaved rounds, started at a 1-minute load below 8
 (Apple M4 Max). The SLSQP and trust-constr rows are `tools/slsqpbench`,
 2026-10-30. [docs/perf.md](docs/perf.md) and
@@ -185,14 +185,14 @@ refbench (`bench/`), v0.7.1, 2026-11-09: one core on both sides, SciPy
 
 | Benchmark | Go | SciPy | Speed-up |
 |---|---|---|---|
-| Rosenbrock n=2, BFGS | 3.68 µs | 1.18 ms | 320× |
-| Rosenbrock n=100, BFGS | 170 ms | 46.4 ms | **0.27× (SciPy faster, #53)** |
-| Rosenbrock n=2, L-BFGS-B | 71.1 µs | 737 µs | 10.4× |
-| Rosenbrock n=100, L-BFGS-B | 4.70 ms | 12.1 ms | 2.6× |
-| `curve_fit`, 10⁴ points, LM (model per point / `Model.Vec`) | 1.34 / 0.88 ms | 1.42 ms | 1.06× / 1.59× |
-| `curve_fit`, 10⁴ points, TRF (model per point / `Model.Vec`) | 1.91 / 1.34 ms | 2.37 ms | 1.24× / 1.74× |
-| `curve_fit`, 10⁴ points, TRF with bounds (per point / `Model.Vec`) | 2.55 / 1.86 ms | 3.56 ms | 1.40× / 1.96× |
-| `brentq` | 0.13 µs | 3.9 µs | 30× |
+| Rosenbrock n=2, BFGS | 3.62 µs | 1.22 ms | 336× |
+| Rosenbrock n=100, BFGS (default O(n²) update, tolerance-validated) | 5.62 ms | 47.1 ms | 8.4× |
+| Rosenbrock n=2, L-BFGS-B | 72.6 µs | 739 µs | 10.2× |
+| Rosenbrock n=100, L-BFGS-B | 4.75 ms | 12.1 ms | 2.5× |
+| `curve_fit`, 10⁴ points, LM (model per point / `Model.Vec`) | 1.33 / 0.89 ms | 1.43 / 1.44 ms | 1.07× / 1.62× |
+| `curve_fit`, 10⁴ points, TRF (model per point / `Model.Vec`) | 1.87 / 1.34 ms | 2.35 / 2.36 ms | 1.26× / 1.76× |
+| `curve_fit`, 10⁴ points, TRF with bounds (per point / `Model.Vec`) | 2.53 / 1.85 ms | 3.61 / 3.63 ms | 1.43× / 1.96× |
+| `brentq` | 0.13 µs | 3.9 µs | 29× |
 | SLSQP, HS71 (analytic / finite differences) | 5.6 / 6.9 µs | 114 / 648 µs | 20× / 94× |
 | SLSQP, n = 50 with 100 bounds | 3.35 ms | 4.59 ms | 1.4× |
 | trust-constr, HS71 (analytic / finite differences) | 496 / 438 µs | 32.7 / 34.1 ms | 66× / 78× |
@@ -211,8 +211,9 @@ FMA kernels): **tolerance-validated, not bit-identical to SciPy** (same
 minimiser within tolerance, iteration counts within a few percent: n = 100
 takes 542 iterations against 544). `Options.SciPyExactUpdate` selects SciPy's
 update, two dense n×n products summed in SciPy's order (bit for bit, O(n³),
-about 90 ms at n = 100 on `floats.AxpyRowsNoFMA`). Rows to be re-measured
-with refbench (#53).
+about 90 ms at n = 100 on `floats.AxpyRowsNoFMA`). The BFGS n = 100 row above
+is the default update (refbench v0.8.0: 5.62 ms against SciPy's 47.1 ms); no
+row is slower than SciPy (#53).
 
 ## Not done
 

@@ -46,10 +46,12 @@ What makes a row comparable (checked, not assumed):
 accessors, constructors, the QP solver, which SciPy does not have, and the random
 sources) with the reason of each.
 
-**The current timings are [perf-table.md](perf-table.md)**: refbench on v0.7.1,
-2026-11-09, started at a 1-minute load below 8 (it was 5.4 when the run ended),
-one core, 7 interleaved rounds per row, Apple M4 Max. One row is slower than
-SciPy: BFGS on Rosenbrock n = 100 (3.67× SciPy's time, issue #53). The tables
+**The current timings are [perf-table.md](perf-table.md)**: refbench on v0.8.0,
+2026-11-10, 1-minute load 4.81 to 6.91 (gate 8), one core, interleaved rounds
+per row, Apple M4 Max. No row is slower than SciPy. BFGS on Rosenbrock n = 100
+(issue #53) is 5.62 ms against 47.1 ms (8.4×) with the default O(n²) update,
+which is tolerance-validated, not bit-identical to SciPy;
+`Options.SciPyExactUpdate` keeps the bit-exact path. The tables
 further down are older (2026-10-17, the earlier script) and are kept for the
 history of the changes they describe.
 
@@ -113,14 +115,14 @@ every SciPy fixture, 1-D and (2, m) xdata, sigma, bounds, both methods, and with
 tolerance (1e-6 relative on `popt`), as the scalar rows always did, and take the
 same 21 / 6 / 8 evaluations.
 
-**Timing** (refbench, v0.7.1, 2026-11-09, [perf-table.md](perf-table.md)):
+**Timing** (refbench, v0.8.0, 2026-11-10, [perf-table.md](perf-table.md)):
 
 | Row | Go, model per point | Go, `Model.Vec` | SciPy | Speed-up |
 |---|---:|---:|---:|---:|
-| `curve_fit` LM | 1.34 ms | 0.88 ms | 1.42 ms | 1.06× / 1.59× |
-| `curve_fit` TRF | 1.91 ms | 1.34 ms | 2.37 ms | 1.24× / 1.74× |
-| `curve_fit` TRF with bounds | 2.55 ms | 1.86 ms | 3.56–3.64 ms | 1.40× / 1.96× |
-| `curve_fit` LM, analytic Jacobian | 1.16 ms | — | 1.31 ms | 1.13× |
+| `curve_fit` LM | 1.33 ms | 0.89 ms | 1.43 / 1.44 ms | 1.07× / 1.62× |
+| `curve_fit` TRF | 1.87 ms | 1.34 ms | 2.35 / 2.36 ms | 1.26× / 1.76× |
+| `curve_fit` TRF with bounds | 2.53 ms | 1.85 ms | 3.61 / 3.63 ms | 1.43× / 1.96× |
+| `curve_fit` LM, analytic Jacobian | 1.13 ms | — | 1.29 ms | 1.14× |
 
 ## go-simd/floats kernels in the solvers (2026-11-09)
 
@@ -157,8 +159,9 @@ update, `H − ρ(s uᵀ + u sᵀ) + (ρ² yᵀu + ρ) s sᵀ` with `u = H y`, o
 kernels `Dot` and `Axpy`, upper triangle mirrored so H stays exactly
 symmetric: **tolerance-validated, not bit-identical to SciPy** (542 against 544
 iterations at n = 100; `TestBFGSDefaultUpdateAgainstExact`). About 6–12 ms per
-call at n = 100 under load (`go test -bench`, indicative; refbench to follow).
-CG n = 100 1.28 ms against 51.8 ms.
+call at n = 100 under load (`go test -bench`, indicative). Refbench v0.8.0
+(2026-11-10, load below 8): **5.62 ms against SciPy's 47.1 ms (8.4×)**. CG
+n = 100 1.26 ms against 51.2 ms; L-BFGS-B n = 100 4.75 ms against 12.1 ms.
 
 ## Method of the earlier timings below
 
