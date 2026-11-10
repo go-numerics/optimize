@@ -141,6 +141,8 @@ func bhOptionsOf(c *bhCase) (*BasinhoppingOptions, *[]bhStepRec) {
 		NIter: Int(c.Options.NIter), T: Float(c.Options.T), StepSize: c.Options.StepSize,
 		Method: Method(c.Method), Interval: c.Options.Interval,
 		TargetAcceptRate: c.Options.TargetAcceptRate, StepwiseFactor: c.Options.StepwiseFactor,
+		// the fixtures are SciPy's exact path: BFGS with its dense update
+		MinimizeOptions: &Options{SciPyExactUpdate: true},
 	}
 	if c.Options.NIterSuccess != nil {
 		o.NIterSuccess = *c.Options.NIterSuccess

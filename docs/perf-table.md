@@ -20,11 +20,11 @@ ns/call, median [first quartile, third quartile]; ratio = Go / reference.
 | case | function | reference | Go | reference | ratio | verdict | parity | allocs |
 |---|---|---|---:|---:|---:|---|---|---:|
 | Minimize/BFGS/rosen2/grad | `Minimize` | scipy.optimize.minimize(method='BFGS') (Python objective, one core) | 3683 [3673, 3742] | 1.18e+06 [1.176e+06, 1.184e+06] | 0.00 | faster | none | 14 |
-| Minimize/BFGS/rosen100/grad | `Minimize` | scipy.optimize.minimize(method='BFGS') (Python objective, one core) | 1.702e+08 [1.699e+08, 1.707e+08] | 4.638e+07 [4.627e+07, 4.676e+07] | 3.67 | slower | none | 20 |
+| Minimize/BFGS/rosen100/grad | `Minimize` | scipy.optimize.minimize(method='BFGS') (Python objective, one core) | 1.702e+08 [1.699e+08, 1.707e+08] | 4.638e+07 [4.627e+07, 4.676e+07] | 3.67 | slower | none | 17 |
 | Minimize/LBFGSB/rosen2/grad | `Minimize` | scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core) | 7.109e+04 [7.104e+04, 7.13e+04] | 7.37e+05 [7.356e+05, 7.387e+05] | 0.10 | faster | none | 30 |
 | Minimize/LBFGSB/rosen100/grad | `Minimize` | scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core) | 4.699e+06 [4.674e+06, 4.727e+06] | 1.209e+07 [1.201e+07, 1.222e+07] | 0.39 | faster | none | 30 |
 | Minimize/BFGS/rosen2/fd | `Minimize` | scipy.optimize.minimize(method='BFGS') (Python objective, one core) | 4728 [4718, 4733] | 2.387e+06 [2.367e+06, 2.401e+06] | 0.00 | faster | none | 18 |
-| Minimize/BFGS/rosen100/fd | `Minimize` | scipy.optimize.minimize(method='BFGS') (Python objective, one core) | 1.755e+08 [1.747e+08, 1.761e+08] | 5.579e+08 [5.544e+08, 5.655e+08] | 0.31 | faster | none | 24 |
+| Minimize/BFGS/rosen100/fd | `Minimize` | scipy.optimize.minimize(method='BFGS') (Python objective, one core) | 1.755e+08 [1.747e+08, 1.761e+08] | 5.579e+08 [5.544e+08, 5.655e+08] | 0.31 | faster | none | 21 |
 | Minimize/LBFGSB/rosen100/fd | `Minimize` | scipy.optimize.minimize(method='L-BFGS-B') (Python objective, one core) | 2.023e+06 [1.919e+06, 2.048e+06] | 1.192e+08 [1.18e+08, 1.27e+08] | 0.02 | faster | none | 34 |
 | Minimize/NelderMead/rosen2 | `Minimize` | scipy.optimize.minimize(method='Nelder-Mead') (Python objective, one core) | 5400 [5334, 5454] | 1.362e+06 [1.348e+06, 1.415e+06] | 0.00 | faster | none | 16 |
 | Minimize/Powell/rosen2 | `Minimize` | scipy.optimize.minimize(method='Powell') (Python objective, one core) | 2.352e+04 [2.346e+04, 2.371e+04] | 4.141e+06 [4.138e+06, 4.151e+06] | 0.01 | faster | none | 600 |

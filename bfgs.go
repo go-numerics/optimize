@@ -27,10 +27,11 @@ func hasNaN(v []float64) bool {
 // minimizeBFGS is the quasi-Newton method of Broyden, Fletcher, Goldfarb and
 // Shanno with the inverse-Hessian update and a strong-Wolfe line search
 // (Nocedal & Wright, Algorithm 6.1), following SciPy's _minimize_bfgs step by
-// step, including the update as two dense n×n products (O(n³) per iteration,
-// as SciPy's): the equivalent O(n²) rank-two form rounds differently and
-// leaves SciPy's path after a few iterations (docs/design-global.md,
-// "BFGS and L-BFGS-B last digits").
+// step. The inverse-Hessian update is the O(n²) rank-two form by default
+// (validated by tolerance); with Options.SciPyExactUpdate it is SciPy's two
+// dense n×n products, O(n³) per iteration, bit for bit: the rank-two form
+// rounds differently and leaves SciPy's path after a few iterations
+// (docs/design-global.md, "BFGS and L-BFGS-B last digits").
 func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	n := len(x0)
 	gtol := o.Gtol
@@ -74,10 +75,16 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	pk := make([]float64, n)
 	sk := make([]float64, n)
 	yk := make([]float64, n)
-	a1 := make([]float64, n*n)
-	a2 := make([]float64, n*n)
-	tmp := make([]float64, n*n)
-	hnew := make([]float64, n*n)
+	// The O(n²) update needs a symmetric H; an asymmetric HessInv0 takes the
+	// dense update, which does not.
+	exact := o.SciPyExactUpdate || !symmetric(H, n)
+	var a1, a2, tmp, hnew, u []float64
+	if exact {
+		a1, a2 = make([]float64, n*n), make([]float64, n*n)
+		tmp, hnew = make([]float64, n*n), make([]float64, n*n)
+	} else {
+		u = make([]float64, n)
+	}
 	ls := newLineSearch(sf, n)
 	k, warn := 0, 0
 	gnorm := norm(gfk, ord)
@@ -122,6 +129,10 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 		if rhoInv != 0 {
 			rho = 1 / rhoInv
 		}
+		if !exact {
+			updateHessInvRankTwo(H, sk, yk, u, rho, n)
+			continue
+		}
 		// H ← A1 (H A2) + ρ s sᵀ with A1 = I − (s yᵀ)ρ and A2 = I − (y sᵀ)ρ,
 		// SciPy's expression evaluated in its order (two dense products, each
 		// entry a left-to-right sum of rounded products, as reference BLAS
@@ -158,6 +169,43 @@ func minimizeBFGS(sf *scalarFunc, x0 []float64, o *Options) (*Result, error) {
 	}
 	r.Success = r.Status == 0
 	return sf.result(r), nil
+}
+
+func symmetric(h []float64, n int) bool {
+	for i := range n {
+		for j := range i {
+			if h[i*n+j] != h[j*n+i] {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// updateHessInvRankTwo is the BFGS inverse-Hessian update in O(n²):
+//
+//	H ← (I − ρ s yᵀ) H (I − ρ y sᵀ) + ρ s sᵀ
+//	  = H − ρ (s uᵀ + u sᵀ) + (ρ² yᵀu + ρ) s sᵀ,   u = H y  (H symmetric),
+//
+// the same matrix as SciPy's two dense products, rounded differently (it is
+// validated by tolerance, not bit for bit). Only the upper triangle is
+// computed, with the FMA kernels, and mirrored, so H stays exactly symmetric.
+// u is scratch of length n.
+func updateHessInvRankTwo(H, s, y, u []float64, rho float64, n int) {
+	for i := range n {
+		u[i] = floats.Dot(H[i*n:i*n+n], y)
+	}
+	c := rho*rho*floats.Dot(y, u) + rho
+	for i := range n {
+		row := H[i*n+i : i*n+n]
+		floats.Axpy(-rho*s[i], u[i:], row)
+		floats.Axpy(c*s[i]-rho*u[i], s[i:], row)
+	}
+	for i := range n {
+		for j := i + 1; j < n; j++ {
+			H[j*n+i] = H[i*n+j]
+		}
+	}
 }
 
 // matmul sets c = a·b (n×n, row-major); every entry is the sum over k in

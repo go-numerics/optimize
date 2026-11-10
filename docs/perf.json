@@ -99,7 +99,7 @@
       "func": "Minimize",
       "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
       "parity": "none",
-      "allocs": 20,
+      "allocs": 17,
       "go_iters": 1,
       "ref_iters": 4,
       "rounds": [
@@ -387,7 +387,7 @@
       "func": "Minimize",
       "reference": "scipy.optimize.minimize(method='BFGS') (Python objective, one core)",
       "parity": "none",
-      "allocs": 24,
+      "allocs": 21,
       "go_iters": 1,
       "ref_iters": 1,
       "rounds": [

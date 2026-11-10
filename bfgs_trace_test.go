@@ -44,7 +44,7 @@ func TestBFGSLBFGSBTraceAgainstSciPy(t *testing.T) {
 			got = append(got, [5]float64{x[0], x[1], v, g[0], g[1]})
 			return v
 		}
-		r, err := Minimize(Problem{FuncGrad: f}, []float64{-1.2, 1}, m, nil)
+		r, err := Minimize(Problem{FuncGrad: f}, []float64{-1.2, 1}, m, &Options{SciPyExactUpdate: true})
 		if err != nil {
 			t.Fatal(err)
 		}

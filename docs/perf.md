@@ -145,13 +145,20 @@ go-simd/floats v0.12.1 (`TestKernelsKeepCallerSlicesOnStack`), which also
 takes trust-constr on Rosenbrock n = 2 from 1121 to 862 allocations per call
 (its `floats.Dot`/`Axpy` work vectors now stay on the stack).
 
-**Still slower than SciPy:** BFGS n = 100. SciPy's two `n×n` products go to
-BLAS `dgemm` (about 50–90 ms for the 544 iterations in the earlier tables); ours
-take 172 ms on `AxpyNoFMA`, one row of `b` at a time. A kernel that updates a
-row of `c` from four rows of `b` in one pass, still in k order and unfused,
-would cut the loads and stores of `c` by four; it belongs in go-simd/floats
-and is filed there (go-simd/floats issue #43). refbench on v0.7.1 (2026-11-09): BFGS n = 100 170 ms against SciPy's
-46.4 ms (3.67×, issue #53); CG n = 100 1.28 ms against 51.8 ms.
+**BFGS n = 100 (issue #53).** SciPy's two `n×n` products go to BLAS `dgemm`
+(46.4 ms for the 544 iterations). Bit for bit (`Options.SciPyExactUpdate`) ours
+took 172 ms on `AxpyNoFMA` (refbench, v0.7.1), then about 90 ms on
+`floats.AxpyRowsNoFMA` (go-simd/floats v0.13.0: a row of `c` stays in registers
+across all k, same bits; `go test -bench`, loaded host). That is about 27
+Gflop/s, close to NEON multiply/add throughput, and no term of the sums can be
+skipped (`A1 = I − ρ s yᵀ` and `A2` are dense), so the bit-exact path cannot
+reach SciPy's time on one core. The default is therefore the O(n²) rank-two
+update, `H − ρ(s uᵀ + u sᵀ) + (ρ² yᵀu + ρ) s sᵀ` with `u = H y`, on the FMA
+kernels `Dot` and `Axpy`, upper triangle mirrored so H stays exactly
+symmetric: **tolerance-validated, not bit-identical to SciPy** (542 against 544
+iterations at n = 100; `TestBFGSDefaultUpdateAgainstExact`). About 6–12 ms per
+call at n = 100 under load (`go test -bench`, indicative; refbench to follow).
+CG n = 100 1.28 ms against 51.8 ms.
 
 ## Method of the earlier timings below
 
