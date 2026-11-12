@@ -288,9 +288,16 @@ Powell's hybrid method, ported from SciPy 1.18.1's C translation of MINPACK
 - **Kernels:** `dogleg`, `qrfac` with column pivoting, `qform`, `r1updt`,
   `r1mpyq`, and the forward-difference `fdjac1`.
 - **Layout:** storage is column-major, as in MINPACK, so every sum keeps the
-  reference order.
-- **Norm:** MINPACK's three-accumulator `enorm` is kept, for a measured
-  reason that is not parity. Measured 2026-11-12 (Apple M4 Max, one core, load
+  reference order under `SciPyExact` and below 32 rows; from 32 the default
+  sums run on go-simd kernels over the same contiguous columns
+  (`minpack_fast.go`).
+- **Norm:** from 32 rows or equations the default norm is `fastEnorm`
+  (`sqrt(floats.Dot(x, x))`, the scaled sum outside 1e-145 .. 1e150), with the
+  QR kernels on go-simd FMA; `SciPyExact` and shorter problems keep MINPACK's
+  three-accumulator `enorm`, for a measured reason that is not parity. The
+  measurement below was made on the small problems (the scalar callers, fewer
+  than 32 rows), where it holds; the large-n row it asked for is the one the
+  default now serves. Measured 2026-11-12 (Apple M4 Max, one core, load
   5-6, six interleaved rounds; `enorm_variants_test.go`): a plain
   four-accumulator sum of squares (falling back to MINPACK's norm when the sum
   leaves [1e-250, 1e290]) takes 2.0 ns at n = 4, 3.8 ns at n = 16, 20 ns at
@@ -308,10 +315,12 @@ Powell's hybrid method, ported from SciPy 1.18.1's C translation of MINPACK
   the fixtures that assert SciPy's counts and QR factors go red, so a default
   swap needs an `Exact` switch threaded through some 45 call sites, the fused
   four-column kernels (`mpEnorm4`, `colEnorms`) included. A 2-7% gain on
-  7 µs solves, a loss on `Root`, and that change are not worth it now:
-  MINPACK's norm stays the default, and nothing but the cost and the numbers
-  above decides it. A large-n LM row that showed a gain would reopen it (the
-  swap was tried only in the scalar callers, on the small benchmark problems).
+  7 µs solves, a loss on `Root`, and that change were not worth it on the
+  small problems: MINPACK's norm stays there, and nothing but the cost and the
+  numbers above decides it. The large-n rows (32 and more) take the fast
+  kernels by default; `Options.SciPyExact` types (`LSOptions`,
+  `LeastsqOptions`, `CurveFitOptions`, `RootOptions`) restore MINPACK's
+  operation order and norm everywhere.
 - **Defaults:** as SciPy's `_root_hybr`: maxfev 200(n+1) without a Jacobian
   and 100(n+1) with one, factor 100, xtol 1.49012e-8. Messages are SciPy's.
 - **Deviation:** `Nfev` excludes the two extra calls SciPy's Python wrappers
