@@ -46,7 +46,7 @@ ns/call, median [first quartile, third quartile]; ratio = Go / reference.
 | CurveFitModel/LM/1e4/jac | `CurveFitModel` | scipy.optimize.curve_fit(jac=callable) (Python objective, one core) | 1.125e+06 [1.116e+06, 1.139e+06] | 1.288e+06 [1.284e+06, 1.289e+06] | 0.87 | faster | none | 26 |
 | Root/hybr/2 | `Root` | scipy.optimize.root(method='hybr') (Python objective, one core) | 1099 [1097, 1100] | 1.258e+04 [1.247e+04, 1.263e+04] | 0.09 | faster | none | 10 |
 | Fsolve/2 | `Fsolve` | scipy.optimize.fsolve (Python objective, one core) | 1103 [1101, 1110] | 1.267e+04 [1.264e+04, 1.275e+04] | 0.09 | faster | none | 10 |
-| Root/hybr/broyden100 | `Root` | scipy.optimize.root(method='hybr') (Python objective, one core) | 5.732e+05 [5.705e+05, 5.77e+05] | 8.468e+05 [8.418e+05, 8.518e+05] | 0.68 | faster | none | 25 |
+| Root/hybr/broyden100 | `Root` | scipy.optimize.root(method='hybr') (Python objective, one core) | 5.732e+05 [5.705e+05, 5.77e+05] | 8.468e+05 [8.418e+05, 8.518e+05] | 0.68 | faster | none | 15 |
 | Linprog/simplex/30x50 | `Linprog` | scipy.optimize.linprog(method='highs-ds') (Python objective, one core) | 3.933e+04 [3.913e+04, 3.991e+04] | 6.921e+05 [6.846e+05, 6.97e+05] | 0.06 | faster | none | 237 |
 | Linprog/interior/30x50 | `Linprog` | scipy.optimize.linprog(method='highs-ipm') (Python objective, one core) | 3.052e+05 [3.041e+05, 3.082e+05] | 1.202e+06 [1.199e+06, 1.212e+06] | 0.25 | faster | none | 401 |
 | Linprog/simplex/2 | `Linprog` | scipy.optimize.linprog(highs) (Python objective, one core) | 1128 [1117, 1145] | 3.391e+05 [3.379e+05, 3.431e+05] | 0.00 | faster | none | 67 |
