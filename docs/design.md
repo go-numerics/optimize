@@ -295,7 +295,9 @@ Powell's hybrid method, ported from SciPy 1.18.1's C translation of MINPACK
   four-accumulator sum of squares (falling back to MINPACK's norm when the sum
   leaves [1e-250, 1e290]) takes 2.0 ns at n = 4, 3.8 ns at n = 16, 20 ns at
   n = 100 and 287 ns at n = 1000, against 3.0, 10.2, 70.8 and 1043 ns for
-  MINPACK's, and its error is smaller (worst 2.5 ulp at n = 1000 against 10.8).
+  MINPACK's, and on unit-scale inputs its error is smaller (worst 2.5 ulp at n = 1000
+  against 10.8); outside that range it falls back to MINPACK's norm and is
+  equal to it (11.70 ulp at 2^500 and 9.90 at 2^-600, n = 1000, both).
   Both stay within the bound (n/2 + 2 ulps against a 300-bit oracle, including
   inputs from 2^-1060 to 2^1000), so the contract does not choose. The solvers
   do: swapping it into the scalar callers (six interleaved rounds, p = 0.03)
