@@ -12,14 +12,13 @@ import (
 // accumulators (go-simd/floats when the free set is the whole vector, a
 // four-lane gather loop otherwise) and the norm is fastEnorm. The results
 // differ from SciPy's in the last bits and may take a different number of
-// iterations; TestLBFGSBFixtures and TestLBFGSBFastAgainstExact hold them to
+// iterations; TestLBFGSBFixturesFast and TestAccuracyBoundLBFGSB hold them to
 // the accuracy contract instead of to SciPy's bits.
 
-// The three gather kernels below (gdot, gdotD, gaxpy) belong in go-simd/floats,
-// the lowest shared library, which has no gather kernel (checked at v0.15.0).
-// They stay here until that lands; the ready-to-apply patch with their tests
-// is go-numerics-optimize-gather.patch (next to the clone), destination
-// github.com/go-simd/floats.
+// The three gather kernels below (gdot, gdotD, gaxpy) belong in
+// github.com/go-simd/floats, the lowest shared library, which has no gather
+// kernel as of v0.15.0 (the request is go-numerics/optimize#63). They stay here
+// until a go-simd/floats release carries them, then this file calls it.
 
 // gdot returns Σ a[idx[k]]·b[idx[k]] on four FMA accumulators.
 func gdot(a, b []float64, idx []int) float64 {
