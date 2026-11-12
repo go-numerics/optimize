@@ -16,6 +16,7 @@ type lmConfig struct {
 	epsfcn     float64   // forward-difference step parameter (lmdif only)
 	diag       []float64 // nil selects MINPACK's internal scaling (mode 1)
 	factor     float64
+	exact      bool // MINPACK's order bit for bit (SciPyExact)
 }
 
 // lmOut is what lmdif/lmder return.
@@ -61,9 +62,17 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 	wa3 := make([]float64, n)
 	wa4 := make([]float64, m)
 
+	// From fuseMin residuals the default kernels are the floats ones
+	// (minpack_fast.go); SciPyExact and shorter problems keep MINPACK's order.
+	fast := !c.exact && m >= fuseMin
+	nrm := mpEnorm
+	if fast {
+		nrm = fastEnorm
+	}
+
 	fcn(x, fvec)
 	o.nfev = 1
-	fnorm := mpEnorm(fvec)
+	fnorm := nrm(fvec)
 	par := 0.0
 	iter := 1
 	var delta, xnorm float64
@@ -79,7 +88,11 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 		// The factorisation also forms Qᵀ·fvec in wa4 (MINPACK forms it
 		// afterwards, with the same sums).
 		copy(wa4, fvec)
-		qrfac(m, n, fjac, ldfjac, true, ipvt, wa1, wa2, wa3, wa4)
+		if fast {
+			qrfacFast(m, n, fjac, ldfjac, true, ipvt, wa1, wa2, wa3, wa4)
+		} else {
+			qrfac(m, n, fjac, ldfjac, true, ipvt, wa1, wa2, wa3, wa4)
+		}
 		// On the first iteration, scale by the column norms (mode 1) and
 		// set the step bound delta.
 		if iter == 1 {
@@ -94,7 +107,7 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			for j := 0; j < n; j++ {
 				wa3[j] = diag[j] * x[j]
 			}
-			xnorm = mpEnorm(wa3)
+			xnorm = nrm(wa3)
 			delta = initialStepBound(c.factor, xnorm)
 		}
 		// Keep the first n components of Qᵀ·fvec in qtf; R's diagonal goes
@@ -135,13 +148,13 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 				wa2[j] = x[j] + wa1[j]
 				wa3[j] = diag[j] * wa1[j]
 			}
-			pnorm := mpEnorm(wa3)
+			pnorm := nrm(wa3)
 			if iter == 1 {
 				delta = math.Min(delta, pnorm)
 			}
 			fcn(wa2, wa4)
 			o.nfev++
-			fnorm1 := mpEnorm(wa4)
+			fnorm1 := nrm(wa4)
 			// Actual and predicted relative reductions, and the
 			// directional derivative.
 			actred := -1.0
@@ -186,7 +199,7 @@ func lmdif(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 					wa2[j] = diag[j] * x[j]
 				}
 				copy(fvec, wa4)
-				xnorm = mpEnorm(wa2)
+				xnorm = nrm(wa2)
 				fnorm = fnorm1
 				iter++
 			}
@@ -260,7 +273,7 @@ func lsLM(p LSProblem, x0 []float64, o *LSOptions) (*LSResult, error) {
 	if o.Ftol < epsmch || o.Xtol < epsmch || o.Gtol < epsmch {
 		return nil, fmt.Errorf("%w: all tolerances must be at least the machine epsilon for method lm", ErrInput)
 	}
-	c := &lmConfig{m: m, ftol: o.Ftol, xtol: o.Xtol, gtol: o.Gtol, maxfev: o.MaxNfev, factor: 100}
+	c := &lmConfig{m: m, ftol: o.Ftol, xtol: o.Xtol, gtol: o.Gtol, maxfev: o.MaxNfev, factor: 100, exact: o.SciPyExact}
 	if c.maxfev == 0 {
 		c.maxfev = 100 * n
 	}
@@ -318,6 +331,10 @@ type LeastsqOptions struct {
 	// Diag holds n positive scale factors for the variables; nil lets
 	// MINPACK scale by the Jacobian column norms.
 	Diag []float64
+	// SciPyExact follows MINPACK's summation order bit for bit; the default
+	// runs problems with 32 or more residuals on FMA and go-simd kernels
+	// (the same solution within the accuracy contract, not bit-identical).
+	SciPyExact bool
 }
 
 // LeastsqResult is the full output of Leastsq: SciPy's tuple
@@ -381,7 +398,7 @@ func Leastsq(p LSProblem, x0 []float64, opts *LeastsqOptions) (*LeastsqResult, e
 		o = *opts
 	}
 	c := &lmConfig{m: m, ftol: tolDefault(o.Ftol), xtol: tolDefault(o.Xtol), gtol: math.Max(o.Gtol, 0),
-		maxfev: o.Maxfev, epsfcn: o.Epsfcn, factor: o.Factor}
+		maxfev: o.Maxfev, epsfcn: o.Epsfcn, factor: o.Factor, exact: o.SciPyExact}
 	if c.maxfev == 0 {
 		c.maxfev = 200 * (n + 1)
 		if p.Jac != nil {

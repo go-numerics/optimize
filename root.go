@@ -37,6 +37,10 @@ type RootOptions struct {
 	// Diag holds n positive scale factors for the variables; nil lets
 	// MINPACK scale by the Jacobian column norms.
 	Diag []float64
+	// SciPyExact follows MINPACK's summation order bit for bit; the default
+	// runs systems of 32 or more equations on FMA and go-simd kernels (the
+	// same root within the accuracy contract, not bit-identical).
+	SciPyExact bool
 }
 
 // RootResult is the outcome of Root and Fsolve, mirroring the
@@ -89,7 +93,7 @@ func Root(p SystemProblem, x0 []float64, opts *RootOptions) (*RootResult, error)
 	if opts != nil {
 		o = *opts
 	}
-	c := &hybrdConfig{xtol: tolDefault(o.Xtol), maxfev: o.Maxfev, epsfcn: o.Eps, diag: o.Diag, factor: o.Factor}
+	c := &hybrdConfig{xtol: tolDefault(o.Xtol), maxfev: o.Maxfev, epsfcn: o.Eps, diag: o.Diag, factor: o.Factor, exact: o.SciPyExact}
 	if c.maxfev == 0 {
 		c.maxfev = 200 * (n + 1)
 		if p.Jac != nil {

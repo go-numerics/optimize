@@ -221,7 +221,10 @@ takes 542 iterations against 544). `Options.SciPyExactUpdate` selects SciPy's
 update, two dense n×n products summed in SciPy's order (bit for bit, O(n³),
 about 90 ms at n = 100 on `floats.AxpyRowsNoFMA`). The BFGS n = 100 row above
 is the default update (refbench v0.8.0: 5.62 ms against SciPy's 47.1 ms); no
-row is slower than SciPy (#53).
+row is slower than SciPy (#53). MINPACK (`Root`, `Fsolve`, LM, `Leastsq`,
+`CurveFit`) runs its QR, Q accumulation, Givens sweeps and norms on FMA and
+go-simd kernels from 32 equations or residuals up (tolerance-validated);
+`SciPyExact` in each options type keeps MINPACK's summation order bit for bit.
 
 ## Not done
 

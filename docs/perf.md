@@ -135,7 +135,7 @@ site's rule depends on how it is validated:
 | BFGS update `A1·(H·A2)` (`matmul`) | 97% of BFGS n = 100 | bit for bit against SciPy (each entry a left-to-right sum of rounded products, as reference BLAS / OpenBLAS's non-FMA kernels) | loops reordered i-k-j, the row update on `floats.AxpyNoFMA`: every entry still receives its products in increasing k, each rounded before the add, so **the same bits** (`TestMatmulSameBitsAsDotProducts` against the i-j-k loop, signed zeros, NaN, Inf, n up to 129). `go test -bench`, loaded host: 530 ms → 172 ms per call |
 | infinity norm (`norm(v, inf)`, CG/BFGS stopping test) | 53% of CG n = 100 (`math.Max` per element) | exact in any order | `floats.MaxAbs`; CG n = 100 2.50 ms → 1.24 ms (loaded host). It now returns NaN for a vector holding both NaN and +Inf, as `numpy.linalg.norm(v, inf)`; the `math.Max` loop returned +Inf there |
 | L-BFGS-B `formk`, `subsm`, `dnrm2` | 40% of L-BFGS-B n = 100 | bit for bit against SciPy's C code with OpenBLAS's x87 `dnrm2` and TRSM order | **left**: no kernel keeps that order |
-| MINPACK `qrfac`/`qform` (LM, `root`) | most of `root` n = 100 | bit for bit (MINPACK order, `enorm`'s three sums) | **left** (already fused in order, PR #7) |
+| MINPACK `qrfac`/`qform`/`r1mpyq`/`enorm` (LM, `Leastsq`, `CurveFit`, `Root`) | most of `root` n = 100 | accuracy contract: `fastEnorm` within n/2 + 2 ulp of a 300-bit sum (`TestFastEnormBound`), factorisation, `Q` and Givens sweeps within 1e-8..1e-10 of MINPACK's order on random and degenerate matrices, and the solutions of `Root`, LM, `Leastsq`, `CurveFit` within 1e-6 of the `SciPyExact` ones (`TestMinpackFastAgainstExact`) | **done** from 32 residuals/equations: the QR, `Q` accumulation, rank-1 Givens sweeps and norms run on `floats.Dot`/`Axpy`/`Axpby3` (FMA, lane-blocked sums); below 32 and with `SciPyExact` MINPACK's order is kept (bit for bit). Root n = 100, `go test -bench -cpu 1`, load 85-115 (indicative, not a refbench run): 0.96 ms (`SciPyExact`) → 0.78 ms; `CurveFit` LM 1e4 is dominated by the model and shows no measurable change under that load |
 | SLSQP `trsm`, `ldp` | Quad50 | bit for bit against SciPy's Fortran | **left** |
 | trust-constr projections | Quad50 | tolerance | already on `floats.Dot`/`Axpy` (lane-blocked order, labelled in `trustconstr_linalg.go`) |
 | Newton-CG inner CG (n = 100, Hessian-vector product) | its own loop and the Hessian product | path compared with SciPy (perf-counts.md) | **left** for now: 33× faster than SciPy in the earlier table |
@@ -326,9 +326,10 @@ the 21 evaluations of the model over 10⁴ points: a Go closure calling
 `math.Exp` costs about 45 µs per sweep, against 29 µs for NumPy's
 vectorised `a*np.exp(-b*x)+c`. The solver itself now takes about 0.4 ms
 against about 0.8 ms for SciPy's compiled MINPACK and wrappers; what is
-left of it is the minimum number of latency-bound passes MINPACK's order
-of operations allows (each sum must stay sequential to keep the results
-bit-identical). `CurveFitOptions.Workers` evaluates the model in parallel
+left of it is the cost of the QR passes over 10⁴ rows, which the default
+now runs on go-simd FMA kernels (the sums are no longer sequential; the
+solution agrees with `SciPyExact`'s within 1e-6, `TestMinpackFastAgainstExact`).
+`CurveFitOptions.Workers` evaluates the model in parallel
 when that is acceptable; the table is single-threaded.
 
 `root` on 100 equations is 1.27×: SciPy's 0.83 ms is about 0.31 ms of
