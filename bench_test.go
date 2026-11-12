@@ -225,6 +225,32 @@ func BenchmarkRootBroyden100(b *testing.B) {
 	benchRoot(b, broydenTri, x0, false)
 }
 
+// The SciPyExact counterparts of the n = 100 root and 1e4 curve-fit LM rows,
+// for the A/B of the default kernels (docs/perf.md).
+func BenchmarkRootBroyden100Exact(b *testing.B) {
+	x0 := make([]float64, 100)
+	for i := range x0 {
+		x0[i] = -1
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if r, err := Root(SystemProblem{Func: broydenTri}, x0, &RootOptions{SciPyExact: true}); err != nil || !r.Success {
+			b.Fatal(err, r)
+		}
+	}
+}
+
+func BenchmarkCurveFit1e4LMExact(b *testing.B) {
+	x, y := curveFitData(10000)
+	f := func(x float64, p []float64) float64 { return p[0]*math.Exp(-p[1]*x) + p[2] }
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := CurveFit(f, x, y, []float64{1, 1, 1}, &CurveFitOptions{Method: LM, SciPyExact: true}); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 // lpDense is a feasible, bounded LP with m inequality rows on n variables
 // whose data come from the same deterministic formulas as bench/testdata/data.f64.
 func lpDense(m, n int) ([]float64, LPConstraints) {

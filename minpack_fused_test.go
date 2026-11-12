@@ -495,13 +495,14 @@ func TestHybrdFusedMatchesPlain(t *testing.T) {
 	for i := range x0 {
 		x0[i] = -1
 	}
-	fused, err := Root(SystemProblem{Func: broyden}, x0, nil)
+	exact := &RootOptions{SciPyExact: true}
+	fused, err := Root(SystemProblem{Func: broyden}, x0, exact)
 	if err != nil || !fused.Success {
 		t.Fatal(err, fused)
 	}
 	defer func(v int) { fuseMin = v }(fuseMin)
 	fuseMin = 1 << 30
-	plain, _ := Root(SystemProblem{Func: broyden}, x0, nil)
+	plain, _ := Root(SystemProblem{Func: broyden}, x0, exact)
 	if !sameBits(fused.X, plain.X) || !sameBits(fused.Fjac, plain.Fjac) || !sameBits(fused.R, plain.R) || fused.Nfev != plain.Nfev {
 		t.Errorf("fused and plain hybrd differ: nfev %d / %d", fused.Nfev, plain.Nfev)
 	}

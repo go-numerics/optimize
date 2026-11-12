@@ -70,6 +70,11 @@ type LSOptions struct {
 	// FDMethod is the finite-difference scheme for TRF (FD2Point). LM uses
 	// MINPACK's own forward differences.
 	FDMethod FDMethod
+	// SciPyExact makes LM follow MINPACK's summation order bit for bit. The
+	// default runs the QR factorisation of problems with 32 or more residuals
+	// on FMA and go-simd kernels: the same solution within the accuracy
+	// contract, not bit-identical to SciPy. TRF ignores it.
+	SciPyExact bool
 }
 
 // LSResult is the outcome of LeastSquares, mirroring the OptimizeResult of
