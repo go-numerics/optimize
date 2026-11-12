@@ -217,6 +217,11 @@ row is slower than SciPy (#53).
 
 ## Not done
 
+The SciPy and MATLAB gaps are listed in [docs/coverage.md](docs/coverage.md).
+[docs/roadmap.md](docs/roadmap.md) lists what Julia's Optim, Roots and LsqFit,
+R and GSL do better, ranked by gain for cost, with an implementation source
+and an oracle for each item.
+
 - **`minimize`:** COBYLA/COBYQA, TNC, dogleg/trust-ncg and the other
   trust-region methods; trust-constr's `keep_feasible`, sparse Jacobians and
   SR1 Hessian option. For L-BFGS-B, the `hess_inv` operator is not
