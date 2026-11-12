@@ -6,7 +6,7 @@ require (
 	github.com/go-ndarray/ndarray v0.34.0
 	github.com/go-numerics/optimize v0.0.0
 	github.com/go-scikit/refbench v0.3.0
-	github.com/go-simd/floats v0.13.0
+	github.com/go-simd/floats v0.17.0
 )
 
 require (

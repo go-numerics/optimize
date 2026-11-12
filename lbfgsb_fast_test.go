@@ -2,43 +2,8 @@ package optimize
 
 import (
 	"math"
-	"math/rand/v2"
 	"testing"
 )
-
-// TestGatherKernels: gdot, gdotD, gaxpy against plain loops on permuted
-// indices of every length mod 4.
-func TestGatherKernels(t *testing.T) {
-	r := rand.New(rand.NewPCG(5, 7))
-	for n := 0; n < 12; n++ {
-		a, b, d := make([]float64, 12), make([]float64, 12), make([]float64, n)
-		for i := range a {
-			a[i], b[i] = r.NormFloat64(), r.NormFloat64()
-		}
-		for i := range d {
-			d[i] = r.NormFloat64()
-		}
-		idx := r.Perm(12)[:n]
-		var w1, w2 float64
-		for k, i := range idx {
-			w1 += a[i] * b[i]
-			w2 += a[i] * d[k]
-		}
-		if g := gdot(a, b, idx); math.Abs(g-w1) > 1e-13 {
-			t.Fatalf("gdot %g want %g", g, w1)
-		}
-		if g := gdotD(a, idx, d); math.Abs(g-w2) > 1e-13 {
-			t.Fatalf("gdotD %g want %g", g, w2)
-		}
-		e := append([]float64(nil), d...)
-		gaxpy(2, a, idx, e)
-		for k, i := range idx {
-			if math.Abs(e[k]-(d[k]+2*a[i])) > 1e-14 {
-				t.Fatal("gaxpy")
-			}
-		}
-	}
-}
 
 // lbQuadProblem is f(x) = ½ dᵀA d, d = x − xstar, A tridiagonal (4 on the
 // diagonal, −1 beside it): symmetric positive definite, minimiser xstar

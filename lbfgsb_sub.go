@@ -3,6 +3,8 @@ package optimize
 import (
 	"math"
 	"math/big"
+
+	"github.com/go-simd/floats"
 )
 
 // Subroutines of L-BFGS-B 3.0, one method per reference subroutine.
@@ -548,8 +550,8 @@ func (s *lbfgsb) formk() bool {
 				}
 			} else {
 				temp1 = s.freeDot(wy[n*ipntr:n*ipntr+n], wy[n*jpntr:n*jpntr+n], nsub)
-				temp2 = gdot(ws[n*ipntr:n*ipntr+n], ws[n*jpntr:n*jpntr+n], ind[nsub:n])
-				temp3 = gdot(ws[n*ipntr:n*ipntr+n], wy[n*jpntr:n*jpntr+n], ind[nsub:n])
+				temp2 = floats.DotIdx(ws[n*ipntr:n*ipntr+n], ws[n*jpntr:n*jpntr+n], ind[nsub:n])
+				temp3 = floats.DotIdx(ws[n*ipntr:n*ipntr+n], wy[n*jpntr:n*jpntr+n], ind[nsub:n])
 			}
 			wn1[iy+m2*jy] = temp1
 			wn1[is+m2*js] = temp2
