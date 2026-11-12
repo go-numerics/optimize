@@ -289,8 +289,29 @@ Powell's hybrid method, ported from SciPy 1.18.1's C translation of MINPACK
   `r1mpyq`, and the forward-difference `fdjac1`.
 - **Layout:** storage is column-major, as in MINPACK, so every sum keeps the
   reference order.
-- **Norm:** MINPACK's three-accumulator `enorm` is kept, because a different
-  norm alone breaks bit parity.
+- **Norm:** MINPACK's three-accumulator `enorm` is kept, for a measured
+  reason that is not parity. Measured 2026-11-12 (Apple M4 Max, one core, load
+  5-6, six interleaved rounds; `enorm_variants_test.go`): a plain
+  four-accumulator sum of squares (falling back to MINPACK's norm when the sum
+  leaves [1e-250, 1e290]) takes 2.0 ns at n = 4, 3.8 ns at n = 16, 20 ns at
+  n = 100 and 287 ns at n = 1000, against 3.0, 10.2, 70.8 and 1043 ns for
+  MINPACK's, and on unit-scale inputs its error is smaller (worst 2.5 ulp at n = 1000
+  against 10.8); outside that range it falls back to MINPACK's norm and is
+  equal to it (11.70 ulp at 2^500 and 9.90 at 2^-600, n = 1000, both).
+  Both stay within the bound (n/2 + 2 ulps against a 300-bit oracle, including
+  inputs from 2^-1060 to 2^1000), so the contract does not choose. The solvers
+  do: swapping it into the scalar callers (six interleaved rounds, p = 0.03)
+  took `CurveFit` LM (m = 10^4) -2.0%, `LeastSquares(LM)` -7.1% and `Leastsq`
+  -5.7% of the solve, and made `Root` +3.0% (`Fsolve` ~), because the QR
+  factorisation, not the norm, takes the time. The price is that the iterates
+  change (`powell_singular` takes 129 evaluations where MINPACK takes 106) and
+  the fixtures that assert SciPy's counts and QR factors go red, so a default
+  swap needs an `Exact` switch threaded through some 45 call sites, the fused
+  four-column kernels (`mpEnorm4`, `colEnorms`) included. A 2-7% gain on
+  7 µs solves, a loss on `Root`, and that change are not worth it now:
+  MINPACK's norm stays the default, and nothing but the cost and the numbers
+  above decides it. A large-n LM row that showed a gain would reopen it (the
+  swap was tried only in the scalar callers, on the small benchmark problems).
 - **Defaults:** as SciPy's `_root_hybr`: maxfev 200(n+1) without a Jacobian
   and 100(n+1) with one, factor 100, xtol 1.49012e-8. Messages are SciPy's.
 - **Deviation:** `Nfev` excludes the two extra calls SciPy's Python wrappers
