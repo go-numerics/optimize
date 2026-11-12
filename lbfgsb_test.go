@@ -256,12 +256,26 @@ var lbLongRuns = map[string]bool{"rosen100": true, "rosen100_fd": true}
 // only determined by the path, so only the counts and status are compared.
 var lbUnbounded = map[string]bool{"poly_formt_fail": true}
 
-func TestLBFGSBFixtures(t *testing.T) {
+// TestLBFGSBFixtures: with Options.SciPyExact the port keeps SciPy's counts
+// and iterates; the default (FMA, SIMD kernels) is held to the bound instead,
+// see TestLBFGSBFixturesFast.
+func TestLBFGSBFixtures(t *testing.T) { lbFixtures(t, true) }
+
+// TestLBFGSBFixturesFast runs the SciPy fixtures on the default kernels. Their
+// sums are reordered and use FMA, so the iterates differ from SciPy's; what is
+// asserted is the accuracy bound (the status, x within 1e-4 relative, f within
+// 1e-6 relative) and that the iteration count stays within 10% + 2 of SciPy's.
+// The count difference is logged for every case.
+func TestLBFGSBFixturesFast(t *testing.T) { lbFixtures(t, false) }
+
+func lbFixtures(t *testing.T, exact bool) {
 	for _, c := range lbLoad(t) {
 		t.Run(c.Name, func(t *testing.T) {
 			var trace []float64
 			cx, cfun, ctrace := lbNums(c.X), float64(c.Fun), lbNums(c.Trace)
-			r, err := Minimize(c.problem(), c.X0, LBFGSB, c.options(&trace))
+			o := c.options(&trace)
+			o.SciPyExact = exact
+			r, err := Minimize(c.problem(), c.X0, LBFGSB, o)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -296,8 +310,11 @@ func TestLBFGSBFixtures(t *testing.T) {
 				}
 				return
 			}
-			if c.Analytic && (r.Nit != c.Nit || r.Nfev != c.Nfev || r.Njev != c.Njev) {
+			if exact && c.Analytic && (r.Nit != c.Nit || r.Nfev != c.Nfev || r.Njev != c.Njev) {
 				t.Errorf("counts differ from SciPy")
+			}
+			if !exact && c.Analytic && !lbUnbounded[c.Name] && math.Abs(float64(r.Nit-c.Nit)) > 0.1*float64(c.Nit)+2 {
+				t.Errorf("nit %d, SciPy %d", r.Nit, c.Nit)
 			}
 			if lbUnbounded[c.Name] {
 				return

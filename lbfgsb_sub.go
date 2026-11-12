@@ -3,6 +3,8 @@ package optimize
 import (
 	"math"
 	"math/big"
+
+	"github.com/go-simd/floats"
 )
 
 // Subroutines of L-BFGS-B 3.0, one method per reference subroutine.
@@ -536,14 +538,20 @@ func (s *lbfgsb) formk() bool {
 		for jy := 0; jy < col; jy++ {
 			js := m + jy
 			temp1, temp2, temp3 := 0.0, 0.0, 0.0
-			for k := 0; k < nsub; k++ {
-				k1 := ind[k]
-				temp1 += float64(wy[k1+n*ipntr] * wy[k1+n*jpntr])
-			}
-			for k := nsub; k < n; k++ {
-				k1 := ind[k]
-				temp2 += float64(ws[k1+n*ipntr] * ws[k1+n*jpntr])
-				temp3 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
+			if s.exact {
+				for k := 0; k < nsub; k++ {
+					k1 := ind[k]
+					temp1 += float64(wy[k1+n*ipntr] * wy[k1+n*jpntr])
+				}
+				for k := nsub; k < n; k++ {
+					k1 := ind[k]
+					temp2 += float64(ws[k1+n*ipntr] * ws[k1+n*jpntr])
+					temp3 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
+				}
+			} else {
+				temp1 = s.freeDot(wy[n*ipntr:n*ipntr+n], wy[n*jpntr:n*jpntr+n], nsub)
+				temp2 = floats.DotIdx(ws[n*ipntr:n*ipntr+n], ws[n*jpntr:n*jpntr+n], ind[nsub:n])
+				temp3 = floats.DotIdx(ws[n*ipntr:n*ipntr+n], wy[n*jpntr:n*jpntr+n], ind[nsub:n])
 			}
 			wn1[iy+m2*jy] = temp1
 			wn1[is+m2*js] = temp2
@@ -560,9 +568,13 @@ func (s *lbfgsb) formk() bool {
 		for i := 0; i < col; i++ {
 			is := m + i
 			temp3 := 0.0
-			for k := 0; k < nsub; k++ {
-				k1 := ind[k]
-				temp3 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
+			if s.exact {
+				for k := 0; k < nsub; k++ {
+					k1 := ind[k]
+					temp3 += float64(ws[k1+n*ipntr] * wy[k1+n*jpntr])
+				}
+			} else {
+				temp3 = s.freeDot(ws[n*ipntr:n*ipntr+n], wy[n*jpntr:n*jpntr+n], nsub)
 			}
 			ipntr = (ipntr + 1) % m
 			wn1[is+m2*jy] = temp3
@@ -667,14 +679,23 @@ func (s *lbfgsb) formk() bool {
 // along the unprojected direction to the feasible region instead (reference
 // subroutine subsm).
 func (s *lbfgsb) subsm(xx, gg []float64) {
+	x, d, xp := s.z, s.r, s.xp
+	wv := s.wa
+	if s.exact {
+		s.subsmExact(d, wv)
+	} else {
+		s.subsmFast(d, wv, s.nfree)
+	}
+	s.subsmProject(xx, gg, x, d, xp)
+}
+
+// subsmExact is the first half of subsm in SciPy's summation order.
+func (s *lbfgsb) subsmExact(d, wv []float64) {
 	n, m, col, head, theta := s.n, s.m, s.col, s.head, s.theta
 	nsub, ind := s.nfree, s.index
-	l, u, nbd := s.l, s.u, s.nbd
-	x, d, xp, ws, wy := s.z, s.r, s.xp, s.ws, s.wy
-	wv := s.wa
+	ws, wy := s.ws, s.wy
 	m2 := 2 * m
 	col2 := 2 * col
-
 	// Compute wv = W'Zd.
 	pointr := head
 	for i := 0; i < col; i++ {
@@ -708,7 +729,14 @@ func (s *lbfgsb) subsm(xx, gg []float64) {
 	for i := 0; i < nsub; i++ {
 		d[i] *= temp
 	}
+}
 
+// subsmProject is the second half of subsm: the projection of the Newton
+// point onto the box and the backtracking fallback.
+func (s *lbfgsb) subsmProject(xx, gg, x, d, xp []float64) {
+	n := s.n
+	nsub, ind := s.nfree, s.index
+	l, u, nbd := s.l, s.u, s.nbd
 	// Let us try the projection: d is the Newton direction.
 	iword := false
 	copy(xp, x)
@@ -886,6 +914,9 @@ func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (f
 // are summed and the root taken in x87 extended precision (64-bit
 // mantissa), and only the result is rounded to double.
 func (s *lbfgsb) dnrm2(v []float64) float64 {
+	if !s.exact {
+		return fastEnorm(v)
+	}
 	// The sum is accumulated in a 64-bit-mantissa software float (ext64): each
 	// square and each addition rounds to nearest even at 64 bits, exactly as
 	// big.Float at precision 64 did, without its allocation per addition (a
