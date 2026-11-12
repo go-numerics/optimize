@@ -131,6 +131,13 @@ type Options struct {
 	// iteration counts, validated against SciPy by tolerance, NOT bit-identical
 	// to it. An asymmetric HessInv0 always takes the dense update.
 	SciPyExactUpdate bool
+	// SciPyExact makes L-BFGS-B follow SciPy's C code bit for bit: sequential
+	// sums without FMA (each product rounded before it is added) and OpenBLAS's
+	// extended-precision dnrm2. The default runs the same algorithm on FMA and
+	// SIMD kernels (go-simd/floats) with reordered sums: the same minimiser
+	// within the accuracy contract, iteration counts that may differ by a few,
+	// NOT bit-identical to SciPy.
+	SciPyExact bool
 	// XRtol is BFGS's relative step tolerance (0: disabled).
 	XRtol float64
 	// Callback is called after each iteration with a copy of the current
