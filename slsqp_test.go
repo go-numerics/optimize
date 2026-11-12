@@ -3,6 +3,7 @@ package optimize
 import (
 	"errors"
 	"math"
+	"math/big"
 	"math/rand/v2"
 	"strings"
 	"testing"
@@ -167,29 +168,50 @@ func TestTrsmFastMatchesReference(t *testing.T) {
 	trsmRUNFast(0, 3, nil, 3, nil, 1, nil)
 }
 
-// TestSLSQPFastAgainstExact: Quad50 (n = 50, 100 bounds, 1 linear) on the
-// default kernels and with SciPyExact reaches the same optimum within 1e-6
-// (the contract's bound for SLSQP at its default ftol); counts are logged.
-func TestSLSQPFastAgainstExact(t *testing.T) {
+// TestAccuracyBoundSLSQPQuad50: Quad50 (min Σ (i+1)(x_i-1)², Σ x_i <= 25,
+// -10 <= x_i <= 10, n = 50: 100 bounds and one linear row, so every iteration
+// goes through lsi and the default trsm) against its closed form. The KKT
+// conditions give x_i = 1 - λ/(2(i+1)) with λ = 50/H₅₀ (H₅₀ the 50th harmonic
+// number) and f* = 625/H₅₀; no bound is active (x_0 = 1 - 25/H₅₀ ≈ -4.56), and
+// the optimum is computed in big.Rat, never from another float64 run. The
+// contract's 1e-3 / 1e-6 holds on the default kernels; SciPyExact is held to
+// the same bound.
+func TestAccuracyBoundSLSQPQuad50(t *testing.T) {
 	const n = 50
+	h := new(big.Rat)
+	for i := 1; i <= n; i++ {
+		h.Add(h, big.NewRat(1, int64(i)))
+	}
+	lambda := new(big.Rat).Quo(big.NewRat(n, 1), h)
+	want := make([]float64, n)
+	sum := new(big.Rat)
+	for i := range want {
+		xi := new(big.Rat).Quo(lambda, big.NewRat(2*int64(i+1), 1))
+		xi.Sub(big.NewRat(1, 1), xi)
+		sum.Add(sum, xi)
+		want[i], _ = xi.Float64()
+	}
+	if sum.Cmp(big.NewRat(25, 1)) != 0 {
+		t.Fatalf("closed form does not sum to 25: %v", sum.FloatString(20))
+	}
+	fstar, _ := new(big.Rat).Quo(big.NewRat(625, 1), h).Float64()
 	ones := make([]float64, n)
 	for i := range ones {
 		ones[i] = 1
 	}
 	a, _ := ndarray.FromData(ones, 1, n)
-	var res [2]*Result
-	for k, exact := range []bool{true, false} {
+	for _, exact := range []bool{false, true} {
 		o := &Options{SciPyExact: exact, Bounds: rep(Bound{-10, 10}, n),
 			Constraints: []ConstraintSpec{LinearConstraint{A: a, Ub: []float64{25}}}}
 		r, err := Minimize(Problem{Func: quad, Grad: quadGrad}, make([]float64, n), SLSQP, o)
 		if err != nil || !r.Success {
 			t.Fatal(err, r)
 		}
-		res[k] = r
-	}
-	t.Logf("Quad50: nit exact %d fast %d, f %.12g / %.12g", res[0].Nit, res[1].Nit, res[0].Fun, res[1].Fun)
-	if d := maxDist(res[1].X, res[0].X); d > 1e-6 || math.Abs(res[1].Fun-res[0].Fun) > 1e-6 {
-		t.Errorf("|dx| = %g, |df| = %g", d, res[1].Fun-res[0].Fun)
+		dx, df := maxDist(r.X, want), math.Abs(r.Fun-fstar)
+		t.Logf("Quad50 exact=%v: nit %d |x-x*|=%.2e |f-f*|=%.2e", exact, r.Nit, dx, df)
+		if dx > 1e-3 || df > 1e-6 {
+			t.Errorf("exact=%v: |x-x*| = %g (bound 1e-3), |f-f*| = %g (bound 1e-6)", exact, dx, df)
+		}
 	}
 }
 
