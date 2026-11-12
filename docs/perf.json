@@ -1971,7 +1971,7 @@
       "func": "Root",
       "reference": "scipy.optimize.root(method='hybr') (Python objective, one core)",
       "parity": "none",
-      "allocs": 25,
+      "allocs": 15,
       "go_iters": 203,
       "ref_iters": 121,
       "rounds": [

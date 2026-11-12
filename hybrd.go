@@ -9,6 +9,7 @@ type hybrdConfig struct {
 	epsfcn float64   // forward-difference step parameter (hybrd only)
 	diag   []float64 // nil selects MINPACK's internal scaling (mode 1)
 	factor float64
+	exact  bool // MINPACK's order bit for bit (SciPyExact)
 }
 
 // hybrdOut is what hybrd/hybrj return.
@@ -65,9 +66,19 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 		cols = make([][]float64, 0, n)
 	}
 
+	// From fuseMin equations the default kernels are the floats ones
+	// (minpack_fast.go); SciPyExact and smaller systems keep MINPACK's order.
+	fast := !c.exact && n >= fuseMin
+	nrm := mpEnorm
+	var scratch []float64
+	if fast {
+		nrm = fastEnorm
+		scratch = make([]float64, n)
+	}
+
 	fcn(x, fvec)
 	o.nfev = 1
-	fnorm := mpEnorm(fvec)
+	fnorm := nrm(fvec)
 	iter := 1
 	ncsuc, ncfail, nslow1, nslow2 := 0, 0, 0, 0
 	var delta, xnorm float64
@@ -84,7 +95,11 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 		// The factorisation also forms Qᵀ·fvec in qtf (MINPACK forms it
 		// afterwards, with the same sums).
 		copy(qtf, fvec)
-		qrfac(n, n, fjac, ldfjac, false, nil, wa1, wa2, wa3, qtf)
+		if fast {
+			qrfacFast(n, n, fjac, ldfjac, false, nil, wa1, wa2, wa3, qtf)
+		} else {
+			qrfac(n, n, fjac, ldfjac, false, nil, wa1, wa2, wa3, qtf)
+		}
 		// On the first iteration, scale by the column norms (mode 1) and
 		// set the step bound delta.
 		if iter == 1 {
@@ -99,7 +114,7 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			for j := 0; j < n; j++ {
 				wa3[j] = diag[j] * x[j]
 			}
-			xnorm = mpEnorm(wa3)
+			xnorm = nrm(wa3)
 			delta = initialStepBound(c.factor, xnorm)
 		}
 		// Copy the triangular factor into r, packed by rows.
@@ -112,7 +127,11 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			r[l] = wa1[j]
 		}
 		// Accumulate Q.
-		qform(n, fjac, ldfjac, wa1)
+		if fast {
+			qformFast(n, fjac, ldfjac, wa1)
+		} else {
+			qform(n, fjac, ldfjac, wa1)
+		}
 		if internal {
 			for j := 0; j < n; j++ {
 				diag[j] = math.Max(diag[j], wa2[j])
@@ -126,13 +145,13 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 				wa2[j] = x[j] + wa1[j]
 				wa3[j] = diag[j] * wa1[j]
 			}
-			pnorm := mpEnorm(wa3)
+			pnorm := nrm(wa3)
 			if iter == 1 {
 				delta = math.Min(delta, pnorm)
 			}
 			fcn(wa2, wa4)
 			o.nfev++
-			fnorm1 := mpEnorm(wa4)
+			fnorm1 := nrm(wa4)
 			// Actual and predicted relative reductions.
 			actred := -1.0
 			if fnorm1 < fnorm {
@@ -143,7 +162,7 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 			for i := 0; i < n; i++ {
 				wa3[i] += qtf[i]
 			}
-			temp := mpEnorm(wa3)
+			temp := nrm(wa3)
 			prered := 0.0
 			if temp < fnorm {
 				t := temp / fnorm
@@ -175,7 +194,7 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 					wa2[j] = diag[j] * x[j]
 					fvec[j] = wa4[j]
 				}
-				xnorm = mpEnorm(wa2)
+				xnorm = nrm(wa2)
 				fnorm = fnorm1
 				iter++
 			}
@@ -215,7 +234,9 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 				break
 			}
 			// Otherwise Broyden's rank-1 update of R and Q.
-			if n >= fuseMin {
+			if fast {
+				colDotsFast(fjac, ldfjac, wa4[:n], sums)
+			} else if n >= fuseMin {
 				cols = cols[:0]
 				for j := 0; j < n; j++ {
 					cols = append(cols, fjac[ldfjac*j:ldfjac*j+n])
@@ -239,7 +260,11 @@ func hybrd(fcn func(x, f []float64), jac func(x, fvec, fjac []float64), x []floa
 				}
 			}
 			r1updt(n, n, r, wa1, wa2, wa3)
-			r1mpyq(n, n, fjac, ldfjac, wa2, wa3)
+			if fast {
+				r1mpyqFast(n, n, fjac, ldfjac, wa2, wa3, scratch)
+			} else {
+				r1mpyq(n, n, fjac, ldfjac, wa2, wa3)
+			}
 			r1mpyq(1, n, qtf, 1, wa2, wa3)
 			jeval = false
 		}

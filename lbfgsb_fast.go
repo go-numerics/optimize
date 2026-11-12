@@ -17,8 +17,9 @@ import (
 
 // The three gather kernels below (gdot, gdotD, gaxpy) belong in
 // github.com/go-simd/floats, the lowest shared library, which has no gather
-// kernel as of v0.15.0 (the request is go-numerics/optimize#63). They stay here
-// until a go-simd/floats release carries them, then this file calls it.
+// kernel as of v0.15.0 (the request is go-simd/floats#50: DotIdx, DotGather,
+// AxpyGather). They stay here until a go-simd/floats release carries them,
+// then this file calls it.
 
 // gdot returns Σ a[idx[k]]·b[idx[k]] on four FMA accumulators.
 func gdot(a, b []float64, idx []int) float64 {

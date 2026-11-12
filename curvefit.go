@@ -69,6 +69,10 @@ type CurveFitOptions struct {
 	// goroutines when there are at least 2048 samples (default 1). The
 	// model must then be safe for concurrent use; the result is identical.
 	Workers int
+	// SciPyExact makes LM follow MINPACK's summation order bit for bit; the
+	// default runs the QR factorisation on FMA and go-simd kernels (see
+	// LSOptions.SciPyExact). TRF ignores it.
+	SciPyExact bool
 }
 
 // CurveFitResult is the outcome of CurveFit: SciPy's (popt, pcov) plus its
@@ -335,7 +339,7 @@ func CurveFitModel(model Model, xdata, ydata *ndarray.Array, p0 []float64, o *Cu
 			lp.Jac = jac
 		}
 		lo := &LSOptions{Bounds: opt.Bounds, Ftol: opt.Ftol, Xtol: opt.Xtol, Gtol: opt.Gtol,
-			MaxNfev: opt.MaxFev, Loss: opt.Loss, FScale: opt.FScale}
+			MaxNfev: opt.MaxFev, Loss: opt.Loss, FScale: opt.FScale, SciPyExact: opt.SciPyExact}
 		lr, err := LeastSquares(lp, p0, method, lo)
 		if err != nil {
 			return nil, err
