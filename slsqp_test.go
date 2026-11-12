@@ -3,6 +3,7 @@ package optimize
 import (
 	"errors"
 	"math"
+	"math/big"
 	"math/rand/v2"
 	"strings"
 	"testing"
@@ -144,6 +145,74 @@ func TestTrsmMatchesReference(t *testing.T) {
 		}
 	}
 	trsmRUN(0, 3, nil, 3, nil, 1)
+}
+
+// TestTrsmFastMatchesReference: trsmRUNFast gives the reference's values (bit
+// for bit, zero coefficients included, up to the sign of a zero), and the
+// default and SciPyExact paths of an SLSQP solve agree within the contract.
+func TestTrsmFastMatchesReference(t *testing.T) {
+	for _, zeros := range []bool{false, true} {
+		for _, dims := range [][2]int{{13, 11}, {101, 50}, {7, 1}} {
+			m, n := dims[0], dims[1]
+			a, b := trsmInput(m, n, zeros)
+			want := clone(b)
+			trsmRUNRef(m, n, a, n, want, m)
+			trsmRUNFast(m, n, a, n, b, m, make([]float64, n))
+			for i := range b {
+				if b[i] != want[i] {
+					t.Fatalf("zeros=%v %dx%d: b[%d] = %v, reference %v", zeros, m, n, i, b[i], want[i])
+				}
+			}
+		}
+	}
+	trsmRUNFast(0, 3, nil, 3, nil, 1, nil)
+}
+
+// TestAccuracyBoundSLSQPQuad50: Quad50 (min Σ (i+1)(x_i-1)², Σ x_i <= 25,
+// -10 <= x_i <= 10, n = 50: 100 bounds and one linear row, so every iteration
+// goes through lsi and the default trsm) against its closed form. The KKT
+// conditions give x_i = 1 - λ/(2(i+1)) with λ = 50/H₅₀ (H₅₀ the 50th harmonic
+// number) and f* = 625/H₅₀; no bound is active (x_0 = 1 - 25/H₅₀ ≈ -4.56), and
+// the optimum is computed in big.Rat, never from another float64 run. The
+// contract's 1e-3 / 1e-6 holds on the default kernels; SciPyExact is held to
+// the same bound.
+func TestAccuracyBoundSLSQPQuad50(t *testing.T) {
+	const n = 50
+	h := new(big.Rat)
+	for i := 1; i <= n; i++ {
+		h.Add(h, big.NewRat(1, int64(i)))
+	}
+	lambda := new(big.Rat).Quo(big.NewRat(n, 1), h)
+	want := make([]float64, n)
+	sum := new(big.Rat)
+	for i := range want {
+		xi := new(big.Rat).Quo(lambda, big.NewRat(2*int64(i+1), 1))
+		xi.Sub(big.NewRat(1, 1), xi)
+		sum.Add(sum, xi)
+		want[i], _ = xi.Float64()
+	}
+	if sum.Cmp(big.NewRat(25, 1)) != 0 {
+		t.Fatalf("closed form does not sum to 25: %v", sum.FloatString(20))
+	}
+	fstar, _ := new(big.Rat).Quo(big.NewRat(625, 1), h).Float64()
+	ones := make([]float64, n)
+	for i := range ones {
+		ones[i] = 1
+	}
+	a, _ := ndarray.FromData(ones, 1, n)
+	for _, exact := range []bool{false, true} {
+		o := &Options{SciPyExact: exact, Bounds: rep(Bound{-10, 10}, n),
+			Constraints: []ConstraintSpec{LinearConstraint{A: a, Ub: []float64{25}}}}
+		r, err := Minimize(Problem{Func: quad, Grad: quadGrad}, make([]float64, n), SLSQP, o)
+		if err != nil || !r.Success {
+			t.Fatal(err, r)
+		}
+		dx, df := maxDist(r.X, want), math.Abs(r.Fun-fstar)
+		t.Logf("Quad50 exact=%v: nit %d |x-x*|=%.2e |f-f*|=%.2e", exact, r.Nit, dx, df)
+		if dx > 1e-3 || df > 1e-6 {
+			t.Errorf("exact=%v: |x-x*| = %g (bound 1e-3), |f-f*| = %g (bound 1e-6)", exact, dx, df)
+		}
+	}
 }
 
 func BenchmarkTrsm(b *testing.B) {

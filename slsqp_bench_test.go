@@ -36,14 +36,16 @@ func BenchmarkTrustConstrHS43(b *testing.B)   { benchHS(b, TrustConstr, "HS43", 
 
 // quad50 is min sum (i+1)(x_i-1)^2 s.t. sum x <= 25, -10 <= x_i <= 10, from
 // 0 (the subproblems are 50×50).
-func benchQuad50(b *testing.B, method Method) {
+func benchQuad50(b *testing.B, method Method) { benchQuad50Opt(b, method, false) }
+
+func benchQuad50Opt(b *testing.B, method Method, exact bool) {
 	const n = 50
 	ones := make([]float64, n)
 	for i := range ones {
 		ones[i] = 1
 	}
 	a, _ := ndarray.FromData(ones, 1, n)
-	o := &Options{Bounds: rep(Bound{-10, 10}, n),
+	o := &Options{SciPyExact: exact, Bounds: rep(Bound{-10, 10}, n),
 		Constraints: []ConstraintSpec{LinearConstraint{A: a, Ub: []float64{25}}}}
 	x0 := make([]float64, n)
 	b.ReportAllocs()
@@ -55,4 +57,5 @@ func benchQuad50(b *testing.B, method Method) {
 }
 
 func BenchmarkSLSQPQuad50(b *testing.B)       { benchQuad50(b, SLSQP) }
+func BenchmarkSLSQPQuad50Exact(b *testing.B)  { benchQuad50Opt(b, SLSQP, true) }
 func BenchmarkTrustConstrQuad50(b *testing.B) { benchQuad50(b, TrustConstr) }

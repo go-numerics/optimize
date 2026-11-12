@@ -364,6 +364,7 @@ func minimizeSLSQP(p Problem, x0 []float64, o *Options, lb, ub []float64, cons [
 	sc.eval(x, d)
 
 	st := newSLSQPState(n, m, meq, acc, maxiter)
+	st.ws.exact = o.SciPyExact
 	iterPrev := 0
 	for {
 		st.body(fx, g, cm, ldc, d, x, mult, xl, xu)

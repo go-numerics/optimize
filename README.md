@@ -191,6 +191,15 @@ refbench (`bench/`), v0.8.0, 2026-11-10: one core on both sides, SciPy
 2026-10-30. [docs/perf.md](docs/perf.md) and
 [docs/perf-table.md](docs/perf-table.md) have every row and the method.
 
+`Options.SciPyExact` (L-BFGS-B and SLSQP) selects SciPy's arithmetic bit for
+bit: sequential sums without FMA and, for SLSQP, the reference loop of the
+triangular solve (`lsi`). The default of SLSQP solves it in one
+`floats.AxpyRowsNoFMA` pass per column: the same values, except that zero
+coefficients are no longer skipped, so an Inf (or NaN) in the constraint block
+meeting a zero coefficient now gives NaN where the reference loop keeps the
+Inf, and a signed zero may differ. A finite problem is unaffected; the SciPy
+fixtures keep their path in both modes.
+
 | Benchmark | Go | SciPy | Speed-up |
 |---|---|---|---|
 | Rosenbrock n=2, BFGS | 3.62 µs | 1.22 ms | 336× |

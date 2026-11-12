@@ -84,7 +84,7 @@ func replayCase(t *testing.T, c slsqpCase, method Method) (*Result, error) {
 	if c.Jac {
 		prob.Grad = p.g
 	}
-	o := &Options{Bounds: p.bounds, Constraints: p.specs(c.Jac)}
+	o := &Options{Bounds: p.bounds, Constraints: p.specs(c.Jac), SciPyExact: replayExact}
 	switch {
 	case strings.HasPrefix(c.Name, "HS35-linear"):
 		a, _ := ndarray.FromData([]float64{1, 1, 2}, 1, 3)
@@ -165,7 +165,21 @@ var slsqpLibm = map[string]bool{
 	"HS26": true, "HS39": true, "HS40": true,
 }
 
-func TestSLSQPFixtures(t *testing.T) {
+// replayExact selects Options.SciPyExact in replayCase.
+var replayExact bool
+
+// TestSLSQPFixtures replays the SciPy fixtures on the default kernels: the
+// path (nit/nfev/njev) is still SciPy's on every case that is not a listed
+// exception, here as with SciPyExact (TestSLSQPFixturesExact).
+func TestSLSQPFixtures(t *testing.T) { slsqpFixtures(t) }
+
+func TestSLSQPFixturesExact(t *testing.T) {
+	replayExact = true
+	defer func() { replayExact = false }()
+	slsqpFixtures(t)
+}
+
+func slsqpFixtures(t *testing.T) {
 	f := loadSLSQPFixture(t)
 	var statusOK, pathOK, funOK, total int
 	for _, c := range f.Cases {
