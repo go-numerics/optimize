@@ -134,6 +134,10 @@ func lsq(ws *arena, m, meq, n int, augment bool, augWeight float64, lf, gradx, c
 type arena struct {
 	buf []float64
 	off int
+	// exact keeps the reference's summation order bit for bit
+	// (Options.SciPyExact); otherwise the triangular solve of lsi runs on
+	// go-simd FMA kernels.
+	exact bool
 }
 
 func (a *arena) take(n int) []float64 {
@@ -238,7 +242,11 @@ func lsi(ws *arena, ma, mg, n int, a, b, g, h, x []float64) (mode int, mults []f
 			return 5, nil
 		}
 	}
-	trsmRUN(mg, n, a, ma, g, mg)
+	if ws.exact {
+		trsmRUN(mg, n, a, ma, g, mg)
+	} else {
+		trsmRUNFast(mg, n, a, ma, g, mg, ws.take(n))
+	}
 	gemvN(mg, n, -1, g, mg, b, 1, h)
 	mode, mults = ldp(ws, mg, n, g, h, x)
 	if mode != 1 {

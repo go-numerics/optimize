@@ -146,6 +146,53 @@ func TestTrsmMatchesReference(t *testing.T) {
 	trsmRUN(0, 3, nil, 3, nil, 1)
 }
 
+// TestTrsmFastMatchesReference: trsmRUNFast gives the reference's values (bit
+// for bit, zero coefficients included, up to the sign of a zero), and the
+// default and SciPyExact paths of an SLSQP solve agree within the contract.
+func TestTrsmFastMatchesReference(t *testing.T) {
+	for _, zeros := range []bool{false, true} {
+		for _, dims := range [][2]int{{13, 11}, {101, 50}, {7, 1}} {
+			m, n := dims[0], dims[1]
+			a, b := trsmInput(m, n, zeros)
+			want := clone(b)
+			trsmRUNRef(m, n, a, n, want, m)
+			trsmRUNFast(m, n, a, n, b, m, make([]float64, n))
+			for i := range b {
+				if b[i] != want[i] {
+					t.Fatalf("zeros=%v %dx%d: b[%d] = %v, reference %v", zeros, m, n, i, b[i], want[i])
+				}
+			}
+		}
+	}
+	trsmRUNFast(0, 3, nil, 3, nil, 1, nil)
+}
+
+// TestSLSQPFastAgainstExact: Quad50 (n = 50, 100 bounds, 1 linear) on the
+// default kernels and with SciPyExact reaches the same optimum within 1e-6
+// (the contract's bound for SLSQP at its default ftol); counts are logged.
+func TestSLSQPFastAgainstExact(t *testing.T) {
+	const n = 50
+	ones := make([]float64, n)
+	for i := range ones {
+		ones[i] = 1
+	}
+	a, _ := ndarray.FromData(ones, 1, n)
+	var res [2]*Result
+	for k, exact := range []bool{true, false} {
+		o := &Options{SciPyExact: exact, Bounds: rep(Bound{-10, 10}, n),
+			Constraints: []ConstraintSpec{LinearConstraint{A: a, Ub: []float64{25}}}}
+		r, err := Minimize(Problem{Func: quad, Grad: quadGrad}, make([]float64, n), SLSQP, o)
+		if err != nil || !r.Success {
+			t.Fatal(err, r)
+		}
+		res[k] = r
+	}
+	t.Logf("Quad50: nit exact %d fast %d, f %.12g / %.12g", res[0].Nit, res[1].Nit, res[0].Fun, res[1].Fun)
+	if d := maxDist(res[1].X, res[0].X); d > 1e-6 || math.Abs(res[1].Fun-res[0].Fun) > 1e-6 {
+		t.Errorf("|dx| = %g, |df| = %g", d, res[1].Fun-res[0].Fun)
+	}
+}
+
 func BenchmarkTrsm(b *testing.B) {
 	a, g := trsmInput(101, 50, false)
 	work := make([]float64, len(g))
