@@ -14,17 +14,6 @@ import (
 // (minpack.go) run when SciPyExact is set and for shorter vectors, where the
 // call overhead of the kernels exceeds their gain.
 
-// fastEnorm is the Euclidean norm as sqrt(x·x) on an FMA dot, falling back to
-// MINPACK's three-accumulator enorm when the square could overflow or lose its
-// leading bits to underflow (norm outside 1e-145 .. 1e150).
-func fastEnorm(x []float64) float64 {
-	r := math.Sqrt(floats.Dot(x, x))
-	if math.IsNaN(r) || r > 1e-145 && r < 1e150 {
-		return r
-	}
-	return mpEnorm(x)
-}
-
 // qrfacFast is qrfac (including the Qᵀ·qtb product) on floats kernels.
 func qrfacFast(m, n int, a []float64, lda int, pivot bool, ipvt []int, rdiag, acnorm, wa, qtb []float64) {
 	for j := 0; j < n; j++ {

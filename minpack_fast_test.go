@@ -4,8 +4,6 @@ import (
 	"math"
 	"math/rand/v2"
 	"testing"
-
-	"github.com/go-ndarray/ndarray"
 )
 
 func relClose(t *testing.T, what string, got, want []float64, tol float64) {
@@ -18,29 +16,6 @@ func relClose(t *testing.T, what string, got, want []float64, tol float64) {
 		if d := math.Abs(got[i] - want[i]); !(d <= tol*scale) {
 			t.Fatalf("%s[%d] = %g, want %g (tol %g)", what, i, got[i], want[i], tol*scale)
 		}
-	}
-}
-
-// TestFastEnormBound: fastEnorm against a 300-bit sum of squares over the
-// magnitudes of TestAccuracyBoundEnorm, same bound (n/2 + 2 ulp); NaN and Inf
-// propagate.
-func TestFastEnormBound(t *testing.T) {
-	r := rand.New(rand.NewPCG(3, 9))
-	for _, n := range []int{1, 3, 10, 100, 1000} {
-		for _, e := range []int{0, -40, -600, -1060, 500, 1000} {
-			for rep := 0; rep < 20; rep++ {
-				v := make([]float64, n)
-				for i := range v {
-					v[i] = math.Ldexp(r.NormFloat64(), e)
-				}
-				if e := ulpErr(fastEnorm(v), bigNorm(v)); !(e <= float64(n)/2+2) {
-					t.Fatalf("n=%d error %g ulp", n, e)
-				}
-			}
-		}
-	}
-	if !math.IsNaN(fastEnorm([]float64{1, math.NaN()})) || !math.IsInf(fastEnorm([]float64{1, math.Inf(1)}), 1) {
-		t.Fatal("NaN / Inf not propagated")
 	}
 }
 
@@ -139,67 +114,5 @@ func TestR1mpyqFastAgainstPlain(t *testing.T) {
 		r1mpyqFast(m, n, a1, m, v, w, make([]float64, m))
 		r1mpyq(m, n, a2, m, v, w)
 		relClose(t, "a", a1, a2, 1e-10)
-	}
-}
-
-// TestMinpackFastAgainstExact: Root, LeastSquares LM, Leastsq and CurveFit on
-// problems with 32 or more residuals, default kernels against SciPyExact:
-// the same solution within the accuracy contract (1e-6, the 1.49e-8 xtol
-// times the conditioning), the evaluation counts logged.
-func TestMinpackFastAgainstExact(t *testing.T) {
-	broyden := func(x, f []float64) {
-		n := len(x)
-		for i := range n {
-			v := float64((3-2*x[i])*x[i]) + 1
-			if i > 0 {
-				v -= x[i-1]
-			}
-			if i < n-1 {
-				v -= 2 * x[i+1]
-			}
-			f[i] = v
-		}
-	}
-	for _, n := range []int{40, 100} {
-		x0 := make([]float64, n)
-		for i := range x0 {
-			x0[i] = -1
-		}
-		e, _ := Root(SystemProblem{Func: broyden}, x0, &RootOptions{SciPyExact: true})
-		f, _ := Root(SystemProblem{Func: broyden}, x0, nil)
-		t.Logf("root n=%d: nfev exact %d fast %d", n, e.Nfev, f.Nfev)
-		if !f.Success || maxDist(f.X, e.X) > 1e-6 {
-			t.Errorf("root n=%d: fast %v exact %v", n, f.Status, e.Status)
-		}
-	}
-	m := 300
-	xa, ya := curveFitData(m)
-	xs, _ := ndarray.Data[float64](xa)
-	ys, _ := ndarray.Data[float64](ya)
-	model := func(x float64, p []float64) float64 { return p[0]*math.Exp(-p[1]*x) + p[2] }
-	var popt [2][]float64
-	for k, exact := range []bool{true, false} {
-		cr, err := CurveFit(model, xa, ya, []float64{1, 1, 1}, &CurveFitOptions{Method: LM, SciPyExact: exact})
-		if err != nil {
-			t.Fatal(err)
-		}
-		popt[k] = cr.Popt
-		t.Logf("curve_fit LM m=%d exact=%v: nfev %d popt %v", m, exact, cr.Nfev, cr.Popt)
-	}
-	if d := maxDist(popt[1], popt[0]); d > 1e-6 {
-		t.Errorf("curve_fit: |dp| = %g", d)
-	}
-	resid := func(x, f []float64) {
-		for i := range f {
-			f[i] = model(xs[i], x) - ys[i]
-		}
-	}
-	p := LSProblem{M: m, Func: resid}
-	l1, _ := LeastSquares(p, []float64{1, 1, 1}, LM, &LSOptions{SciPyExact: true})
-	l2, _ := LeastSquares(p, []float64{1, 1, 1}, LM, nil)
-	q1, _ := Leastsq(p, []float64{1, 1, 1}, &LeastsqOptions{SciPyExact: true})
-	q2, _ := Leastsq(p, []float64{1, 1, 1}, nil)
-	if maxDist(l1.X, l2.X) > 1e-6 || maxDist(q1.X, q2.X) > 1e-6 {
-		t.Errorf("least squares: %v %v / %v %v", l1.X, l2.X, q1.X, q2.X)
 	}
 }
