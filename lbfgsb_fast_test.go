@@ -6,30 +6,6 @@ import (
 	"testing"
 )
 
-// TestFastNrm2Bound: the default dnrm2 (sqrt of an FMA dot, scaled-sum
-// fallback outside 1e-145..1e150) against a 300-bit sum of squares, over the
-// magnitudes of TestAccuracyBoundEnorm; same bound, n/2 + 2 ulps.
-func TestFastNrm2Bound(t *testing.T) {
-	r := rand.New(rand.NewPCG(11, 13))
-	s := &lbfgsb{}
-	for _, n := range []int{1, 3, 10, 100, 1000} {
-		for _, e := range []int{0, -40, -600, -1060, 500, 1000} {
-			for rep := 0; rep < 20; rep++ {
-				v := make([]float64, n)
-				for i := range v {
-					v[i] = math.Ldexp(r.NormFloat64(), e)
-				}
-				if e := ulpErr(s.dnrm2(v), bigNorm(v)); !(e <= float64(n)/2+2) {
-					t.Fatalf("n=%d error %g ulp", n, e)
-				}
-			}
-		}
-	}
-	if !math.IsNaN(s.dnrm2([]float64{1, math.NaN()})) || !math.IsInf(s.dnrm2([]float64{1, math.Inf(1)}), 1) {
-		t.Fatal("NaN / Inf not propagated")
-	}
-}
-
 // TestGatherKernels: gdot, gdotD, gaxpy against plain loops on permuted
 // indices of every length mod 4.
 func TestGatherKernels(t *testing.T) {
@@ -64,35 +40,109 @@ func TestGatherKernels(t *testing.T) {
 	}
 }
 
-// TestLBFGSBFastAgainstExact: on bounded and unbounded Rosenbrock and a
-// bounded quadratic, the default kernels and SciPy's order reach the same
-// minimiser within the contract's 1e-3 / 1e-6; the iteration counts are logged.
-func TestLBFGSBFastAgainstExact(t *testing.T) {
-	for _, n := range []int{2, 10, 40} {
-		for _, bounded := range []bool{false, true} {
-			x0 := make([]float64, n)
-			for i := range x0 {
-				x0[i] = -1.2 + 0.1*float64(i%3)
+// lbQuadProblem is f(x) = ½ dᵀA d, d = x − xstar, A tridiagonal (4 on the
+// diagonal, −1 beside it): symmetric positive definite, minimiser xstar
+// whatever the box, as long as xstar lies inside it.
+func lbQuadProblem(xstar []float64) Problem {
+	n := len(xstar)
+	ad := func(x, out []float64) {
+		for i := range x {
+			v := 4 * (x[i] - xstar[i])
+			if i > 0 {
+				v -= x[i-1] - xstar[i-1]
 			}
-			var res [2]*Result
-			for k, exact := range []bool{true, false} {
-				o := &Options{SciPyExact: exact}
-				if bounded {
-					o.Bounds = make([]Bound, n)
-					for i := range o.Bounds {
-						o.Bounds[i] = Bound{Lo: -2, Hi: 0.5 + float64(i%2)}
-					}
-				}
-				r, err := Minimize(Problem{Func: rosen, Grad: rosenDer}, x0, LBFGSB, o)
-				if err != nil {
-					t.Fatal(err)
-				}
-				res[k] = r
+			if i < n-1 {
+				v -= x[i+1] - xstar[i+1]
 			}
-			t.Logf("n=%d bounded=%v: nit exact %d fast %d, f %.3g / %.3g", n, bounded, res[0].Nit, res[1].Nit, res[0].Fun, res[1].Fun)
-			if d := maxDist(res[1].X, res[0].X); d > 1e-3 || math.Abs(res[1].Fun-res[0].Fun) > 1e-6 {
-				t.Errorf("n=%d bounded=%v: |dx| = %g, |df| = %g", n, bounded, d, res[1].Fun-res[0].Fun)
-			}
+			out[i] = v
 		}
 	}
+	return Problem{
+		Func: func(x []float64) float64 {
+			g := make([]float64, n)
+			ad(x, g)
+			s := 0.0
+			for i := range x {
+				s += (x[i] - xstar[i]) * g[i]
+			}
+			return s / 2
+		},
+		Grad: func(x, g []float64) { ad(x, g) },
+	}
+}
+
+// TestAccuracyBoundLBFGSB: the accuracy contract on the default (FMA, SIMD)
+// kernels, against optima that are known exactly, never against another
+// float64 run. Unbounded Rosenbrock (x* = 1, f* = 0) for n = 2, 10, 40 and
+// 100; and the bounded problems, the only paths through the gather kernels
+// (gdot, gdotD, gaxpy) and the free-set bookkeeping: a coupled quadratic whose
+// exact minimiser lies inside a box that the first Cauchy steps hit (start at
+// the corner), a separable ill-scaled quadratic whose box clamps half of the
+// variables (x*_i = clamp(c_i, lo, hi) exactly), and Rosenbrock inside a box
+// that contains x* = 1 but is active along the way. The bounds are those of
+// TestAccuracyBoundMinimize (1e-3 / 1e-6).
+func TestAccuracyBoundLBFGSB(t *testing.T) {
+	check := func(name string, p Problem, x0, want []float64, o *Options, fstar float64) {
+		t.Helper()
+		r, err := Minimize(p, x0, LBFGSB, o)
+		if err != nil {
+			t.Fatal(name, err)
+		}
+		dx, df := maxDist(r.X, want), math.Abs(r.Fun-fstar)
+		t.Logf("%-28s nit %4d |x-x*|=%.2e |f-f*|=%.2e", name, r.Nit, dx, df)
+		// The f bound is relative to max(1, f*): L-BFGS-B stops on a relative
+		// reduction (ftol 2.2e-9), and the separable problem has f* ~ 2e3.
+		if fb := 1e-6 * math.Max(1, fstar); dx > 1e-3 || df > fb {
+			t.Errorf("%s: |x-x*| = %g (bound 1e-3), |f-f*| = %g (bound %g)", name, dx, df, fb)
+		}
+	}
+	for _, n := range []int{2, 10, 40, 100} {
+		ones := make([]float64, n)
+		for i := range ones {
+			ones[i] = 1
+		}
+		check("rosenbrock", Problem{Func: rosen, Grad: rosenDer}, altStart(n), ones, nil, 0)
+		o := &Options{Bounds: rep(Bound{Lo: -2, Hi: 1.5}, n)}
+		check("rosenbrock boxed", Problem{Func: rosen, Grad: rosenDer}, altStart(n), ones, o, 0)
+	}
+	for _, n := range []int{8, 40} {
+		xstar, x0 := make([]float64, n), make([]float64, n)
+		for i := range xstar {
+			xstar[i] = float64((i*7)%9-4) / 5
+			x0[i] = 1
+		}
+		o := &Options{Bounds: rep(Bound{Lo: -1, Hi: 1}, n)}
+		check("coupled quadratic, box", lbQuadProblem(xstar), x0, xstar, o, 0)
+	}
+	// Separable, ill scaled; c_i outside [-1, 1] for odd i, so the optimum is
+	// on the bound there: x*_i = clamp(c_i).
+	n := 40
+	c, want, w := make([]float64, n), make([]float64, n), make([]float64, n)
+	for i := range c {
+		w[i] = math.Pow(10, float64(i%4))
+		c[i] = float64(i%5-2) / 3
+		if i%2 == 1 {
+			c[i] = 3 * float64(1-2*(i%4/2)) // ±3
+		}
+		want[i] = math.Max(-1, math.Min(1, c[i]))
+	}
+	p := Problem{
+		Func: func(x []float64) float64 {
+			s := 0.0
+			for i := range x {
+				s += w[i] * (x[i] - c[i]) * (x[i] - c[i])
+			}
+			return s
+		},
+		Grad: func(x, g []float64) {
+			for i := range x {
+				g[i] = 2 * w[i] * (x[i] - c[i])
+			}
+		},
+	}
+	fstar := 0.0
+	for i := range want {
+		fstar += w[i] * (want[i] - c[i]) * (want[i] - c[i])
+	}
+	check("separable, clamped", p, make([]float64, n), want, &Options{Bounds: rep(Bound{Lo: -1, Hi: 1}, n)}, fstar)
 }

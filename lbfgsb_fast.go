@@ -10,21 +10,16 @@ import (
 // each product rounded before it is added, in one sequential chain, and takes
 // the 2-norm in x87 extended precision. Here the sums run on FMA with several
 // accumulators (go-simd/floats when the free set is the whole vector, a
-// four-lane gather loop otherwise) and the norm is sqrt(v·v). The results
+// four-lane gather loop otherwise) and the norm is fastEnorm. The results
 // differ from SciPy's in the last bits and may take a different number of
 // iterations; TestLBFGSBFixtures and TestLBFGSBFastAgainstExact hold them to
 // the accuracy contract instead of to SciPy's bits.
 
-// fastNrm2 is the Euclidean norm as sqrt(v·v), falling back to the scaled sum
-// when the square would overflow or lose its leading bits to underflow
-// (|v| outside 1e-145 .. 1e150).
-func fastNrm2(v []float64) float64 {
-	r := math.Sqrt(floats.Dot(v, v))
-	if math.IsNaN(r) || r > 1e-145 && r < 1e150 {
-		return r
-	}
-	return enorm(v)
-}
+// The three gather kernels below (gdot, gdotD, gaxpy) belong in go-simd/floats,
+// the lowest shared library, which has no gather kernel (checked at v0.15.0).
+// They stay here until that lands; the ready-to-apply patch with their tests
+// is go-numerics-optimize-gather.patch (next to the clone), destination
+// github.com/go-simd/floats.
 
 // gdot returns Σ a[idx[k]]·b[idx[k]] on four FMA accumulators.
 func gdot(a, b []float64, idx []int) float64 {

@@ -913,7 +913,7 @@ func (s *lbfgsb) lnsrlb(sf *scalarFunc, x, g []float64, f float64, maxls int) (f
 // mantissa), and only the result is rounded to double.
 func (s *lbfgsb) dnrm2(v []float64) float64 {
 	if !s.exact {
-		return fastNrm2(v)
+		return fastEnorm(v)
 	}
 	// The sum is accumulated in a 64-bit-mantissa software float (ext64): each
 	// square and each addition rounds to nearest even at 64 bits, exactly as
