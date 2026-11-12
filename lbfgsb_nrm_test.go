@@ -26,7 +26,7 @@ func dnrm2Big(v []float64) float64 {
 
 func TestDnrm2MatchesBigFloat(t *testing.T) {
 	rng := rand.New(rand.NewPCG(7, 11))
-	s := &lbfgsb{}
+	s := &lbfgsb{exact: true}
 	check := func(v []float64) {
 		t.Helper()
 		got, want := s.dnrm2(v), dnrm2Big(v)
@@ -78,7 +78,7 @@ func TestDnrm2MatchesBigFloat(t *testing.T) {
 }
 
 func TestDnrm2DoesNotAllocatePerElement(t *testing.T) {
-	s := &lbfgsb{}
+	s := &lbfgsb{exact: true}
 	v := altStart(100)
 	if a := testing.AllocsPerRun(50, func() { s.dnrm2(v) }); a != 0 {
 		t.Fatalf("dnrm2 on 100 elements allocates %v times, want 0 (was 105 with big.Float)", a)

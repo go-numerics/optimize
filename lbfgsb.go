@@ -66,6 +66,11 @@ type lbfgsb struct {
 	ls                                dcsrch
 
 	nrmAcc, nrmSq *big.Float // extended-precision scratch of dnrm2
+
+	// exact selects SciPy's arithmetic bit for bit (Options.SciPyExact):
+	// sequential sums without FMA, the x87 dnrm2. The default uses FMA and
+	// go-simd kernels (lbfgsb_fast.go), validated by tolerance.
+	exact bool
 }
 
 // lbfgsbErrclb checks the arguments the way the reference errclb does and
@@ -152,6 +157,7 @@ func minimizeLBFGSB(sf *scalarFunc, x0 []float64, o *Options, lb, ub []float64) 
 	}
 
 	s := newLbfgsb(n, m, l, u, nbd)
+	s.exact = o.SciPyExact
 	x := clone(x0)
 	g := make([]float64, n)
 	s.active(x)

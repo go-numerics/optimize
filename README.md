@@ -127,7 +127,7 @@ Matrices are row-major `[]float64`.
 
 ## Accuracy contract
 
-Bound: the solution of every solver family is within a stated tolerance of the optimum, and so is its value: `max|x - x*|` and `|f - f*|` at most 1e-3 and 1e-6 for every `Minimize` method at its default tolerances (measured worst case 1.5e-4 and 1.1e-8, SLSQP on Rosenbrock; BFGS, L-BFGS-B, CG, Powell and trust-constr reach 1e-6 or better), 2e-12 + 4·eps·|x*| for the bracketing root finders, 1e-7 for `Root`/`Fsolve` (hybr, xtol 1.49e-8), 1e-6 for `LeastSquares`, `Leastsq` and `CurveFit`, 1e-9 for `Linprog` and 1e-12 for `Quadprog` on the test problems; the Euclidean norm of the MINPACK ports is within n/2 + 2 ulps of the exact norm (measured: 11.7 ulps at n = 1000), without spurious overflow or underflow.
+Bound: the solution of every solver family is within a stated tolerance of the optimum, and so is its value: `max|x - x*|` and `|f - f*|` at most 1e-3 and 1e-6 for every `Minimize` method at its default tolerances (measured worst case 1.5e-4 and 1.1e-8, SLSQP on Rosenbrock; BFGS, CG, Powell and trust-constr reach 1e-6 or better, and so does L-BFGS-B on those two problems; L-BFGS-B stops on a relative reduction of f (factr·eps = 2.2e-9 of max(|f|, 1) by default), so its bound on `f` is relative to the optimum, 1e-6·max(1, |f*|): the measured worst case is |f - f*| = 3.5e-6 at f* = 4.04e4 (8.7e-11 relative) with |x - x*| = 5.8e-4, the same on `Options.SciPyExact` and on the default kernels, `TestAccuracyBoundLBFGSB`), 2e-12 + 4·eps·|x*| for the bracketing root finders, 1e-7 for `Root`/`Fsolve` (hybr, xtol 1.49e-8), 1e-6 for `LeastSquares`, `Leastsq` and `CurveFit`, 1e-9 for `Linprog` and 1e-12 for `Quadprog` on the test problems; the Euclidean norm of the MINPACK ports is within n/2 + 2 ulps of the exact norm (measured: 11.7 ulps at n = 1000), without spurious overflow or underflow.
 Oracle: exact optima of the test problems (Rosenbrock (1, 1), Himmelblau (3, 2), a line fitted to integers by `big.Rat` normal equations, a vertex and a quadratic with rational optima) and 300-bit `math/big` for the irrational ones (the cube root of 2 and 3, the square root of 2) and for the norm; never another float64 implementation.
 Exact: bit-for-bit SciPy is an option, not the contract: `Options.SciPyExactUpdate` keeps SciPy's dense BFGS update, and `SciPyExact` (in `RootOptions`, `LeastsqOptions`, `LSOptions`, `CurveFitOptions`) makes the MINPACK ports (`Root`, `Fsolve`, `Leastsq`, LM) keep MINPACK's operation order, norm included, so that their iterates and counts equal SciPy's. By default they do so only below 32 equations or residuals; from 32 up they run on FMA and go-simd kernels (tolerance-validated, iteration counts may differ).
 
@@ -225,6 +225,10 @@ row is slower than SciPy (#53). MINPACK (`Root`, `Fsolve`, LM, `Leastsq`,
 `CurveFit`) runs its QR, Q accumulation, Givens sweeps and norms on FMA and
 go-simd kernels from 32 equations or residuals up (tolerance-validated);
 `SciPyExact` in each options type keeps MINPACK's summation order bit for bit.
+L-BFGS-B likewise runs on FMA and go-simd kernels by default
+(tolerance-validated, iteration counts may differ from SciPy's by a few);
+`Options.SciPyExact` selects SciPy's summation order and x87 `dnrm2` bit for
+bit, at about twice the time.
 
 ## Not done
 

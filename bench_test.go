@@ -26,10 +26,19 @@ func benchMinimize(b *testing.B, n int, m Method, withGrad bool) {
 	}
 }
 
-func BenchmarkRosen2BFGS(b *testing.B)       { benchMinimize(b, 2, BFGS, true) }
-func BenchmarkRosen100BFGS(b *testing.B)     { benchMinimize(b, 100, BFGS, true) }
-func BenchmarkRosen2LBFGSB(b *testing.B)     { benchMinimize(b, 2, LBFGSB, true) }
-func BenchmarkRosen100LBFGSB(b *testing.B)   { benchMinimize(b, 100, LBFGSB, true) }
+func BenchmarkRosen2BFGS(b *testing.B)     { benchMinimize(b, 2, BFGS, true) }
+func BenchmarkRosen100BFGS(b *testing.B)   { benchMinimize(b, 100, BFGS, true) }
+func BenchmarkRosen2LBFGSB(b *testing.B)   { benchMinimize(b, 2, LBFGSB, true) }
+func BenchmarkRosen100LBFGSB(b *testing.B) { benchMinimize(b, 100, LBFGSB, true) }
+func BenchmarkRosen100LBFGSBExact(b *testing.B) {
+	x0 := altStart(100)
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := Minimize(Problem{Func: rosen, Grad: rosenDer}, x0, LBFGSB, &Options{SciPyExact: true}); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
 func BenchmarkRosen2BFGSFD(b *testing.B)     { benchMinimize(b, 2, BFGS, false) }
 func BenchmarkRosen100LBFGSBFD(b *testing.B) { benchMinimize(b, 100, LBFGSB, false) }
 func BenchmarkRosen2NelderMead(b *testing.B) { benchMinimize(b, 2, NelderMead, false) }
