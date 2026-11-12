@@ -26,10 +26,10 @@ func benchMinimize(b *testing.B, n int, m Method, withGrad bool) {
 	}
 }
 
-func BenchmarkRosen2BFGS(b *testing.B)       { benchMinimize(b, 2, BFGS, true) }
-func BenchmarkRosen100BFGS(b *testing.B)     { benchMinimize(b, 100, BFGS, true) }
-func BenchmarkRosen2LBFGSB(b *testing.B)     { benchMinimize(b, 2, LBFGSB, true) }
-func BenchmarkRosen100LBFGSB(b *testing.B)   { benchMinimize(b, 100, LBFGSB, true) }
+func BenchmarkRosen2BFGS(b *testing.B)     { benchMinimize(b, 2, BFGS, true) }
+func BenchmarkRosen100BFGS(b *testing.B)   { benchMinimize(b, 100, BFGS, true) }
+func BenchmarkRosen2LBFGSB(b *testing.B)   { benchMinimize(b, 2, LBFGSB, true) }
+func BenchmarkRosen100LBFGSB(b *testing.B) { benchMinimize(b, 100, LBFGSB, true) }
 func BenchmarkRosen100LBFGSBExact(b *testing.B) {
 	x0 := altStart(100)
 	b.ReportAllocs()
