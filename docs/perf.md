@@ -46,10 +46,11 @@ What makes a row comparable (checked, not assumed):
 accessors, constructors, the QP solver, which SciPy does not have, and the random
 sources) with the reason of each.
 
-**The current timings are [perf-table.md](perf-table.md)**: refbench on v0.8.0,
-2026-11-10, 1-minute load 4.81 to 6.91 (gate 8), one core, interleaved rounds
-per row, Apple M4 Max. No row is slower than SciPy. BFGS on Rosenbrock n = 100
-(issue #53) is 5.62 ms against 47.1 ms (8.4×) with the default O(n²) update,
+**The current timings are [perf-table.md](perf-table.md)**: refbench on v0.9.0
+(9287042), 2026-11-13, 1-minute load 4.68 to 6.91 (gate 8), one core,
+interleaved rounds per row, Apple M4 Max, 53 of 53 rows valid. No row is slower
+than SciPy (53 of 53 "faster"). BFGS on Rosenbrock n = 100
+(issue #53) is 5.42 ms against 47.3 ms (8.7×) with the default O(n²) update,
 which is tolerance-validated, not bit-identical to SciPy;
 `Options.SciPyExactUpdate` keeps the bit-exact path. The tables
 further down are older (2026-10-17, the earlier script) and are kept for the
@@ -115,7 +116,7 @@ every SciPy fixture, 1-D and (2, m) xdata, sigma, bounds, both methods, and with
 tolerance (1e-6 relative on `popt`), as the scalar rows always did, and take the
 same 21 / 6 / 8 evaluations.
 
-**Timing** (refbench, v0.8.0, 2026-11-10, [perf-table.md](perf-table.md)):
+**Timing** (refbench, v0.8.0, 2026-11-10; the current run is v0.9.0, [perf-table.md](perf-table.md)):
 
 | Row | Go, model per point | Go, `Model.Vec` | SciPy | Speed-up |
 |---|---:|---:|---:|---:|
@@ -134,13 +135,13 @@ site's rule depends on how it is validated:
 |---|---|---|---|
 | BFGS update `A1·(H·A2)` (`matmul`) | 97% of BFGS n = 100 | bit for bit against SciPy (each entry a left-to-right sum of rounded products, as reference BLAS / OpenBLAS's non-FMA kernels) | loops reordered i-k-j, the row update on `floats.AxpyNoFMA`: every entry still receives its products in increasing k, each rounded before the add, so **the same bits** (`TestMatmulSameBitsAsDotProducts` against the i-j-k loop, signed zeros, NaN, Inf, n up to 129). `go test -bench`, loaded host: 530 ms → 172 ms per call |
 | infinity norm (`norm(v, inf)`, CG/BFGS stopping test) | 53% of CG n = 100 (`math.Max` per element) | exact in any order | `floats.MaxAbs`; CG n = 100 2.50 ms → 1.24 ms (loaded host). It now returns NaN for a vector holding both NaN and +Inf, as `numpy.linalg.norm(v, inf)`; the `math.Max` loop returned +Inf there |
-| SLSQP `trsm` (in `lsi`, feeding `ldp`) | 28% of Quad50 | same values as the reference loop (`TestTrsmFastMatchesReference`, bit for bit on finite data, zero coefficients included; the exception: zero coefficients are no longer skipped, so an Inf in B meeting a zero coefficient gives NaN where the reference loop keeps Inf, and a signed zero may differ) and Quad50's KKT closed form (x_i = 1 - λ/(2(i+1)), λ = 50/H₅₀, in big.Rat) reached within the contract's 1e-3 / 1e-6, measured 8.1e-5 and 1.7e-8 on both paths (`TestAccuracyBoundSLSQPQuad50`; the SciPy fixtures keep their path, `TestSLSQPFixtures` and `TestSLSQPFixturesExact`) | **done**: `trsmRUNFast` applies a column's updates in one `floats.AxpyRowsNoFMA` pass (a block of the column stays in SIMD registers across all k), `Options.SciPyExact` keeps the four-column loop. **The refbench run against SciPy is deferred** (1-minute load 10 to 30 during this work, above the limit of 8): no SciPy ratio is claimed (the last row, `tools/slsqpbench` 2026-10-30, is 3.35 ms against SciPy's 4.59 ms, taken before it); only an A/B of the two paths of this repository, Quad50, `go test -bench -cpu 1`: 5.1-5.4 ms (`SciPyExact`) → 3.75 ms. Axpy per column and an FMA eight-column Go loop were measured and gave no gain (28 µs, load-bound); `dlarfLeft`/`dot` (19% of Quad50) are the next site and are not done |
-| L-BFGS-B `dnrm2`, `formk`, `subsm` | 31% (`dnrm2`, x87 emulation), 43% (`formk`, `subsm`) of L-BFGS-B n = 100 | accuracy contract: `dnrm2` within n/2 + 2 ulp of a 300-bit sum (`TestFastEnormBound`), the minimiser and the value within the README's bound of the exact optimum, bounded and unbounded (`TestAccuracyBoundLBFGSB`), and every SciPy fixture within its bound (`TestLBFGSBFixturesFast`, nit within 10% + 2) | **done**: `dnrm2` is `sqrt(floats.Dot(v, v))` (scaled sum outside 1e-145..1e150); the `W'Zd` dots and `Z'W` updates of `subsm` and the `Y'ZZ'Y`, `S'AA'S` blocks of `formk` are `floats.Dot`/`Axpy` when nothing is bounded and go-simd/floats' gather kernels `DotIdx`/`DotGather`/`AxpyGather` (v0.17.0) otherwise. `SciPyExact` keeps SciPy's order. **The refbench run against SciPy is deferred**: the 1-minute load was 13 to 115 during this work, above the limit of 8, so no SciPy ratio is claimed for this change (the last refbench row, v0.8.0, is 4.75 ms against SciPy's 12.1 ms, taken before it). Only an A/B of the two paths of this repository, Rosenbrock n = 100, `go test -bench -cpu 1` at load 13, exists: 6.6 ms (`SciPyExact`) → 3.2 ms. Accuracy is asserted against exact optima, bounded and unbounded (`TestAccuracyBoundLBFGSB`), not against the `SciPyExact` path |
-| MINPACK `qrfac`/`qform`/`r1mpyq`/`enorm` (LM, `Leastsq`, `CurveFit`, `Root`) | most of `root` n = 100 | accuracy contract: `fastEnorm` within n/2 + 2 ulp of a 300-bit sum (`TestFastEnormBound`), factorisation, `Q` and Givens sweeps within 1e-8..1e-10 of MINPACK's order on random and degenerate matrices, and the solutions of `Root`/`Fsolve` (1e-7) and LM, `Leastsq`, `CurveFit` (1e-6) within the README's bounds of exact optima from 32 rows up (`TestAccuracyBoundMinpackFast`) | **done** from 32 residuals/equations: the QR, `Q` accumulation, rank-1 Givens sweeps and norms run on `floats.Dot`/`Axpy`/`Axpby3` (FMA, lane-blocked sums); below 32 and with `SciPyExact` MINPACK's order is kept (bit for bit). **The refbench run against SciPy is deferred**: the 1-minute load was 24 to 115 during this work, above the limit of 8, so no SciPy ratio is claimed (the last refbench rows, v0.8.0, are Root n = 100 0.57 ms against SciPy's 0.84 ms and `CurveFit` LM 1e4 1.3 ms against 1.43 ms, taken before it). Only an A/B of the two paths of this repository exists, `go test -bench -cpu 1` at load 85-115: Root n = 100 0.96 ms (`SciPyExact`) → 0.78 ms; `CurveFit` LM 1e4 is dominated by the model and shows no measurable change. Accuracy is asserted against exact optima from 32 rows up (`TestAccuracyBoundMinpackFast`) |
+| SLSQP `trsm` (in `lsi`, feeding `ldp`) | 28% of Quad50 | same values as the reference loop (`TestTrsmFastMatchesReference`, bit for bit on finite data, zero coefficients included; the exception: zero coefficients are no longer skipped, so an Inf in B meeting a zero coefficient gives NaN where the reference loop keeps Inf, and a signed zero may differ) and Quad50's KKT closed form (x_i = 1 - λ/(2(i+1)), λ = 50/H₅₀, in big.Rat) reached within the contract's 1e-3 / 1e-6, measured 8.1e-5 and 1.7e-8 on both paths (`TestAccuracyBoundSLSQPQuad50`; the SciPy fixtures keep their path, `TestSLSQPFixtures` and `TestSLSQPFixturesExact`) | **done**: `trsmRUNFast` applies a column's updates in one `floats.AxpyRowsNoFMA` pass (a block of the column stays in SIMD registers across all k), `Options.SciPyExact` keeps the four-column loop. **Measured against SciPy** (`tools/slsqpbench`, v0.9.0 at 9287042, 2026-11-13, medians of 7 interleaved rounds, one core, 1-minute load 7.1 to 8.0, the tool's limit being 8; two earlier attempts the same morning were discarded by the tool when the load rose to 8.4 and 8.5): Quad50 2.76 ms against SciPy's 4.73 ms (1.7×), against 3.35 ms / 4.59 ms (1.4×) in the 2026-10-30 row taken before this change. A/B of the two paths of this repository, Quad50, `go test -bench -cpu 1`: 5.1-5.4 ms (`SciPyExact`) → 3.75 ms. Axpy per column and an FMA eight-column Go loop were measured and gave no gain (28 µs, load-bound); `dlarfLeft`/`dot` (19% of Quad50) are the next site and are not done |
+| L-BFGS-B `dnrm2`, `formk`, `subsm` | 31% (`dnrm2`, x87 emulation), 43% (`formk`, `subsm`) of L-BFGS-B n = 100 | accuracy contract: `dnrm2` within n/2 + 2 ulp of a 300-bit sum (`TestFastEnormBound`), the minimiser and the value within the README's bound of the exact optimum, bounded and unbounded (`TestAccuracyBoundLBFGSB`), and every SciPy fixture within its bound (`TestLBFGSBFixturesFast`, nit within 10% + 2) | **done**: `dnrm2` is `sqrt(floats.Dot(v, v))` (scaled sum outside 1e-145..1e150); the `W'Zd` dots and `Z'W` updates of `subsm` and the `Y'ZZ'Y`, `S'AA'S` blocks of `formk` are `floats.Dot`/`Axpy` when nothing is bounded and go-simd/floats' gather kernels `DotIdx`/`DotGather`/`AxpyGather` (v0.17.0) otherwise. `SciPyExact` keeps SciPy's order. **Measured against SciPy** (refbench, v0.9.0 at 9287042, 2026-11-13, 1-minute load 4.68 to 6.91, valid): `Minimize/LBFGSB/rosen100/grad` 2.23 ms against SciPy's 11.7 ms (ratio 0.19, 5.3× faster), against 4.75 ms / 12.1 ms (0.39) in the v0.8.0 row; the `fd` row 1.40 ms against 117 ms. Also an A/B of the two paths of this repository, Rosenbrock n = 100, `go test -bench -cpu 1` at load 13, exists: 6.6 ms (`SciPyExact`) → 3.2 ms. Accuracy is asserted against exact optima, bounded and unbounded (`TestAccuracyBoundLBFGSB`), not against the `SciPyExact` path |
+| MINPACK `qrfac`/`qform`/`r1mpyq`/`enorm` (LM, `Leastsq`, `CurveFit`, `Root`) | most of `root` n = 100 | accuracy contract: `fastEnorm` within n/2 + 2 ulp of a 300-bit sum (`TestFastEnormBound`), factorisation, `Q` and Givens sweeps within 1e-8..1e-10 of MINPACK's order on random and degenerate matrices, and the solutions of `Root`/`Fsolve` (1e-7) and LM, `Leastsq`, `CurveFit` (1e-6) within the README's bounds of exact optima from 32 rows up (`TestAccuracyBoundMinpackFast`) | **done** from 32 residuals/equations: the QR, `Q` accumulation, rank-1 Givens sweeps and norms run on `floats.Dot`/`Axpy`/`Axpby3` (FMA, lane-blocked sums); below 32 and with `SciPyExact` MINPACK's order is kept (bit for bit). **Measured against SciPy** (refbench, v0.9.0 at 9287042, 2026-11-13, 1-minute load 4.68 to 6.91, valid): Root n = 100 0.488 ms against SciPy's 0.876 ms (ratio 0.56), against 0.573 ms / 0.847 ms (0.68) in the v0.8.0 row; `CurveFit` LM 1e4 1.37 ms against 1.50 ms (0.91, v0.8.0: 1.33 / 1.43, 0.93) and TRF 1e4 1.95 ms against 2.42 ms (0.81, v0.8.0: 1.87 / 2.35, 0.80): dominated by the model, no measurable change (the LM row's quartiles, 1.25 to 1.48 ms, overlap the old median). Also an A/B of the two paths of this repository, `go test -bench -cpu 1` at load 85-115: Root n = 100 0.96 ms (`SciPyExact`) → 0.78 ms. Accuracy is asserted against exact optima from 32 rows up (`TestAccuracyBoundMinpackFast`) |
 | trust-constr projections | Quad50 | tolerance | already on `floats.Dot`/`Axpy` (lane-blocked order, labelled in `trustconstr_linalg.go`) |
 | Newton-CG inner CG (n = 100, Hessian-vector product) | its own loop and the Hessian product | path compared with SciPy (perf-counts.md) | **left** for now: 33× faster than SciPy in the earlier table |
 
-**Provenance of `perf.json` and `perf-table.md`:** they are the refbench run of 2026-11-10 at commit 6ea6138 (load 4.8-6.9), unchanged except one hand edit made in the MINPACK change: the allocation count of `Root/hybr/broyden100`, 25 → 15, because `TestPerf` checks allocations against the current code (`Root` n = 100 now takes the default kernels). That row's timings are the old ones, taken before the change; the next refbench run at load below 8 replaces both files.
+**Provenance of `perf.json` and `perf-table.md`:** they are the refbench run of 2026-11-13 at commit 9287042 (v0.9.0, load 4.68-6.91, 53 of 53 rows valid, no hand edit; `refbench check` passes). They replace the 2026-11-10 run at 6ea6138 and its one hand edit.
 
 No reordered kernel was introduced: both changes keep the reference's bits.
 `floats` stubs lacked `//go:noescape`, so these calls first moved callers'
@@ -365,6 +366,25 @@ now applies four columns per pass over the block, bit-identical to the
 reference loop (`TestTrsmMatchesReference`), which halves its time in
 `BenchmarkTrsm` and gives the 1.4× above. The subproblem scratch is reused
 across iterations (0.7 MB allocated per Quad50 solve instead of 11 MB).
+
+v0.9.0 (9287042, `trsm` on `AxpyRowsNoFMA`, #65), 2026-11-13, `tools/slsqpbench`,
+medians of 7 interleaved rounds; 1-minute load 7.1 to 8.0 (8.0 before the first
+round, 7.4 after the last; the tool's limit is 8, so this is not a quiet machine,
+and two earlier attempts the same morning were discarded at 8.4 and 8.5):
+
+| Benchmark | Go | SciPy 1.18.1 | Speed-up |
+|---|---|---|---|
+| HS71, analytic derivatives | 5.95 µs | 117 µs | 19.8× |
+| HS71, finite differences | 7.12 µs | 658 µs | 92.3× |
+| HS38 | 37.5 µs | 959 µs | 25.6× |
+| HS43 | 7.15 µs | 167 µs | 23.4× |
+| Quad50 | 2.76 ms | 4.73 ms | 1.7× |
+
+The HS rows are 6% slower in Go than on 2026-10-30 (within the noise of a loaded
+host; nothing in the HS path changed); Quad50 improves from 3.35 ms to 2.76 ms.
+No SLSQP row is slower than SciPy. The same run gave trust-constr (the
+v0.4.1 row below is older): HS71 527 µs against 33.5 ms, HS38 292 µs against
+32.4 ms, HS43 63.5 µs against 7.43 ms, Quad50 29.1 ms against 72.9 ms (2.5×).
 
 ## trust-constr
 

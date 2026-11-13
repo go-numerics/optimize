@@ -185,10 +185,10 @@ made the suite fail, and each was then reverted:
 
 ## Performance
 
-refbench (`bench/`), v0.8.0, 2026-11-10: one core on both sides, SciPy
-1.18.1, medians of 7 interleaved rounds, started at a 1-minute load below 8
+refbench (`bench/`), v0.9.0, 2026-11-13: one core on both sides, SciPy
+1.18.1, medians of 7 interleaved rounds, 1-minute load 4.7 to 6.9
 (Apple M4 Max). The SLSQP and trust-constr rows are `tools/slsqpbench`,
-2026-10-30. [docs/perf.md](docs/perf.md) and
+2026-11-13 (load 7.1 to 8.0). [docs/perf.md](docs/perf.md) and
 [docs/perf-table.md](docs/perf-table.md) have every row and the method.
 
 `Options.SciPyExact` (L-BFGS-B and SLSQP) selects SciPy's arithmetic bit for
@@ -202,18 +202,18 @@ fixtures keep their path in both modes.
 
 | Benchmark | Go | SciPy | Speed-up |
 |---|---|---|---|
-| Rosenbrock n=2, BFGS | 3.62 µs | 1.22 ms | 336× |
-| Rosenbrock n=100, BFGS (default O(n²) update, tolerance-validated) | 5.62 ms | 47.1 ms | 8.4× |
-| Rosenbrock n=2, L-BFGS-B | 72.6 µs | 739 µs | 10.2× |
-| Rosenbrock n=100, L-BFGS-B | 4.75 ms | 12.1 ms | 2.5× |
-| `curve_fit`, 10⁴ points, LM (model per point / `Model.Vec`) | 1.33 / 0.89 ms | 1.43 / 1.44 ms | 1.07× / 1.62× |
-| `curve_fit`, 10⁴ points, TRF (model per point / `Model.Vec`) | 1.87 / 1.34 ms | 2.35 / 2.36 ms | 1.26× / 1.76× |
-| `curve_fit`, 10⁴ points, TRF with bounds (per point / `Model.Vec`) | 2.53 / 1.85 ms | 3.61 / 3.63 ms | 1.43× / 1.96× |
-| `brentq` | 0.13 µs | 3.9 µs | 29× |
-| SLSQP, HS71 (analytic / finite differences) | 5.6 / 6.9 µs | 114 / 648 µs | 20× / 94× |
-| SLSQP, n = 50 with 100 bounds | 3.35 ms | 4.59 ms | 1.4× |
-| trust-constr, HS71 (analytic / finite differences) | 496 / 438 µs | 32.7 / 34.1 ms | 66× / 78× |
-| trust-constr, n = 50 with 100 bounds | 27.8 ms | 69.9 ms | 2.5× |
+| Rosenbrock n=2, BFGS | 3.58 µs | 1.18 ms | 330× |
+| Rosenbrock n=100, BFGS (default O(n²) update, tolerance-validated) | 5.42 ms | 47.3 ms | 8.7× |
+| Rosenbrock n=2, L-BFGS-B | 70.5 µs | 736 µs | 10.4× |
+| Rosenbrock n=100, L-BFGS-B | 2.23 ms | 11.7 ms | 5.3× |
+| `curve_fit`, 10⁴ points, LM (model per point / `Model.Vec`) | 1.37 / 0.78 ms | 1.50 / 1.46 ms | 1.10× / 1.87× |
+| `curve_fit`, 10⁴ points, TRF (model per point / `Model.Vec`) | 1.95 / 1.39 ms | 2.42 / 2.45 ms | 1.24× / 1.76× |
+| `curve_fit`, 10⁴ points, TRF with bounds (per point / `Model.Vec`) | 2.60 / 1.81 ms | 3.69 / 3.61 ms | 1.42× / 1.99× |
+| `brentq` | 0.14 µs | 4.0 µs | 29× |
+| SLSQP, HS71 (analytic / finite differences), slsqpbench, load 7.1–8.0 | 5.95 / 7.12 µs | 117 / 658 µs | 20× / 92× |
+| SLSQP, n = 50 with 100 bounds, slsqpbench, load 7.1–8.0 | 2.76 ms | 4.73 ms | 1.7× |
+| trust-constr, HS71 (analytic / finite differences), slsqpbench, load 7.1–8.0 | 527 / 447 µs | 33.5 / 35.2 ms | 64× / 79× |
+| trust-constr, n = 50 with 100 bounds, slsqpbench, load 7.1–8.0 | 29.1 ms | 72.9 ms | 2.5× |
 
 Most of SciPy's time on small problems is Python overhead around the
 callbacks. Even after subtracting SciPy's time spent in its own callbacks, the
@@ -229,7 +229,7 @@ minimiser within tolerance, iteration counts within a few percent: n = 100
 takes 542 iterations against 544). `Options.SciPyExactUpdate` selects SciPy's
 update, two dense n×n products summed in SciPy's order (bit for bit, O(n³),
 about 90 ms at n = 100 on `floats.AxpyRowsNoFMA`). The BFGS n = 100 row above
-is the default update (refbench v0.8.0: 5.62 ms against SciPy's 47.1 ms); no
+is the default update (refbench v0.9.0: 5.42 ms against SciPy's 47.3 ms); no
 row is slower than SciPy (#53). MINPACK (`Root`, `Fsolve`, LM, `Leastsq`,
 `CurveFit`) runs its QR, Q accumulation, Givens sweeps and norms on FMA and
 go-simd kernels from 32 equations or residuals up (tolerance-validated);
