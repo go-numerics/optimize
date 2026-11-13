@@ -185,10 +185,10 @@ made the suite fail, and each was then reverted:
 
 ## Performance
 
-refbench (`bench/`), v0.8.0, 2026-11-10: one core on both sides, SciPy
-1.18.1, medians of 7 interleaved rounds, started at a 1-minute load below 8
+refbench (`bench/`), v0.9.0, 2026-11-13: one core on both sides, SciPy
+1.18.1, medians of 7 interleaved rounds, 1-minute load 4.7 to 6.9
 (Apple M4 Max). The SLSQP and trust-constr rows are `tools/slsqpbench`,
-2026-10-30. [docs/perf.md](docs/perf.md) and
+2026-11-13 (load 7.1 to 8.0). [docs/perf.md](docs/perf.md) and
 [docs/perf-table.md](docs/perf-table.md) have every row and the method.
 
 `Options.SciPyExact` (L-BFGS-B and SLSQP) selects SciPy's arithmetic bit for
@@ -229,7 +229,7 @@ minimiser within tolerance, iteration counts within a few percent: n = 100
 takes 542 iterations against 544). `Options.SciPyExactUpdate` selects SciPy's
 update, two dense n×n products summed in SciPy's order (bit for bit, O(n³),
 about 90 ms at n = 100 on `floats.AxpyRowsNoFMA`). The BFGS n = 100 row above
-is the default update (refbench v0.8.0: 5.62 ms against SciPy's 47.1 ms); no
+is the default update (refbench v0.9.0: 5.42 ms against SciPy's 47.3 ms); no
 row is slower than SciPy (#53). MINPACK (`Root`, `Fsolve`, LM, `Leastsq`,
 `CurveFit`) runs its QR, Q accumulation, Givens sweeps and norms on FMA and
 go-simd kernels from 32 equations or residuals up (tolerance-validated);
